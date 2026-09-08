@@ -66,7 +66,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Campfire, so every shadcn control focuses the same colour as the hand
+     rolled controls elsewhere. */
+  --ring: oklch(0.646 0.166 45.2);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -255,16 +257,69 @@
   animation: milestone-pulse 2.4s ease-out infinite;
 }
 
+/*
+ * The pledge form step slide.
+ *
+ * Each step replaces the last rather than sitting beside it, so the incoming
+ * step is what moves: forward it enters from the right, back from the left.
+ * No fill-mode, so a step whose animation never runs is simply in place, which
+ * is the state that matters on a form.
+ */
+@keyframes step-in-forward {
+  from {
+    transform: translateX(1.5rem);
+    opacity: 0;
+  }
+}
+
+@keyframes step-in-back {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
+}
+
+.step-in-forward {
+  animation: step-in-forward 200ms ease-out;
+}
+
+.step-in-back {
+  animation: step-in-back 200ms ease-out;
+}
+
+/*
+ * Anchor links ease to their target, but only for visitors who have not asked
+ * for less movement. CSS does this, so there is no scroll handler anywhere.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /*
-   * The global rule below collapses durations, which would leave these two
-   * looping animations sitting on a single frame. Switch them off outright and
-   * let the elements rest in their static state.
+   * The global rule below collapses durations, which would leave a looping or
+   * entering animation sitting on a single frame. Switch them off outright and
+   * let every element rest in its static state: the bar at its true width, the
+   * step in place, the panel opaque, the current milestone a plain dot.
    */
   .scroll-hint,
   .milestone-pulse {
     animation: none !important;
     opacity: 0.6;
+  }
+
+  .progress-fill,
+  .tab-fade,
+  .drawer-in,
+  .step-in-forward,
+  .step-in-back {
+    animation: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 

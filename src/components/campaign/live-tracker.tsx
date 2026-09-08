@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { CampaignTotalsDto } from "@/lib/campaign";
-import { formatKes, formatKesAmount } from "@/lib/format";
+import { formatKES, formatNumber, formatPercent } from "@/lib/format";
 
 /**
  * The live campaign tracker in the hero.
@@ -66,7 +66,7 @@ export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
       </p>
 
       <p className="mt-2 text-sm text-white/70 sm:text-base">
-        pledged toward {formatKes(totals.targetMinor)}
+        pledged toward {formatKES(totals.targetMinor)}
       </p>
 
       <div
@@ -87,14 +87,14 @@ export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
         <div className="flex gap-1.5">
           <dt className="sr-only">Progress</dt>
           <dd className="tabular font-medium text-white">
-            {totals.percentPledged.toFixed(2)}%
+            {formatPercent(totals.percentPledged)}
           </dd>
           <dd>of goal</dd>
         </div>
         <div className="flex gap-1.5">
           <dt className="sr-only">Pledges</dt>
           <dd className="tabular font-medium text-white">
-            {totals.pledgeCount.toLocaleString("en-KE")}
+            {formatNumber(totals.pledgeCount)}
           </dd>
           <dd>{totals.pledgeCount === 1 ? "pledge" : "pledges"}</dd>
         </div>
@@ -102,7 +102,7 @@ export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
 
       {received > 0n && (
         <p className="mt-2 text-xs text-white/60 sm:text-sm">
-          <span className="tabular">{formatKes(received)}</span> received so far
+          <span className="tabular">{formatKES(received)}</span> received so far
         </p>
       )}
     </div>
@@ -170,5 +170,5 @@ function CountUp({ value }: { value: bigint }) {
     return () => cancelAnimationFrame(frame);
   }, [value]);
 
-  return <>KES {formatKesAmount(shown)}</>;
+  return <>{formatKES(shown)}</>;
 }

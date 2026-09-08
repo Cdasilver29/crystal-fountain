@@ -7,7 +7,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { groupDigits, formatKes, formatPhoneForDisplay } from "@/lib/format";
+import {
+  groupDigits,
+  formatKES,
+  formatNumber,
+  formatPhoneForDisplay,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { normalizeKenyanPhone } from "@/server/contracts/phone";
 import { createPledgeInput } from "@/server/contracts/pledges";
@@ -34,6 +39,9 @@ export function PledgeForm() {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
+  // Which way the last move went, so the incoming step enters from the side it
+  // came from. Reset on every move, never read for anything but the animation.
+  const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [amountDigits, setAmountDigits] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -73,6 +81,7 @@ export function PledgeForm() {
   }
 
   function goTo(nextStep: number) {
+    setDirection(nextStep >= step ? "forward" : "back");
     setStep(nextStep);
     setErrors({});
     // Move focus to the new step heading so a screen reader announces it and a
@@ -154,7 +163,7 @@ export function PledgeForm() {
     <div className="mx-auto w-full max-w-lg">
       <StepIndicator step={step} />
 
-      <div className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7">
+      <div className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7 overflow-x-hidden">
         <h2
           ref={headingRef}
           tabIndex={-1}
@@ -174,13 +183,22 @@ export function PledgeForm() {
           </p>
         )}
 
+        {/*
+          Keyed on the step, so React remounts this and the entry animation
+          runs again on every move. The card clips horizontally, so a step
+          arriving from the side cannot widen the page.
+        */}
+        <div
+          key={step}
+          className={direction === "forward" ? "step-in-forward" : "step-in-back"}
+        >
         {step === 0 && (
           <div className="mt-5">
             <Label htmlFor="amount" className="text-sm text-neutral-600">
               Amount in Kenyan shillings
             </Label>
 
-            <div className="mt-2 flex items-baseline gap-2 border-b-2 border-neutral-200 pb-2 focus-within:border-campfire">
+            <div className="mt-2 flex items-baseline gap-2 border-b-2 border-neutral-200 pb-2 has-[:focus-visible]:border-campfire">
               <span className="text-2xl font-medium text-neutral-400">KES</span>
               <input
                 id="amount"
@@ -200,7 +218,7 @@ export function PledgeForm() {
                     event.target.value.replace(/\D/g, "").slice(0, 9),
                   )
                 }
-                className="tabular w-full min-w-0 bg-transparent text-4xl font-semibold tracking-tight text-navy outline-none placeholder:text-neutral-300"
+                className="tabular w-full min-w-0 rounded bg-transparent text-4xl font-semibold tracking-tight text-navy outline-none placeholder:text-neutral-300 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               />
             </div>
 
@@ -223,7 +241,7 @@ export function PledgeForm() {
                         : "border-neutral-200 bg-white text-navy hover:border-denim",
                     )}
                   >
-                    {amount.toLocaleString("en-KE")}
+                    {formatNumber(amount)}
                   </button>
                 );
               })}
@@ -322,7 +340,7 @@ export function PledgeForm() {
                 How we handle your details is set out in our{" "}
                 <Link
                   href="/privacy"
-                  className="text-denim underline underline-offset-4"
+                  className="rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
                 >
                   privacy notice
                 </Link>
@@ -363,7 +381,7 @@ export function PledgeForm() {
               <Row label="Amount">
                 <span className="tabular text-lg font-semibold text-navy">
                   {Number.isFinite(amountKes)
-                    ? formatKes(BigInt(amountDigits || "0") * 100n)
+                    ? formatKES(BigInt(amountDigits || "0") * 100n)
                     : "-"}
                 </span>
               </Row>
@@ -388,6 +406,8 @@ export function PledgeForm() {
             </p>
           </div>
         )}
+
+        </div>
 
         <div className="mt-7 flex items-center gap-3">
           {step > 0 && (

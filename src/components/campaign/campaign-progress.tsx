@@ -1,5 +1,5 @@
 import type { CampaignTotalsDto } from "@/lib/campaign";
-import { formatKes } from "@/lib/format";
+import { formatKES, formatNumber, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,10 +30,10 @@ export function CampaignProgress({
             compact ? "text-2xl" : "text-4xl sm:text-5xl",
           )}
         >
-          {formatKes(totals.pledgedMinor)}
+          {formatKES(totals.pledgedMinor)}
         </span>
         <span className="text-sm text-white/70">
-          pledged of {formatKes(totals.targetMinor)}
+          pledged of {formatKES(totals.targetMinor)}
         </span>
       </div>
 
@@ -55,19 +55,19 @@ export function CampaignProgress({
         <div className="flex gap-1.5">
           <dt>Progress</dt>
           <dd className="tabular font-medium text-white">
-            {totals.percentPledged.toFixed(2)}%
+            {formatPercent(totals.percentPledged)}
           </dd>
         </div>
         <div className="flex gap-1.5">
           <dt>Pledges</dt>
           <dd className="tabular font-medium text-white">
-            {totals.pledgeCount.toLocaleString("en-KE")}
+            {formatNumber(totals.pledgeCount)}
           </dd>
         </div>
         <div className="flex gap-1.5">
           <dt>Received</dt>
           <dd className="tabular font-medium text-white">
-            {formatKes(totals.receivedMinor)}
+            {formatKES(totals.receivedMinor)}
           </dd>
         </div>
       </dl>

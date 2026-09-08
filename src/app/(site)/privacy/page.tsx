@@ -86,7 +86,7 @@ export default function PrivacyPage() {
             <p className="mt-2">
               <a
                 href={`mailto:${CONTACT.email}`}
-                className="text-denim underline underline-offset-4"
+                className="rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               >
                 {CONTACT.email}
               </a>
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
           </div>
 
           <p className="text-sm text-neutral-600">
-            <Link href="/pledge" className="text-denim underline underline-offset-4">
+            <Link href="/pledge" className="rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none">
               Back to the pledge form
             </Link>
           </p>

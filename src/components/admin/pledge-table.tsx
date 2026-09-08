@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { formatDate, formatKes } from "@/lib/format";
+import { formatDate, formatKES } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -137,7 +137,7 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
 
             <div className="mt-1 flex items-baseline justify-between gap-3">
               <span className="tabular text-lg font-semibold text-navy">
-                {formatKes(row.amountMinor)}
+                {formatKES(row.amountMinor)}
               </span>
               <span className="text-xs text-neutral-500">
                 {formatDate(row.createdAt)}
@@ -179,7 +179,7 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
                 </td>
                 <td className="px-4 py-3 text-neutral-800">{row.fullName}</td>
                 <td className="tabular px-4 py-3 text-right font-medium text-navy">
-                  {formatKes(row.amountMinor)}
+                  {formatKES(row.amountMinor)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-neutral-600">
                   {formatDate(row.createdAt)}

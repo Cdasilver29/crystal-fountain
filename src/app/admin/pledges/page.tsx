@@ -6,6 +6,7 @@ import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { db } from "@/db";
 import { isAdmin } from "@/lib/admin-session";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
+import { formatNumber } from "@/lib/format";
 import * as pledges from "@/server/services/pledges";
 
 export const metadata: Metadata = {
@@ -51,8 +52,8 @@ export default async function AdminPledgesPage() {
       <main className="px-4 py-8 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
           <p className="mb-4 text-sm text-neutral-600">
-            {rows.length.toLocaleString("en-KE")} pledges,{" "}
-            {pendingCount.toLocaleString("en-KE")} awaiting approval. Only
+            {formatNumber(rows.length)} pledges,{" "}
+            {formatNumber(pendingCount)} awaiting approval. Only
             approved pledges count toward the public total.
           </p>
 

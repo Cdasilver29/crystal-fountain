@@ -22,7 +22,7 @@ export default async function PledgePage() {
         <div className="mx-auto w-full max-w-lg">
           <Link
             href="/"
-            className="text-sm text-white/70 underline-offset-4 hover:text-white hover:underline"
+            className="rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
           >
             Crystal Fountain Development Project
           </Link>

@@ -5,7 +5,7 @@ import { PaymentInstructions } from "@/components/campaign/payment-instructions"
 import { CopyButton } from "@/components/pledge/copy-button";
 import { ShareButton } from "@/components/pledge/share-button";
 import type { CampaignTotalsDto } from "@/lib/campaign";
-import { formatDate, formatKes } from "@/lib/format";
+import { formatDate, formatKES } from "@/lib/format";
 import type { PublicPledgeView } from "@/server/services/pledges";
 
 /**
@@ -40,7 +40,7 @@ export function PledgeConfirmation({
         <div className="mx-auto w-full max-w-2xl">
           <Link
             href="/"
-            className="text-sm text-white/70 underline-offset-4 hover:text-white hover:underline"
+            className="rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
           >
             Crystal Fountain Development Project
           </Link>
@@ -99,7 +99,7 @@ export function PledgeConfirmation({
               <div className="flex items-baseline justify-between gap-4 pb-3">
                 <dt className="text-neutral-500">Amount pledged</dt>
                 <dd className="tabular text-lg font-semibold text-navy">
-                  {formatKes(pledge.amountMinor)}
+                  {formatKES(pledge.amountMinor)}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-4 py-3">
@@ -134,15 +134,22 @@ export function PledgeConfirmation({
             <h2 className="font-semibold text-navy">
               This is a pledge, not a payment
             </h2>
+            {/*
+              The brief for this section asked for "You will receive payment
+              instructions separately" as the middle sentence. That would be
+              untrue: the instructions are on this page, immediately above, and
+              v1 sends no SMS or email, so nothing arrives separately. The
+              sentence points at them instead and carries the reference, which
+              is what the treasurer matches a payment on.
+            */}
             <p className="mt-2 text-sm leading-relaxed text-neutral-700">
-              Nothing has been charged and no money has changed hands. You have
-              recorded a promise to give toward the building fund. When you do
-              pay, quote reference{" "}
+              Nothing has been charged and no money has changed hands. Payment
+              instructions are shown above; quote reference{" "}
               <span className="tabular font-semibold text-navy">
                 {pledge.reference}
-              </span>
-              . The treasurer&rsquo;s official receipt is the only receipt, and
-              this page is not one.
+              </span>{" "}
+              when you pay. The church treasurer&rsquo;s official receipt is the
+              only valid receipt for your contribution.
             </p>
           </section>
 
