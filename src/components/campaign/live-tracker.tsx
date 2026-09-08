@@ -6,7 +6,7 @@ import type { CampaignTotalsDto } from "@/lib/campaign";
 import { formatKes, formatKesAmount } from "@/lib/format";
 
 /**
- * The live campaign tracker.
+ * The live campaign tracker in the hero.
  *
  * The server renders this with real totals already in props, so the first paint
  * carries the true figure and the page is correct with JavaScript disabled.
@@ -20,7 +20,7 @@ import { formatKes, formatKesAmount } from "@/lib/format";
  */
 
 const POLL_INTERVAL_MS = 30_000;
-const ANIMATION_MS = 900;
+const COUNT_UP_MS = 1_500;
 
 export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
   const [totals, setTotals] = useState(initial);
@@ -56,25 +56,21 @@ export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
 
   const pledged = BigInt(totals.pledgedMinor);
   const received = BigInt(totals.receivedMinor);
+  // Always show a sliver, so the bar never reads as broken at the very start.
   const fill = Math.max(Math.min(totals.percentPledged, 100), 0.4);
 
   return (
     <div className="w-full">
-      <p className="text-sm font-medium tracking-wide text-white/70">
-        Pledged so far
+      <p className="tabular font-semibold tracking-tight text-white [font-size:clamp(2.5rem,9vw,5rem)] [line-height:1.05]">
+        <CountUp value={pledged} />
       </p>
 
-      <p className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="tabular text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-          <CountUp value={pledged} />
-        </span>
-        <span className="text-base text-white/70 sm:text-lg">
-          pledged toward {formatKes(totals.targetMinor)}
-        </span>
+      <p className="mt-2 text-sm text-white/70 sm:text-base">
+        pledged toward {formatKes(totals.targetMinor)}
       </p>
 
       <div
-        className="mt-5 h-3 w-full overflow-hidden rounded-full bg-white/15"
+        className="mt-6 h-2 w-full overflow-hidden rounded-full bg-white/20"
         role="progressbar"
         aria-valuenow={totals.percentPledged}
         aria-valuemin={0}
@@ -82,86 +78,96 @@ export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
         aria-label="Pledged against the campaign target"
       >
         <div
-          className="h-full rounded-full bg-campfire transition-[width] duration-700 ease-out"
+          className="progress-fill h-full rounded-full bg-campfire transition-[width] duration-700 ease-out"
           style={{ width: `${fill}%` }}
         />
       </div>
 
-      <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm text-white/70">
-        <div className="flex gap-2">
-          <dt>Progress</dt>
-          <dd className="tabular font-semibold text-white">
+      <dl className="mt-3 flex items-baseline justify-between gap-4 text-sm text-white/70">
+        <div className="flex gap-1.5">
+          <dt className="sr-only">Progress</dt>
+          <dd className="tabular font-medium text-white">
             {totals.percentPledged.toFixed(2)}%
           </dd>
+          <dd>of goal</dd>
         </div>
-        <div className="flex gap-2">
-          <dt>Pledges</dt>
-          <dd className="tabular font-semibold text-white">
+        <div className="flex gap-1.5">
+          <dt className="sr-only">Pledges</dt>
+          <dd className="tabular font-medium text-white">
             {totals.pledgeCount.toLocaleString("en-KE")}
           </dd>
+          <dd>{totals.pledgeCount === 1 ? "pledge" : "pledges"}</dd>
         </div>
-        {received > 0n && (
-          <div className="flex gap-2">
-            <dt>Received</dt>
-            <dd className="tabular font-semibold text-white">
-              {formatKes(received)} so far
-            </dd>
-          </div>
-        )}
       </dl>
+
+      {received > 0n && (
+        <p className="mt-2 text-xs text-white/60 sm:text-sm">
+          <span className="tabular">{formatKes(received)}</span> received so far
+        </p>
+      )}
     </div>
   );
 }
 
 /**
- * Counts up to a new value when it increases.
+ * Counts up from zero to the pledged figure, once, when the hero first mounts.
  *
  * Interpolation is integer arithmetic on bigints: at progress k out of 1000,
- * the displayed value is from + (to - from) * k / 1000. Nothing here converts a
- * money amount to a number, and the final frame is the exact target value.
+ * the displayed value is (to * k) / 1000. Nothing here converts a money amount
+ * to a number, and the final frame is the exact value the server sent.
+ *
+ * A poll that moves the total later lands on the new figure directly. The
+ * count up is a launch flourish, not a transition, and re-running it every
+ * thirty seconds would make the number unreadable.
  */
 function CountUp({ value }: { value: bigint }) {
   const [shown, setShown] = useState(value);
-  const previous = useRef(value);
-  const frame = useRef<number | undefined>(undefined);
+  // The value the count up has settled on. Null until it finishes, so this
+  // records completion and not merely that a run was started. React invokes an
+  // effect twice on mount in development, cancelling the first run partway
+  // through: marking the flag up front would leave the second run believing
+  // the animation had already happened and the number would never move.
+  const settledOn = useRef<bigint | null>(null);
 
   useEffect(() => {
-    const from = previous.current;
-    const to = value;
-    previous.current = value;
-
-    if (from === to) return;
+    if (settledOn.current !== null) {
+      // A later update from the poll. Land on it.
+      settledOn.current = value;
+      setShown(value);
+      return;
+    }
 
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-
-    // Only animate an increase. A correction downward should just land.
-    if (reduceMotion || to < from) {
-      setShown(to);
+    if (reduceMotion || value === 0n) {
+      settledOn.current = value;
+      setShown(value);
       return;
     }
 
+    const target = value;
     const start = performance.now();
+    let frame = 0;
+
     const step = (now: number) => {
       const elapsed = now - start;
-      if (elapsed >= ANIMATION_MS) {
-        setShown(to);
+      if (elapsed >= COUNT_UP_MS) {
+        settledOn.current = target;
+        setShown(target);
         return;
       }
       // Ease out, resolved to an integer numerator over 1000.
-      const linear = elapsed / ANIMATION_MS;
+      const linear = elapsed / COUNT_UP_MS;
       const eased = 1 - (1 - linear) * (1 - linear);
       const k = BigInt(Math.round(eased * 1000));
-      setShown(from + ((to - from) * k) / 1000n);
-      frame.current = requestAnimationFrame(step);
+      setShown((target * k) / 1000n);
+      frame = requestAnimationFrame(step);
     };
 
-    frame.current = requestAnimationFrame(step);
+    frame = requestAnimationFrame(step);
 
-    return () => {
-      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
-    };
+    return () => cancelAnimationFrame(frame);
   }, [value]);
 
   return <>KES {formatKesAmount(shown)}</>;

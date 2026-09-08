@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LiveTracker } from "@/components/campaign/live-tracker";
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
-import {
-  CAMPAIGN,
-  CONTACT,
-  PROJECT_SUMMARY,
-  SCRIPTURE,
-  projectStats,
-} from "@/content/campaign";
+import { FinalCta } from "@/components/home/final-cta";
+import { Hero } from "@/components/home/hero";
+import { JourneyTimeline } from "@/components/home/journey-timeline";
+import { KeyNumbers } from "@/components/home/key-numbers";
+import { VisionSection } from "@/components/home/vision-section";
+import { CAMPAIGN, CONTACT } from "@/content/campaign";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -22,72 +20,15 @@ export default async function HomePage() {
   // Read on the server so the first paint carries real numbers and the page is
   // correct with JavaScript disabled. LiveTracker takes over after hydration.
   const totals = await getCampaignTotals();
-  const stats = projectStats(new Date().getFullYear());
 
   return (
     <>
-      <section className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-5xl">
-            {CAMPAIGN.name}
-          </h1>
-          <p className="mt-3 text-lg text-balance text-campfire sm:text-xl">
-            {CAMPAIGN.subheading}
-          </p>
+      <Hero totals={totals} />
+      <VisionSection />
+      <KeyNumbers />
+      <JourneyTimeline />
 
-          <div className="mt-10">
-            <LiveTracker initial={totals} />
-          </div>
-
-          <div className="mt-9">
-            <Link
-              href="/pledge"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-campfire px-7 text-base font-semibold text-white transition-colors hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
-            >
-              Make a pledge
-            </Link>
-          </div>
-
-          <blockquote className="mt-8 max-w-2xl">
-            <p className="text-sm leading-relaxed text-balance text-white/80 italic sm:text-base">
-              {SCRIPTURE.text}
-            </p>
-            <cite className="mt-1.5 block text-sm text-white/60 not-italic">
-              {SCRIPTURE.reference}
-            </cite>
-          </blockquote>
-        </div>
-      </section>
-
-      <section id="about" className="scroll-mt-16 bg-white px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
-            What is being built
-          </h2>
-
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-neutral-700">
-            {PROJECT_SUMMARY}
-          </p>
-
-          <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <dt className="sr-only">{stat.label}</dt>
-                <dd>
-                  <span className="tabular block text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
-                    {stat.value}
-                  </span>
-                  <span className="mt-1 block text-sm text-neutral-600">
-                    {stat.label}
-                  </span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      <section className="bg-neutral-50 px-4 py-12 sm:px-6 sm:py-16">
+      <section className="bg-white px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto w-full max-w-5xl">
           <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
             How to give
@@ -100,20 +41,10 @@ export default async function HomePage() {
           <div className="mt-8">
             <PaymentInstructions />
           </div>
-
-          <p className="mt-8 text-base text-neutral-700">
-            Want to record your pledge?{" "}
-            <Link
-              href="/pledge"
-              className="font-semibold text-campfire underline underline-offset-4"
-            >
-              Make a pledge &rarr;
-            </Link>
-          </p>
         </div>
       </section>
 
-      <section className="bg-white px-4 py-12 sm:px-6 sm:py-16">
+      <section className="bg-[#f8f7f5] px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto w-full max-w-5xl">
           <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
             Contact
@@ -130,7 +61,7 @@ export default async function HomePage() {
               <dd className="mt-1">
                 <a
                   href={CONTACT.phoneHref}
-                  className="tabular text-base text-denim underline underline-offset-4"
+                  className="tabular rounded text-base text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
                 >
                   {CONTACT.phoneDisplay}
                 </a>
@@ -143,19 +74,21 @@ export default async function HomePage() {
                 {CONTACT.address}
               </dd>
               <dd className="mt-1">
-                <a
+                <Link
                   href={CONTACT.siteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-base text-denim underline underline-offset-4"
+                  className="rounded text-base text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
                 >
                   {CONTACT.siteLabel}
-                </a>
+                </Link>
               </dd>
             </div>
           </dl>
         </div>
       </section>
+
+      <FinalCta />
     </>
   );
 }

@@ -51,9 +51,9 @@ export const SOCIAL_LINKS: readonly { label: string; href: string }[] = [
  * milestone and appears on the timeline, not here.
  */
 export const KEY_NUMBERS: readonly { value: string; label: string }[] = [
-  { value: "3,000-5,000", label: "Seats" },
+  { value: "3,000-5,000", label: "Main auditorium seats" },
   { value: "700", label: "Parking spaces" },
-  { value: "KES 550M", label: "Target" },
+  { value: "KES 550M", label: "Campaign target" },
   { value: "2025", label: "Vision unveiled" },
 ];
 

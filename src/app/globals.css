@@ -177,6 +177,82 @@
   animation: drawer-in 200ms ease-out;
 }
 
+/*
+ * Hero depth. A single radial wash of a lighter navy, no image and no pattern,
+ * so the hero carries weight without costing a request.
+ */
+.hero-wash {
+  background-image: radial-gradient(
+    ellipse 90% 70% at 50% 40%,
+    rgb(10 50 112 / 0.55),
+    transparent 70%
+  );
+}
+
+/*
+ * The progress bar fill.
+ *
+ * The element is laid out at its real width and the animation only grows it
+ * from zero, so there is no fill-mode and nothing to strand: if the animation
+ * never runs, the bar is already showing the true figure. It runs once on
+ * first paint. Later poll updates are handled by the width transition on the
+ * element, not by re-running this.
+ */
+@keyframes progress-fill {
+  from {
+    width: 0;
+  }
+}
+
+.progress-fill {
+  animation: progress-fill 1.5s ease-out;
+}
+
+/* The hint that there is more page below the fold. */
+@keyframes scroll-hint {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(0.3rem);
+  }
+}
+
+.scroll-hint {
+  animation: scroll-hint 2.2s ease-in-out infinite;
+}
+
+/* The milestone the campaign is on now. */
+@keyframes milestone-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(227 101 32 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 0.5rem rgb(227 101 32 / 0);
+  }
+}
+
+.milestone-pulse {
+  animation: milestone-pulse 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * The global rule below collapses durations, which would leave these two
+   * looping animations sitting on a single frame. Switch them off outright and
+   * let the elements rest in their static state.
+   */
+  .scroll-hint,
+  .milestone-pulse {
+    animation: none !important;
+    opacity: 0.6;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
