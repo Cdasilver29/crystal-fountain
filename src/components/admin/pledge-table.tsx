@@ -10,6 +10,11 @@ import { cn } from "@/lib/utils";
 /**
  * The treasurer's pledge list.
  *
+ * Two renderings of the same data: stacked cards on a phone, a table from the
+ * small breakpoint up. A 36rem wide table cannot be read on a 360px screen, and
+ * the treasurer is as likely to approve pledges on a phone after a service as
+ * at a desk.
+ *
  * Amounts arrive as minor unit strings and stay strings. Nothing here turns a
  * money value into a JavaScript number.
  */
@@ -30,6 +35,19 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: "bg-neutral-200 text-neutral-700",
   void: "bg-neutral-200 text-neutral-700",
 };
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block rounded-full px-2.5 py-1 text-xs font-medium",
+        STATUS_STYLES[status] ?? "bg-neutral-200 text-neutral-700",
+      )}
+    >
+      {status}
+    </span>
+  );
+}
 
 export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
   const router = useRouter();
@@ -67,6 +85,21 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
     }
   }
 
+  function ApproveButton({ row }: { row: AdminPledgeDto }) {
+    if (row.status !== "pending") return null;
+    return (
+      <Button
+        type="button"
+        size="sm"
+        onClick={() => approve(row)}
+        disabled={busyId === row.id || pending}
+        className="bg-campfire text-white hover:bg-campfire/90"
+      >
+        {busyId === row.id ? "Approving..." : "Approve"}
+      </Button>
+    );
+  }
+
   if (rows.length === 0) {
     return (
       <p className="rounded-2xl border border-black/5 bg-white p-6 text-sm text-neutral-600 shadow-sm">
@@ -86,8 +119,43 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-black/5 bg-white shadow-sm">
-        <table className="w-full min-w-[36rem] text-sm">
+      {/* Phone: one card per pledge. */}
+      <ul className="space-y-3 sm:hidden">
+        {rows.map((row) => (
+          <li
+            key={row.id}
+            className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="tabular font-semibold text-navy">
+                {row.reference}
+              </span>
+              <StatusBadge status={row.status} />
+            </div>
+
+            <p className="mt-2 text-sm text-neutral-800">{row.fullName}</p>
+
+            <div className="mt-1 flex items-baseline justify-between gap-3">
+              <span className="tabular text-lg font-semibold text-navy">
+                {formatKes(row.amountMinor)}
+              </span>
+              <span className="text-xs text-neutral-500">
+                {formatDate(row.createdAt)}
+              </span>
+            </div>
+
+            {row.status === "pending" && (
+              <div className="mt-3">
+                <ApproveButton row={row} />
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {/* Small breakpoint and up: the full table. */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-black/5 bg-white shadow-sm sm:block">
+        <table className="w-full text-sm">
           <caption className="sr-only">
             All pledges, newest first, with an approve action for pending ones
           </caption>
@@ -117,27 +185,10 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
                   {formatDate(row.createdAt)}
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      "inline-block rounded-full px-2.5 py-1 text-xs font-medium",
-                      STATUS_STYLES[row.status] ?? "bg-neutral-200 text-neutral-700",
-                    )}
-                  >
-                    {row.status}
-                  </span>
+                  <StatusBadge status={row.status} />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {row.status === "pending" && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => approve(row)}
-                      disabled={busyId === row.id || pending}
-                      className="bg-campfire text-white hover:bg-campfire/90"
-                    >
-                      {busyId === row.id ? "Approving..." : "Approve"}
-                    </Button>
-                  )}
+                  <ApproveButton row={row} />
                 </td>
               </tr>
             ))}
