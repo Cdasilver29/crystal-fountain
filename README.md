@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Crystal Fountain pledge platform
 
-## Getting Started
+Pledge platform for the Crystal Fountain Development Project, the building fund for
+Newlife SDA Church, Nairobi. Members and well-wishers record a pledge toward the
+KES 550,000,000 target, get a reference number and a QR code, and see live campaign
+progress.
 
-First, run the development server:
+A pledge is a promise to give, not a payment. The treasurer's receipt is the only receipt.
+
+Project rules live in `CLAUDE.md`. Read that before changing anything.
+
+## Resolved versions
+
+Every dependency is pinned to an exact version in `package.json`. No carets, no tildes.
+`.npmrc` sets `save-exact=true` so future installs stay pinned.
+
+| Package    | Version  |
+| ---------- | -------- |
+| next       | 15.5.25  |
+| react      | 19.2.8   |
+| typescript | 5.9.3    |
+| tailwindcss| 4.3.3    |
+
+React DOM tracks react at 19.2.8. shadcn/ui was initialised with the `radix-nova` preset
+and the `neutral` base colour.
+
+## Requirements
+
+- Node 20 or newer
+- pnpm 11.21.0 (see `packageManager` in `package.json`)
+- A Neon Postgres database
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
+# fill in DATABASE_URL and NEXT_PUBLIC_SITE_URL
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`src/env.ts` validates the environment with Zod and is imported once from the root layout,
+so a missing variable fails the build rather than a request in front of a user.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script             | What it does                                       |
+| ------------------ | -------------------------------------------------- |
+| `pnpm dev`         | Development server on http://localhost:3000        |
+| `pnpm build`       | Production build. Uses `--turbopack`, see below    |
+| `pnpm start`       | Serve the production build                         |
+| `pnpm lint`        | ESLint                                             |
+| `pnpm db:generate` | Generate SQL migrations from `src/db/schema.ts`    |
+| `pnpm db:migrate`  | Apply migrations to the database in `.env.local`   |
 
-## Learn More
+The build must run with `--turbopack`. Plain `next build` produced an incompatible routes
+manifest on the church's camp meeting site and the same gotcha applies here.
 
-To learn more about Next.js, take a look at the following resources:
+## Layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+drizzle.config.ts       drizzle-kit config, reads .env.local
+src/env.ts              Zod validated environment
+src/db/index.ts         Neon serverless driver plus Drizzle client, exports db and Db
+src/db/schema.ts        Drizzle schema, empty for now
+src/server/             Business logic. Plain functions taking a Db handle and typed input
+src/server/services/    Service functions
+src/server/contracts/   Zod input and output contracts, shared client and server
+src/app/api/            Thin route handlers. Parse, call the service, format
+src/components/ui/      shadcn/ui components: button, input, card, label
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Business logic in `src/server/` never touches `Request`, `Response`, cookies or
+`next/headers`. That keeps the domain portable if the API is later split out to Fastify.
 
-## Deploy on Vercel
+## Environment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Key                    | Purpose                                            |
+| ---------------------- | -------------------------------------------------- |
+| `DATABASE_URL`         | Neon Postgres connection string, pooled endpoint   |
+| `NEXT_PUBLIC_SITE_URL` | Public origin of the site, no trailing slash       |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`.env.local` is gitignored. `.env.example` lists every key with no values.
