@@ -5,13 +5,15 @@ import { PledgeConfirmation } from "@/components/pledge/pledge-confirmation";
 import { db } from "@/db";
 import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
+import { pageMetadata } from "@/lib/metadata";
 import { publicTokenInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Pledge acknowledgement",
-  robots: { index: false, follow: false },
-};
+  path: "/",
+  noIndex: true,
+});
 
 /**
  * The QR destination. Same component as the confirmation page, because a member

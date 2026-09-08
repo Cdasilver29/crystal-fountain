@@ -4,12 +4,14 @@ import Link from "next/link";
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { PledgeForm } from "@/components/pledge/pledge-form";
 import { getCampaignTotals } from "@/lib/campaign";
+import { pageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Make a pledge",
   description:
     "Record your pledge toward the Crystal Fountain Development Project at Newlife SDA Church, Nairobi.",
-};
+  path: "/pledge",
+});
 
 export default async function PledgePage() {
   const totals = await getCampaignTotals();

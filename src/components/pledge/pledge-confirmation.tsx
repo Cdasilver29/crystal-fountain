@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
+import { PaymentInstructions } from "@/components/campaign/payment-instructions";
 import { CopyButton } from "@/components/pledge/copy-button";
 import { ShareButton } from "@/components/pledge/share-button";
 import type { CampaignTotalsDto } from "@/lib/campaign";
@@ -36,7 +37,7 @@ export function PledgeConfirmation({
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-lg">
+        <div className="mx-auto w-full max-w-2xl">
           <Link
             href="/"
             className="text-sm text-white/70 underline-offset-4 hover:text-white hover:underline"
@@ -55,7 +56,7 @@ export function PledgeConfirmation({
       </header>
 
       <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-lg space-y-5">
+        <div className="mx-auto w-full max-w-2xl space-y-5">
           <section className="rounded-2xl border border-black/5 bg-white p-5 text-center shadow-sm sm:p-7">
             <h2 className="text-sm font-medium tracking-wide text-neutral-500">
               Your reference number
@@ -120,6 +121,13 @@ export function PledgeConfirmation({
                 </dd>
               </div>
             </dl>
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight text-navy">
+              How to pay your pledge
+            </h2>
+            <PaymentInstructions reference={pledge.reference} />
           </section>
 
           <section className="rounded-2xl border border-campfire/20 bg-campfire/5 p-5 sm:p-7">

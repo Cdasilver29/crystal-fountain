@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -316,6 +317,17 @@ export function PledgeForm() {
 
             <fieldset className="space-y-3 border-t border-neutral-100 pt-5">
               <legend className="sr-only">Your permissions</legend>
+
+              <p className="text-xs leading-relaxed text-neutral-500">
+                How we handle your details is set out in our{" "}
+                <Link
+                  href="/privacy"
+                  className="text-denim underline underline-offset-4"
+                >
+                  privacy notice
+                </Link>
+                .
+              </p>
 
               <Consent
                 id="recordConsent"

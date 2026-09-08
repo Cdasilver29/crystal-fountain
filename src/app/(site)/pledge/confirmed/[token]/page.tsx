@@ -5,15 +5,17 @@ import { PledgeConfirmation } from "@/components/pledge/pledge-confirmation";
 import { db } from "@/db";
 import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
+import { pageMetadata } from "@/lib/metadata";
 import { publicTokenInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Your pledge is recorded",
+  path: "/pledge",
   // A pledge acknowledgement is not something to index, even behind an
   // unguessable token.
-  robots: { index: false, follow: false },
-};
+  noIndex: true,
+});
 
 export default async function PledgeConfirmedPage({
   params,
