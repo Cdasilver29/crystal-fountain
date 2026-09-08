@@ -15,7 +15,7 @@ export function KeyNumbers() {
           <div key={number.label}>
             <dt className="sr-only">{number.label}</dt>
             <dd>
-              <span className="tabular block text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              <span className="tabular block text-2xl font-semibold tracking-tight text-white sm:text-3xl lg:text-4xl">
                 {number.value}
               </span>
               <span className="mt-2 block text-sm text-white/60">
