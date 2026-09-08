@@ -12,7 +12,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:verify": "tsx scripts/verify.ts",
     "db:verify:guards": "tsx scripts/verify.ts scripts/verify-guards.sql",
-    "db:verify:services": "tsx scripts/verify-part-b.ts"
+    "db:verify:services": "tsx scripts/verify-part-b.ts",
+    "db:verify:api": "tsx scripts/verify-part-c.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
@@ -22,6 +23,7 @@
     "lucide-react": "1.42.0",
     "nanoid": "6.0.1",
     "next": "15.5.25",
+    "qrcode": "1.5.4",
     "radix-ui": "1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -33,6 +35,7 @@
     "@eslint/eslintrc": "3.3.7",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "20.19.43",
+    "@types/qrcode": "1.5.6",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "dotenv": "17.4.2",

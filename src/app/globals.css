@@ -128,3 +128,37 @@
     @apply font-sans;
   }
 }
+/*
+ * Church palette. Emperor, Denim, Earth, Campfire and Tree Frog are the
+ * congregation's official Adventist colours, already resolved for the camp
+ * meeting site. Campfire is reserved for the progress fill and primary action
+ * so the one warm colour on the page is the number that matters.
+ */
+@theme {
+  --color-navy: #052252;
+  --color-campfire: #e36520;
+  --color-denim: #2f557f;
+  --color-emperor: #4b207f;
+  --color-earth: #5e3929;
+  --color-treefrog: #448d21;
+}
+
+@layer base {
+  /*
+   * Money figures use tabular lining numerals so digits do not jitter when the
+   * counter animates or a total updates.
+   */
+  .tabular {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
