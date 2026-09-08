@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
     "db:verify": "tsx scripts/verify.ts",
-    "db:verify:guards": "tsx scripts/verify.ts scripts/verify-guards.sql"
+    "db:verify:guards": "tsx scripts/verify.ts scripts/verify-guards.sql",
+    "db:verify:services": "tsx scripts/verify-part-b.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
@@ -19,6 +20,7 @@
     "cn": "0.2.6",
     "drizzle-orm": "0.45.2",
     "lucide-react": "1.42.0",
+    "nanoid": "6.0.1",
     "next": "15.5.25",
     "radix-ui": "1.6.7",
     "react": "19.2.8",

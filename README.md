@@ -61,9 +61,10 @@ manifest on the church's camp meeting site and the same gotcha applies here.
 ```
 drizzle.config.ts       drizzle-kit config, reads .env.local
 src/env.ts              Zod validated environment
-src/db/index.ts         Neon serverless driver plus Drizzle client, exports db and Db
+src/db/index.ts         Neon WebSocket pool plus Drizzle client, exports db, Db and Tx
 src/db/schema.ts        Drizzle schema, empty for now
 src/server/             Business logic. Plain functions taking a Db handle and typed input
+src/server/money.ts     bigint minor unit helpers, percentages rounded once at the end
 src/server/services/    Service functions
 src/server/contracts/   Zod input and output contracts, shared client and server
 src/app/api/            Thin route handlers. Parse, call the service, format
