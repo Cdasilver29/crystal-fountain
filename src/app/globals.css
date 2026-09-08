@@ -208,6 +208,21 @@
   animation: progress-fill 1.5s ease-out;
 }
 
+/*
+ * The payment tab crossfade. The incoming panel fades up from transparent, so
+ * switching tabs is not a hard cut. No fill-mode, so a panel whose animation
+ * never runs is simply opaque, which is the state that matters.
+ */
+@keyframes tab-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.tab-fade {
+  animation: tab-fade 200ms ease-out;
+}
+
 /* The hint that there is more page below the fold. */
 @keyframes scroll-hint {
   0%,

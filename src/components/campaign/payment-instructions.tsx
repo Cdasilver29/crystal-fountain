@@ -1,19 +1,36 @@
+"use client";
+
 import Link from "next/link";
+import { useId, useState } from "react";
 
 import { CopyButton } from "@/components/pledge/copy-button";
 import { BANK, CONTACT, MPESA, MPESA_STEPS } from "@/content/campaign";
 import { cn } from "@/lib/utils";
 
 /**
- * How to pay.
+ * How to pay, as two tabs.
  *
- * Shared by the confirmation page and the home page, so a member who wants to
- * give without pledging reads exactly the same numbers as one who pledged. The
- * figures come from src/content/campaign.ts and are never retyped.
+ * Shared by the confirmation page, the public pledge page and the home page,
+ * so a member who wants to give without pledging reads exactly the same
+ * numbers as one who pledged. The figures come from src/content/campaign.ts
+ * and are never retyped.
  *
- * Two columns on desktop, stacked on mobile. Account numbers are set in tabular
- * numerals and are selectable, because people will copy them by hand.
+ * M-Pesa opens first because that is how most of the congregation will give.
+ * Account numbers are set in tabular numerals and are selectable, because
+ * people will copy them by hand.
+ *
+ * Both panels are always in the document and the inactive one carries the
+ * hidden attribute. The noscript rule below reveals both, so a visitor without
+ * JavaScript still gets the bank details rather than a tab they cannot open.
  */
+
+type TabId = "mpesa" | "bank";
+
+const TABS: readonly { id: TabId; label: string }[] = [
+  { id: "mpesa", label: "M-Pesa" },
+  { id: "bank", label: "Bank transfer" },
+];
+
 export function PaymentInstructions({
   reference,
   className,
@@ -22,9 +39,69 @@ export function PaymentInstructions({
   reference?: string;
   className?: string;
 }) {
+  const [active, setActive] = useState<TabId>("mpesa");
+  const baseId = useId();
+
+  const tabId = (id: TabId) => `${baseId}-tab-${id}`;
+  const panelId = (id: TabId) => `${baseId}-panel-${id}`;
+
   return (
     <div className={cn("space-y-5", className)}>
-      <div className="grid gap-5 md:grid-cols-2">
+      <noscript>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: "[data-payment-panel]{display:block!important}",
+          }}
+        />
+      </noscript>
+
+      <div
+        role="tablist"
+        aria-label="Ways to give"
+        className="flex gap-6 border-b border-neutral-200"
+      >
+        {TABS.map((tab) => {
+          const selected = active === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              id={tabId(tab.id)}
+              aria-selected={selected}
+              aria-controls={panelId(tab.id)}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => setActive(tab.id)}
+              onKeyDown={(event) => {
+                if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
+                  return;
+                }
+                event.preventDefault();
+                const next = active === "mpesa" ? "bank" : "mpesa";
+                setActive(next);
+                document.getElementById(tabId(next))?.focus();
+              }}
+              className={cn(
+                "-mb-px cursor-pointer border-b-2 px-1 pb-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none sm:text-base",
+                selected
+                  ? "border-campfire text-navy"
+                  : "border-transparent text-neutral-500 hover:text-neutral-700",
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={panelId("mpesa")}
+        aria-labelledby={tabId("mpesa")}
+        data-payment-panel
+        hidden={active !== "mpesa"}
+        className="tab-fade"
+      >
         <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
           <h3 className="font-semibold text-navy">Pay by M-Pesa</h3>
 
@@ -47,7 +124,16 @@ export function PaymentInstructions({
             <Detail label="Account number" value={MPESA.account} copyable />
           </dl>
         </section>
+      </div>
 
+      <div
+        role="tabpanel"
+        id={panelId("bank")}
+        aria-labelledby={tabId("bank")}
+        data-payment-panel
+        hidden={active !== "bank"}
+        className="tab-fade"
+      >
         <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
           <h3 className="font-semibold text-navy">Pay by bank transfer</h3>
 
@@ -74,7 +160,7 @@ export function PaymentInstructions({
         For enquiries contact {CONTACT.leaderName},{" "}
         <Link
           href={CONTACT.phoneHref}
-          className="font-medium text-denim underline underline-offset-4"
+          className="rounded font-medium text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
         >
           {CONTACT.phoneDisplay}
         </Link>

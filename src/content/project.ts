@@ -216,9 +216,9 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
 /** Governance and transparency copy, used on the home page and /vision. */
 export const ACCOUNTABILITY = {
   oversight:
-    "This project is overseen by the Building Committee, working under the direction of the church board and in consultation with the Kenya-Lake Union Conference of Seventh-day Adventists. Professional architects, engineers, and project managers will be engaged to execute the work. All contributions are acknowledged and accounted for.",
+    "The Crystal Fountain Development Project is overseen by the Building Committee, working under the direction of the church board and in consultation with the Kenya-Lake Union Conference of Seventh-day Adventists. Professional architects, engineers, and project managers will be engaged to execute the work.",
   updates:
-    "Regular updates on funding, design, and construction progress will be shared openly with the congregation through the church website, bulletin, and official communication channels.",
+    "All contributions are acknowledged and accounted for. Regular updates on funding, design, and construction progress will be shared openly with the congregation through the church website, bulletin, and official communication channels.",
 } as const;
 
 /** Placeholder for /updates until there is real news to post. */
