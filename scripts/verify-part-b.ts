@@ -131,10 +131,27 @@ async function main() {
   show(row.rows as Record<string, unknown>[]);
 
   // 5. Totals before approval
+  //
+  // The floor is not zero. opening_balance_minor is real money collected before
+  // the platform existed, and v_campaign_totals adds it to both pledged and
+  // received, so an empty pledges table still reports that figure. These checks
+  // compare against the opening balance rather than against zero.
   heading("5. campaign.getTotals before approval");
+  const campaignRow = await db.execute(sql`
+    select opening_balance_minor from campaigns where slug = ${CAMPAIGN_SLUG}
+  `);
+  const openingBalanceMinor = BigInt(
+    (campaignRow.rows[0] as { opening_balance_minor: string })
+      .opening_balance_minor,
+  );
+  console.log(`opening balance: ${openingBalanceMinor} minor units`);
+
   const before = await campaign.getTotals(db, { campaignSlug: CAMPAIGN_SLUG });
   show([{ ...before }]);
-  check("a pending pledge does not count toward the total", before.pledgedMinor === 0n);
+  check(
+    "a pending pledge adds nothing to the opening balance",
+    before.pledgedMinor === openingBalanceMinor,
+  );
 
   // 6. Public view leaks nothing
   heading("6. pledges.getByPublicToken");
@@ -251,7 +268,10 @@ async function main() {
   await db.execute(sql`delete from pledgers where phone_e164 like ${"+2547999%"}`);
   const final = await campaign.getTotals(db, { campaignSlug: CAMPAIGN_SLUG });
   show([{ ...final }]);
-  check("totals are back to zero after cleanup", final.pledgedMinor === 0n);
+  check(
+    "totals are back to the opening balance after cleanup",
+    final.pledgedMinor === openingBalanceMinor,
+  );
 
   heading("result");
   if (failures.length > 0) {
