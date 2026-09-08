@@ -153,6 +153,30 @@
   }
 }
 
+/*
+ * The navigation drawer slide.
+ *
+ * Written out here rather than composed from tw-animate-css utilities so the
+ * one animation that decides whether the menu is reachable is readable in one
+ * place. There is deliberately no fill-mode: the panel is laid out at its
+ * final position and the animation only moves it in, so if the animation never
+ * runs the menu is still exactly where a thumb expects it, rather than parked
+ * off the right edge. The prefers-reduced-motion rule below collapses the
+ * duration.
+ */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-in {
+  animation: drawer-in 200ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

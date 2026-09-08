@@ -85,7 +85,7 @@ export function MobileNav() {
             role="dialog"
             aria-modal="true"
             aria-label="Menu"
-            className="absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col gap-6 overflow-y-auto border-l border-white/10 bg-navy px-5 py-4 shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-200"
+            className="drawer-in absolute inset-y-0 right-0 flex w-[min(20rem,85vw)] flex-col gap-6 overflow-y-auto border-l border-white/10 bg-navy px-5 py-4 shadow-2xl"
           >
             <div className="flex items-center justify-end">
               <button
