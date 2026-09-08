@@ -44,7 +44,7 @@ export default async function HomePage() {
               href="/pledge"
               className="inline-flex h-12 items-center justify-center rounded-xl bg-campfire px-7 text-base font-semibold text-white transition-colors hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
             >
-              Make my pledge
+              Make a pledge
             </Link>
           </div>
 
@@ -107,7 +107,7 @@ export default async function HomePage() {
               href="/pledge"
               className="font-semibold text-campfire underline underline-offset-4"
             >
-              Make my pledge &rarr;
+              Make a pledge &rarr;
             </Link>
           </p>
         </div>
