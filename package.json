@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:verify": "tsx scripts/verify.ts",
+    "db:verify:guards": "tsx scripts/verify.ts scripts/verify-guards.sql"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
@@ -35,6 +38,7 @@
     "eslint": "9.39.5",
     "eslint-config-next": "15.5.25",
     "tailwindcss": "4.3.3",
+    "tsx": "4.23.13",
     "typescript": "5.9.3"
   },
   "packageManager": "pnpm@11.21.0"
