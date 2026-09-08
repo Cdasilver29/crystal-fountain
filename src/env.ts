@@ -12,12 +12,17 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string({ error: "required. The Neon Postgres connection string." })
     .min(1, "required. The Neon Postgres connection string."),
+  ADMIN_SECRET: z
+    .string({ error: "required. A long random string that unlocks the admin screen." })
+    .min(24, "must be at least 24 characters. Generate one, do not invent one."),
+
   NEXT_PUBLIC_SITE_URL: z
     .url("required. The public origin of the site, for example https://pledge.newlifesdanairobi.org"),
 });
 
 const parsed = envSchema.safeParse({
   DATABASE_URL: process.env.DATABASE_URL,
+  ADMIN_SECRET: process.env.ADMIN_SECRET,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 });
 

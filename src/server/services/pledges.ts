@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { Db } from "@/db";
@@ -303,4 +303,50 @@ export async function getByPublicToken(
     createdAt: row.createdAt,
     displayName: row.displayConsent ? row.displayName : null,
   };
+}
+
+/** One row of the treasurer's pledge list. */
+export type AdminPledgeRow = {
+  id: string;
+  reference: string;
+  fullName: string;
+  amountMinor: bigint;
+  currency: string;
+  status: PledgeStatus;
+  createdAt: Date;
+};
+
+/**
+ * Every pledge, newest first, for the admin screen.
+ *
+ * This is the one place a pledger's name is returned alongside an amount, and
+ * it is behind admin auth. No phone number and no email, because approving a
+ * pledge does not require either and the screen has no use for them.
+ *
+ * Capped rather than paginated. The realistic volume for this congregation is
+ * single digit thousands, and PLAN.md section 13 calls for cursor pagination
+ * when this screen grows past being a launch stopgap.
+ */
+export async function listForAdmin(
+  db: Db,
+  args: { campaignSlug: string; limit?: number },
+): Promise<AdminPledgeRow[]> {
+  const rows = await db
+    .select({
+      id: pledges.id,
+      reference: pledges.reference,
+      fullName: pledgers.fullName,
+      amountMinor: pledges.amountMinor,
+      currency: pledges.currency,
+      status: pledges.status,
+      createdAt: pledges.createdAt,
+    })
+    .from(pledges)
+    .innerJoin(pledgers, eq(pledgers.id, pledges.pledgerId))
+    .innerJoin(campaigns, eq(campaigns.id, pledges.campaignId))
+    .where(eq(campaigns.slug, args.campaignSlug))
+    .orderBy(desc(pledges.createdAt))
+    .limit(Math.min(args.limit ?? 200, 500));
+
+  return rows.map((row) => ({ ...row, status: row.status as PledgeStatus }));
 }
