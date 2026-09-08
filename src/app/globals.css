@@ -184,11 +184,52 @@
  * so the hero carries weight without costing a request.
  */
 .hero-wash {
-  background-image: radial-gradient(
-    ellipse 90% 70% at 50% 40%,
-    rgb(10 50 112 / 0.55),
+  background-image:
+    radial-gradient(
+      ellipse 90% 70% at 50% 40%,
+      rgb(10 50 112 / 0.55),
+      transparent 70%
+    ),
+    repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.024) 0 1px,
+      transparent 1px 40px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.024) 0 1px,
+      transparent 1px 40px
+    );
+}
+
+/*
+ * A highlight that drifts across the hero over half a minute. It is a single
+ * pseudo-element moving on the compositor, no JavaScript and no repaint of the
+ * content above it. Deliberately close to invisible: it should read as the
+ * background being alive rather than as something moving.
+ */
+.hero-wash::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 40% 45% at 50% 50%,
+    rgb(120 170 255 / 0.09),
     transparent 70%
   );
+  animation: hero-drift 30s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes hero-drift {
+  0%,
+  100% {
+    transform: translate3d(-18%, -8%, 0);
+  }
+  50% {
+    transform: translate3d(18%, 8%, 0);
+  }
 }
 
 /*
@@ -223,6 +264,11 @@
 
 .tab-fade {
   animation: tab-fade 200ms ease-out;
+}
+
+/* The FAQ category crossfade, a touch quicker than the payment tabs. */
+.faq-fade {
+  animation: tab-fade 150ms ease-out;
 }
 
 /* The hint that there is more page below the fold. */
@@ -310,8 +356,15 @@
     opacity: 0.6;
   }
 
+  /* The hero highlight rests centred rather than drifting. */
+  .hero-wash::before {
+    animation: none !important;
+    transform: none;
+  }
+
   .progress-fill,
   .tab-fade,
+  .faq-fade,
   .drawer-in,
   .step-in-forward,
   .step-in-back {

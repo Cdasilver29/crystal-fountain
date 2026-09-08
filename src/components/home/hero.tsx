@@ -14,7 +14,10 @@ import type { CampaignTotalsDto } from "@/lib/campaign";
  */
 export function Hero({ totals }: { totals: CampaignTotalsDto }) {
   return (
-    <section className="hero-wash relative flex min-h-[100svh] flex-col bg-navy px-4 pt-16 pb-24 sm:px-6">
+    <section
+      id="hero"
+      className="hero-wash relative -mt-16 flex min-h-[100svh] flex-col bg-navy px-4 pt-16 pb-24 sm:px-6"
+    >
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center py-8 text-center">
         <p className="text-xl font-extrabold tracking-tight text-balance text-campfire sm:text-3xl">
           {CAMPAIGN.tagline}

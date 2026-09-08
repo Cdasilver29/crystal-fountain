@@ -22,6 +22,7 @@ export const SCRIPTURE_HAGGAI = {
 } as const;
 
 export const NAV_LINKS: readonly { href: string; label: string }[] = [
+  { href: "/", label: "Home" },
   { href: "/vision", label: "Vision" },
   { href: "/faq", label: "FAQ" },
   { href: "/updates", label: "Updates" },
@@ -160,56 +161,105 @@ export const VISION_SECTIONS: readonly VisionSection[] = [
 
 export type FaqItem = { question: string; answer: string };
 
-export const FAQ_ITEMS: readonly FaqItem[] = [
+export type FaqCategory = {
+  id: string;
+  label: string;
+  items: readonly FaqItem[];
+};
+
+export const FAQ_CATEGORIES: readonly FaqCategory[] = [
   {
-    question: "What is the Crystal Fountain Development Project?",
-    answer:
-      "A proposed multi-storey church complex for Newlife SDA Church, Nairobi. It will include a main auditorium seating 3,000 to 5,000 people, additional smaller auditoriums, basement parking for up to 700 vehicles, a library, a church history museum, offices, classrooms, and landscaped grounds, all on the church's current site along Ngong Road.",
+    id: "about",
+    label: "About the project",
+    items: [
+      {
+        question: "What is the Crystal Fountain Development Project?",
+        answer:
+          "A proposed multi-storey church complex for Newlife SDA Church, Nairobi. It includes a main auditorium seating 3,000 to 5,000, smaller auditoriums, basement parking for 700 vehicles, a library, a church history museum, offices, classrooms, and landscaped grounds.",
+      },
+      {
+        question: "Why does the church need a new building?",
+        answer:
+          "The current building can no longer comfortably accommodate the congregation. The new development serves today's members and future generations, and positions the church as a centre of influence in Nairobi.",
+      },
+      {
+        question: "How much will the project cost?",
+        answer:
+          "The estimated construction cost is KES 500 to 600 million. This is preliminary and will be refined as designs are finalised.",
+      },
+      {
+        question: "Who oversees the project?",
+        answer:
+          "The Building Committee, working under the church board and in consultation with the Kenya-Lake Union Conference. Professional architects, engineers, and project managers will execute the work.",
+      },
+    ],
   },
   {
-    question: "Why does the church need a new building?",
-    answer:
-      "The current building can no longer comfortably accommodate the congregation, which has grown significantly. The new development is designed to serve not just today's members but future generations, and to position the church as a centre of influence in Nairobi.",
+    id: "pledging",
+    label: "Pledging",
+    items: [
+      {
+        question: "What is a pledge?",
+        answer:
+          "A pledge is your commitment to contribute a specific amount toward the project. It is a promise, not an immediate payment. You can fulfil your pledge over time.",
+      },
+      {
+        question: "How do I make a pledge?",
+        answer:
+          "Use the pledge form on this website. Enter the amount, your name and phone number, and submit. You will receive a unique reference number and QR code.",
+      },
+      {
+        question: "What happens after I pledge?",
+        answer:
+          "Your pledge is recorded and reviewed. Once confirmed, it counts toward the campaign total. You will see payment instructions on the confirmation page.",
+      },
+      {
+        question: "Can I change or cancel my pledge?",
+        answer:
+          "Contact the church development office. Pledges can be adjusted as circumstances require.",
+      },
+    ],
   },
   {
-    question: "How much will the project cost?",
-    answer:
-      "The estimated construction cost is KES 500 to 600 million. This is a preliminary figure that will be refined as architectural and engineering designs are finalised.",
+    id: "giving",
+    label: "Giving",
+    items: [
+      {
+        question: "How do I pay toward my pledge?",
+        answer:
+          "Via M-Pesa Paybill 861200 (Account: Church Development Fund) or bank transfer to Standard Chartered Bank account 0102022990600. Quote your pledge reference when paying.",
+      },
+      {
+        question: "Can I give without making a pledge?",
+        answer:
+          "Yes. Use the same M-Pesa paybill or bank account. A pledge simply helps the project team plan and track progress.",
+      },
+      {
+        question: "Who do I contact for enquiries?",
+        answer: "Dr. Steve Mogere, Development Leader, 0722619788.",
+      },
+    ],
   },
   {
-    question: "How is the project being funded?",
-    answer:
-      "Through member contributions, designated building fund offerings, fundraising initiatives, and potential grants or partnerships. Every member is encouraged to contribute prayerfully.",
-  },
-  {
-    question: "How can I contribute?",
-    answer:
-      "You can make a pledge through this platform, or give directly via M-Pesa Paybill 861200 (Account: Church Development Fund) or bank transfer to Standard Chartered Bank account 0102022990600.",
-  },
-  {
-    question: "What is a pledge?",
-    answer:
-      "A pledge is your commitment to contribute a specific amount toward the project. It is a promise, not an immediate payment. You can fulfil your pledge over time.",
-  },
-  {
-    question: "Who oversees the project?",
-    answer:
-      "The Building Committee, working under the church board and in consultation with the Kenya-Lake Union Conference. Professional architects, engineers, and project managers will execute the work.",
-  },
-  {
-    question: "Will the church still operate during construction?",
-    answer:
-      "Yes. Construction will be phased to ensure worship services and programs continue with minimal disruption.",
-  },
-  {
-    question: "When is construction expected to begin?",
-    answer:
-      "Subject to completion of design, approvals, and sufficient funding. The timeline will be communicated through official church channels.",
-  },
-  {
-    question: "How will members be kept informed?",
-    answer:
-      "Through the church website, bulletin, WhatsApp channels, and periodic town hall meetings. The Building Committee is committed to transparency at every stage.",
+    id: "construction",
+    label: "Construction",
+    items: [
+      {
+        question: "When will construction begin?",
+        answer:
+          "Subject to completion of design, approvals, and sufficient funding. The timeline will be communicated through official channels.",
+      },
+      {
+        question: "Will the church still operate during construction?",
+        answer:
+          "Yes. Construction will be phased so worship services and programs continue with minimal disruption.",
+      },
+      {
+        question: "How will members be kept informed?",
+        answer:
+          "Through the church website, bulletin, WhatsApp channels, and periodic town hall meetings.",
+      },
+    ],
   },
 ];
 

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import { FaqAccordion } from "@/components/content/faq-accordion";
+import { FaqTabs } from "@/components/content/faq-tabs";
 import { PledgeCta } from "@/components/site/pledge-cta";
-import { FAQ_ITEMS } from "@/content/project";
+import { FAQ_CATEGORIES } from "@/content/project";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -30,7 +30,7 @@ export default function FaqPage() {
 
       <section className="bg-white px-4 py-12 sm:px-6 sm:py-16">
         <div className="mx-auto w-full max-w-3xl">
-          <FaqAccordion items={FAQ_ITEMS} />
+          <FaqTabs categories={FAQ_CATEGORIES} />
         </div>
       </section>
 
