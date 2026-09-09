@@ -59,7 +59,8 @@ export function Hero({ totals }: { totals: CampaignTotalsDto }) {
           {CAMPAIGN.subheading}
         </p>
 
-        <div className="mt-12 text-left sm:mt-16">
+        {/* The card centres itself and carries its own width. */}
+        <div className="mt-12 sm:mt-16">
           <LiveTracker initial={totals} />
         </div>
 

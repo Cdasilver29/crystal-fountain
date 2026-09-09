@@ -393,12 +393,30 @@
   }
 
   .progress-fill,
+  .tracker-fill,
   .tab-fade,
   .faq-fade,
   .drawer-in,
   .step-in-forward,
   .step-in-back {
     animation: none !important;
+  }
+
+  /*
+   * The two looping flourishes on the tracker card. Switched off rather than
+   * left to the duration collapse below, which would strand each on a single
+   * frame. The shimmer disappears entirely, because a border highlight frozen
+   * mid travel would read as a rendering fault, and the leading edge glow rests
+   * at its dim end, where it looks like part of the bar.
+   */
+  .tracker-card::before {
+    animation: none !important;
+    opacity: 0;
+  }
+
+  .tracker-fill::after {
+    animation: none !important;
+    opacity: 0.3;
   }
 
   html {
@@ -413,5 +431,115 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * The tracker card.
+ *
+ * A floating glass panel over the hero photograph. The blur is what separates
+ * it from the picture: without it the semi-transparent white would just read as
+ * haze on the image rather than as a surface sitting above it. The -webkit-
+ * prefix is still required by Safari.
+ */
+.tracker-card {
+  position: relative;
+  background: rgb(255 255 255 / 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 16px;
+}
+
+/*
+ * A highlight travelling along the border, top left to bottom right.
+ *
+ * Drawn as a gradient filling the whole card and then masked down to the one
+ * pixel border: the two masks cover the padding box and the border box, and
+ * excluding one from the other leaves only the frame. That is what makes a
+ * gradient follow a rounded border at all, since a border cannot take one.
+ *
+ * Peak opacity is 0.15. It should read as the card catching the light, not as
+ * something moving on the page.
+ */
+.tracker-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.15) 50%,
+    transparent 65%
+  );
+  background-size: 300% 300%;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: tracker-shimmer 4s linear infinite;
+}
+
+@keyframes tracker-shimmer {
+  from {
+    background-position: 0% 0%;
+  }
+  to {
+    background-position: 100% 100%;
+  }
+}
+
+/*
+ * The bar fill. Campfire warming to amber along its length, so the leading edge
+ * is the brightest part of it.
+ *
+ * Laid out at its real width with the growth animation carrying no fill-mode,
+ * exactly as the old thin bar was: if the animation never runs, the bar is
+ * already showing the true figure rather than stranded at zero.
+ */
+.tracker-fill {
+  position: relative;
+  background-image: linear-gradient(90deg, #e36520, #f59e0b);
+  animation: progress-fill 1.5s ease-out;
+}
+
+/*
+ * A glow riding the leading edge, breathing on a two second loop.
+ *
+ * Centred on the end of the fill, so half of it sits over the track ahead. The
+ * track clips it, which is what keeps it inside the bar at 100%.
+ */
+.tracker-fill::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  height: 22px;
+  width: 22px;
+  transform: translate(50%, -50%);
+  border-radius: 9999px;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgb(245 158 11 / 0.9),
+    rgb(245 158 11 / 0) 70%
+  );
+  animation: tracker-glow 2s ease-in-out infinite;
+}
+
+@keyframes tracker-glow {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
   }
 }
