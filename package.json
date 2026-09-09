@@ -13,7 +13,8 @@
     "db:verify": "tsx scripts/verify.ts",
     "db:verify:guards": "tsx scripts/verify.ts scripts/verify-guards.sql",
     "db:verify:services": "tsx scripts/verify-part-b.ts",
-    "db:verify:api": "tsx scripts/verify-part-c.ts"
+    "db:verify:api": "tsx scripts/verify-part-c.ts",
+    "db:verify:allocations": "tsx scripts/verify-part-d.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
