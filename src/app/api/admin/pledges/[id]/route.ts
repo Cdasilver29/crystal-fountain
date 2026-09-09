@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
 import { clientIp, problem, serviceProblem, userAgent, validationProblem } from "@/lib/api";
-import { isAdmin } from "@/lib/admin-session";
+import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
 import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { adminPledgeActionInput } from "@/server/contracts/admin";
 import { approvePledgeInput } from "@/server/contracts/pledges";
@@ -25,8 +25,16 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!(await isAdmin())) {
-    return problem(401, "unauthorized", "Unlock the admin screen first.");
+  const admin = await getCurrentAdmin();
+
+  if (!admin) {
+    return problem(401, "unauthorized", "Sign in to continue.");
+  }
+
+  // Roles are enforced here, on the server, not by hiding a button. A viewer
+  // can read the pledge list and nothing more.
+  if (!hasAtLeast(admin, "treasurer")) {
+    return problem(403, "forbidden", "Your account cannot approve pledges.");
   }
 
   const { id } = await params;

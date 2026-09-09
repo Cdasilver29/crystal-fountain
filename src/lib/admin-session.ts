@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { env } from "@/env";
+import { ADMIN_COOKIE } from "@/lib/auth-cookies";
 
 /**
  * Placeholder admin auth.
@@ -18,7 +19,7 @@ import { env } from "@/env";
  * over plain http on localhost and the screen would be impossible to open.
  */
 
-export const ADMIN_COOKIE = "cf_admin";
+export { ADMIN_COOKIE };
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 
 /** The value that goes in the cookie. Derived from the secret, never the secret. */

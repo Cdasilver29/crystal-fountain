@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { AdminUnlock } from "@/components/admin/admin-unlock";
 import { PledgeTable } from "@/components/admin/pledge-table";
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { db } from "@/db";
-import { isAdmin } from "@/lib/admin-session";
+import { getCurrentAdmin } from "@/lib/admin-context";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
 import { formatNumber } from "@/lib/format";
 import * as pledges from "@/server/services/pledges";
@@ -18,13 +18,15 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminPledgesPage() {
-  if (!(await isAdmin())) {
-    return (
-      <main className="flex flex-1 flex-col bg-neutral-50 px-4 pb-16">
-        <AdminUnlock />
-      </main>
-    );
-  }
+  /*
+   * The middleware has already bounced anyone with no cookie at all, but it
+   * only checks that a cookie is present: it runs on the edge, where there is
+   * no node:crypto to verify the legacy HMAC and no database to look a session
+   * up in. This is the check that actually decides.
+   */
+  const admin = await getCurrentAdmin();
+
+  if (!admin) redirect("/admin/login?next=/admin/pledges");
 
   const [rows, totals] = await Promise.all([
     pledges.listForAdmin(db, { campaignSlug: CAMPAIGN_SLUG }),

@@ -10,8 +10,15 @@ import { Label } from "@/components/ui/label";
 /**
  * The unlock form. Shown in place of the table when the session cookie is
  * missing, so the admin screen stays a single route.
+ *
+ * Also embedded on /admin/login while both auth paths are live. The middleware
+ * bounces an uncookied visitor away from /admin/pledges, so without a copy on
+ * the public login screen there would be nowhere left to type the old secret
+ * and the treasurer would be locked out. redirectTo is what that copy passes:
+ * a refresh in place is right when this sits on the admin screen itself, and
+ * wrong when it sits on the login screen.
  */
-export function AdminUnlock() {
+export function AdminUnlock({ redirectTo }: { redirectTo?: string }) {
   const router = useRouter();
   const [secret, setSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +44,14 @@ export function AdminUnlock() {
       }
 
       setSecret("");
+
+      if (redirectTo) {
+        // A full navigation, so the server reads the new cookie rather than
+        // replaying a cached RSC payload for the login route.
+        window.location.assign(redirectTo);
+        return;
+      }
+
       router.refresh();
     } catch {
       setError("Could not reach the server.");
