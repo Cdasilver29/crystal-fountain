@@ -5,6 +5,7 @@ import type { Db } from "@/db";
 import { auditLog, campaigns, pledgers, pledges } from "@/db/schema";
 import { conflict, notFound } from "@/server/errors";
 import { kesToMinor } from "@/server/money";
+import { escapeLike } from "@/server/sql";
 import {
   PRIVACY_VERSION,
   PUBLIC_TOKEN_LENGTH,
@@ -382,17 +383,6 @@ type SearchRow = {
   status: string;
   match_reason: PledgeMatchReason;
 };
-
-/**
- * Escapes a term going into a LIKE pattern.
- *
- * Without this a search for "100%" matches every pledge, because the percent is
- * read as the wildcard rather than as a character somebody typed. Backslash is
- * escaped first, or it would go on to escape the escapes added after it.
- */
-function escapeLike(term: string): string {
-  return term.replace(/\\/g, "\\\\").replace(/[%_]/g, "\\$&");
-}
 
 /**
  * Masks a phone number down to its last three digits.
