@@ -21,6 +21,7 @@ import {
   toPage,
   type Page,
 } from "@/server/pagination";
+import { escapeLike } from "@/server/sql";
 
 /**
  * Money in.
@@ -898,5 +899,335 @@ export async function listForAdmin(
   return toPage(rows, limit, (row) => ({
     key: row.paidAt.toISOString(),
     id: row.id,
+  }));
+}
+
+/* ---------------------------------------------------------------------------
+ * One payment, and what it might belong to.
+ * ------------------------------------------------------------------------- */
+
+export type PaymentAllocationRow = {
+  id: string;
+  pledgeId: string;
+  pledgeReference: string;
+  pledgerName: string;
+  amountMinor: bigint;
+  allocatedAt: Date;
+  allocatedByName: string | null;
+  /** Set on a correction. A reversed row counts toward no balance. */
+  reversedAt: Date | null;
+  reversedByName: string | null;
+};
+
+export type AdminPaymentDetail = {
+  id: string;
+  method: string;
+  externalRef: string | null;
+  amountMinor: bigint;
+  currency: string;
+  paidAt: Date;
+  payerName: string | null;
+  payerMsisdn: string | null;
+  accountRef: string | null;
+  status: string;
+  recordedByName: string | null;
+  createdAt: Date;
+  allocatedMinor: bigint;
+  unallocatedMinor: bigint;
+  allocationStatus: AllocationStatus;
+  /** Live allocations first, then reversed ones, newest first within each. */
+  allocations: PaymentAllocationRow[];
+};
+
+type DetailRow = {
+  id: string;
+  method: string;
+  external_ref: string | null;
+  amount_minor: string;
+  currency: string;
+  paid_at: string;
+  payer_name_raw: string | null;
+  payer_msisdn: string | null;
+  account_ref_raw: string | null;
+  status: string;
+  recorded_by_name: string | null;
+  created_at: string;
+};
+
+type AllocationDetailRow = {
+  id: string;
+  pledge_id: string;
+  reference: string;
+  full_name: string;
+  amount_minor: string;
+  allocated_at: string;
+  allocated_by_name: string | null;
+  reversed_at: string | null;
+  reversed_by_name: string | null;
+};
+
+/**
+ * One payment with everything that has been matched to it.
+ *
+ * Reversed allocations are returned alongside live ones rather than filtered
+ * out. They count toward no balance, but they are part of the record: a screen
+ * that silently dropped them would disagree with the ledger about what happened
+ * to this money, which is the whole reason a reversal keeps its row.
+ *
+ * The allocated total counts live rows only, so it matches v_pledge_balances
+ * and the badge on the list.
+ */
+export async function getForAdmin(
+  db: Db,
+  args: { paymentId: string },
+): Promise<AdminPaymentDetail | null> {
+  const result = await db.execute(sql`
+    select p.id,
+           p.method,
+           p.external_ref,
+           p.amount_minor,
+           p.currency,
+           p.paid_at,
+           p.payer_name_raw,
+           p.payer_msisdn,
+           p.account_ref_raw,
+           p.status,
+           r.full_name as recorded_by_name,
+           p.created_at
+    from payments p
+    left join admin_users r on r.id = p.recorded_by
+    where p.id = ${args.paymentId}
+    limit 1
+  `);
+
+  const row = result.rows[0] as DetailRow | undefined;
+
+  if (!row) return null;
+
+  const allocationResult = await db.execute(sql`
+    select a.id,
+           a.pledge_id,
+           pl.reference,
+           g.full_name,
+           a.amount_minor,
+           a.allocated_at,
+           ab.full_name as allocated_by_name,
+           a.reversed_at,
+           rb.full_name as reversed_by_name
+    from payment_allocations a
+    join pledges pl on pl.id = a.pledge_id
+    join pledgers g on g.id = pl.pledger_id
+    left join admin_users ab on ab.id = a.allocated_by
+    left join admin_users rb on rb.id = a.reversed_by
+    where a.payment_id = ${args.paymentId}
+    order by (a.reversed_at is not null), a.allocated_at desc
+  `);
+
+  const allocations = (allocationResult.rows as AllocationDetailRow[]).map(
+    (allocation) => ({
+      id: allocation.id,
+      pledgeId: allocation.pledge_id,
+      pledgeReference: allocation.reference,
+      pledgerName: allocation.full_name,
+      amountMinor: BigInt(allocation.amount_minor),
+      allocatedAt: new Date(allocation.allocated_at),
+      allocatedByName: allocation.allocated_by_name,
+      reversedAt: allocation.reversed_at
+        ? new Date(allocation.reversed_at)
+        : null,
+      reversedByName: allocation.reversed_by_name,
+    }),
+  );
+
+  const amountMinor = BigInt(row.amount_minor);
+  const allocatedMinor = allocations
+    .filter((allocation) => allocation.reversedAt === null)
+    .reduce((total, allocation) => total + allocation.amountMinor, 0n);
+
+  return {
+    id: row.id,
+    method: row.method,
+    externalRef: row.external_ref,
+    amountMinor,
+    currency: row.currency,
+    paidAt: new Date(row.paid_at),
+    payerName: row.payer_name_raw,
+    payerMsisdn: row.payer_msisdn,
+    accountRef: row.account_ref_raw,
+    status: row.status,
+    recordedByName: row.recorded_by_name,
+    createdAt: new Date(row.created_at),
+    allocatedMinor,
+    unallocatedMinor:
+      amountMinor > allocatedMinor ? amountMinor - allocatedMinor : 0n,
+    allocationStatus:
+      allocatedMinor === 0n
+        ? "unallocated"
+        : allocatedMinor >= amountMinor
+          ? "fully_allocated"
+          : "partial",
+    allocations,
+  };
+}
+
+/* ---------------------------------------------------------------------------
+ * Reconciliation suggestions.
+ * ------------------------------------------------------------------------- */
+
+export type MatchReason = "reference" | "phone" | "name";
+export type MatchConfidence = "high" | "medium" | "low";
+
+export type PledgeSuggestion = {
+  pledgeId: string;
+  reference: string;
+  fullName: string;
+  amountMinor: bigint;
+  paidMinor: bigint;
+  outstandingMinor: bigint;
+  status: PledgeStatus;
+  matchReason: MatchReason;
+  confidence: MatchConfidence;
+};
+
+type SuggestionRow = {
+  id: string;
+  reference: string;
+  full_name: string;
+  amount_minor: string;
+  paid_minor: string;
+  outstanding_minor: string;
+  status: string;
+  match_reason: MatchReason;
+};
+
+const CONFIDENCE: Record<MatchReason, MatchConfidence> = {
+  reference: "high",
+  phone: "medium",
+  name: "low",
+};
+
+export const MAX_SUGGESTIONS = 5;
+
+/**
+ * The shortest payer name worth matching on.
+ *
+ * A two character name contained in a full name matches a large part of any
+ * congregation, and a suggestion that is usually wrong is worse than none: the
+ * treasurer stops reading them. Below this the name branch is skipped.
+ */
+const MIN_NAME_LENGTH = 3;
+
+/**
+ * Likely pledges for a payment, best guess first.
+ *
+ * Three signals, in the order they deserve trust. The account reference is what
+ * the payer typed as the account number, so an exact match on it is as close to
+ * a statement of intent as this system gets. A phone is nearly as good, because
+ * it is the identity key for a pledger, but the person paying is not always the
+ * person who pledged. A name is a guess.
+ *
+ * Deliberately not fuzzy. CLAUDE.md rules out machine learning, and a
+ * containment test is something a treasurer can predict and argue with. A
+ * trigram similarity score would be harder to explain and no more correct on
+ * names of this kind.
+ *
+ * Only pledges with something still outstanding, and never a cancelled or void
+ * one, because those are exactly the pledges allocate() would refuse.
+ */
+export async function suggestMatches(
+  db: Db,
+  args: { paymentId: string; limit?: number },
+): Promise<PledgeSuggestion[]> {
+  const limit = Math.min(args.limit ?? MAX_SUGGESTIONS, MAX_SUGGESTIONS);
+
+  const [payment] = (
+    await db.execute(sql`
+      select campaign_id, account_ref_raw, payer_msisdn, payer_name_raw
+      from payments
+      where id = ${args.paymentId}
+      limit 1
+    `)
+  ).rows as {
+    campaign_id: string;
+    account_ref_raw: string | null;
+    payer_msisdn: string | null;
+    payer_name_raw: string | null;
+  }[];
+
+  if (!payment) {
+    throw notFound("payment_not_found", "That payment does not exist.");
+  }
+
+  // Trimmed and upper cased here so the comparison is a plain equality the
+  // index on reference can serve, rather than a function call on every row.
+  const reference = payment.account_ref_raw?.trim().toUpperCase() || null;
+  const msisdn = payment.payer_msisdn?.trim() || null;
+
+  const payerName = payment.payer_name_raw?.trim() ?? "";
+  const namePattern =
+    payerName.length >= MIN_NAME_LENGTH ? escapeLike(payerName) : null;
+
+  // Nothing to go on. A payment with no reference, no phone and no name is not
+  // a puzzle worth guessing at.
+  if (reference === null && msisdn === null && namePattern === null) return [];
+
+  const result = await db.execute(sql`
+    select pl.id,
+           pl.reference,
+           g.full_name,
+           b.amount_minor,
+           b.paid_minor,
+           b.outstanding_minor,
+           pl.status,
+           case
+             when ${reference}::text is not null
+                  and pl.reference = ${reference} then 'reference'
+             when ${msisdn}::text is not null
+                  and g.phone_e164 = ${msisdn} then 'phone'
+             else 'name'
+           end as match_reason,
+           case
+             when ${reference}::text is not null
+                  and pl.reference = ${reference} then 1
+             when ${msisdn}::text is not null
+                  and g.phone_e164 = ${msisdn} then 2
+             else 3
+           end as rank
+    from pledges pl
+    join pledgers g on g.id = pl.pledger_id
+    join v_pledge_balances b on b.pledge_id = pl.id
+    where pl.campaign_id = ${payment.campaign_id}
+      and b.outstanding_minor > 0
+      and pl.status in ('pending', 'verified')
+      and (
+        (${reference}::text is not null and pl.reference = ${reference})
+        or (${msisdn}::text is not null and g.phone_e164 = ${msisdn})
+        or (
+          ${namePattern}::text is not null
+          and (
+            g.full_name ilike '%' || ${namePattern} || '%' escape '\\'
+            or ${namePattern} ilike '%' || g.full_name || '%' escape '\\'
+          )
+        )
+      )
+    order by rank, b.outstanding_minor desc, pl.created_at
+    limit ${limit}
+  `);
+
+  /*
+   * One row per pledge already, because the joins are one to one and the case
+   * expression picks the single best reason. A pledge matching on both its
+   * reference and its phone appears once, as a reference match.
+   */
+  return (result.rows as SuggestionRow[]).map((row) => ({
+    pledgeId: row.id,
+    reference: row.reference,
+    fullName: row.full_name,
+    amountMinor: BigInt(row.amount_minor),
+    paidMinor: BigInt(row.paid_minor),
+    outstandingMinor: BigInt(row.outstanding_minor),
+    status: row.status as PledgeStatus,
+    matchReason: row.match_reason,
+    confidence: CONFIDENCE[row.match_reason],
   }));
 }
