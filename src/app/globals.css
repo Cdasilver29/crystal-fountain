@@ -180,15 +180,16 @@
 }
 
 /*
- * Hero depth. A single radial wash of a lighter navy, no image and no pattern,
- * so the hero carries weight without costing a request.
+ * Hero depth. A radial wash of a lighter navy over a faint grid, carried on
+ * its own layer inside the hero: it sits above the photograph and the navy
+ * overlay, so the picture reads as depth rather than as a flat backdrop.
  */
 .hero-wash {
   /*
    * Clips the drifting highlight below. That pseudo-element is inset:0 on this
-   * relatively positioned section, and hero-drift translates it 18% to the
-   * right, which put 65px past a 360px viewport and exposed a strip of the
-   * white body background down the right edge of a phone.
+   * layer, and hero-drift translates it 18% to the right, which put 65px past
+   * a 360px viewport and exposed a strip of whatever is behind it down the
+   * right edge of a phone.
    */
   overflow: hidden;
   background-image:

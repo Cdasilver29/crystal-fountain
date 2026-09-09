@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { FaqTabs } from "@/components/content/faq-tabs";
+import { SectionBackground } from "@/components/media/section-background";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { FAQ_CATEGORIES } from "@/content/project";
 import { pageMetadata } from "@/lib/metadata";
@@ -15,8 +16,13 @@ export const metadata: Metadata = pageMetadata({
 export default function FaqPage() {
   return (
     <>
-      <section className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
+      <section className="relative overflow-hidden bg-navy px-4 py-12 sm:px-6 sm:py-16">
+        <SectionBackground
+          src="/images/gallery/FAQ.PNG"
+          overlayClassName="bg-navy/[0.75]"
+        />
+
+        <div className="relative z-10 mx-auto w-full max-w-5xl">
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
             Frequently asked questions
           </h1>

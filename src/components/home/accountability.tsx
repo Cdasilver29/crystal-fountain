@@ -1,3 +1,4 @@
+import { SectionBackground } from "@/components/media/section-background";
 import { CONTACT } from "@/content/campaign";
 import { ACCOUNTABILITY } from "@/content/project";
 
@@ -7,20 +8,31 @@ import { ACCOUNTABILITY } from "@/content/project";
  * A named person with a phone number that dials, on a page asking for
  * KES 550M, is the point of this section. It is set as a card rather than a
  * line of text so it reads as a way to reach someone.
+ *
+ * The photograph behind it carries a lighter overlay than the sections above,
+ * so more of the picture comes through. That means the copy runs white rather
+ * than navy, and the contact card stays a solid white panel: the one thing a
+ * visitor is meant to act on sits on its own opaque surface, not on a
+ * photograph.
  */
 export function Accountability() {
   return (
-    <section className="bg-[#f8f7f5] px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+    <section className="relative overflow-hidden bg-navy px-4 py-16 sm:px-6 sm:py-20">
+      <SectionBackground
+        src="/images/gallery/Accountability.PNG"
+        overlayClassName="bg-navy/[0.65]"
+      />
+
+      <div className="relative z-10 mx-auto w-full max-w-5xl">
+        <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
           Accountability and transparency
         </h2>
 
-        <p className="mt-5 max-w-3xl text-base leading-relaxed text-neutral-700">
+        <p className="mt-5 max-w-3xl text-base leading-relaxed text-white/90">
           {ACCOUNTABILITY.oversight}
         </p>
 
-        <p className="mt-4 max-w-3xl text-base leading-relaxed text-neutral-700">
+        <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/90">
           {ACCOUNTABILITY.updates}
         </p>
 
@@ -56,11 +68,11 @@ export function Accountability() {
           </div>
         </div>
 
-        <p className="mt-6 text-sm leading-relaxed text-neutral-600">
+        <p className="mt-6 text-sm leading-relaxed text-white/90">
           For general enquiries: {CONTACT.churchName}, {CONTACT.address}.{" "}
           <a
             href={`mailto:${CONTACT.email}`}
-            className="rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="rounded text-white underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
           >
             {CONTACT.email}
           </a>

@@ -1,3 +1,4 @@
+import { SectionBackground } from "@/components/media/section-background";
 import { TIMELINE } from "@/content/project";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +17,13 @@ export function JourneyTimeline() {
   const currentIndex = TIMELINE.findIndex((milestone) => milestone.current);
 
   return (
-    <section className="bg-[#0a2c63] px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto w-full max-w-5xl">
+    <section className="relative overflow-hidden bg-[#0a2c63] px-4 py-16 sm:px-6 sm:py-20">
+      <SectionBackground
+        src="/images/gallery/Vision.PNG"
+        overlayClassName="bg-[#0a2c63]/[0.78]"
+      />
+
+      <div className="relative z-10 mx-auto w-full max-w-5xl">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
           From vision to reality
         </h2>
