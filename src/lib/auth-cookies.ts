@@ -12,6 +12,3 @@
 
 /** The Better Auth session cookie. Set in advanced.cookies.session_token. */
 export const AUTH_SESSION_COOKIE = "admin-session";
-
-/** The legacy shared secret cookie. Removed in Part B. */
-export const ADMIN_COOKIE = "cf_admin";

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminLogin } from "@/components/admin/admin-login";
-import { AdminUnlock } from "@/components/admin/admin-unlock";
 import { db } from "@/db";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { isSetupAvailable } from "@/server/services/admin-setup";
@@ -58,20 +57,6 @@ export default async function AdminLoginPage({
           .
         </p>
       )}
-
-      {/*
-        The old shared secret, still working. The middleware bounces an
-        uncookied visitor off /admin/pledges, where this form used to live, so
-        it has to be reachable here or the treasurer has no way in until the
-        new accounts exist. Part B deletes this block along with the rest of
-        the ADMIN_SECRET path.
-      */}
-      <details className="mt-8 w-full max-w-md">
-        <summary className="cursor-pointer text-center text-sm text-white/60 hover:text-white/80">
-          Use the old admin secret
-        </summary>
-        <AdminUnlock redirectTo={target} />
-      </details>
     </main>
   );
 }

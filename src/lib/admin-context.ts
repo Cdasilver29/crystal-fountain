@@ -1,40 +1,30 @@
 import { eq } from "drizzle-orm";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 
 import { db } from "@/db";
 import { adminUsers } from "@/db/schema";
-import {
-  ADMIN_COOKIE,
-  adminSessionToken,
-  safeEqual,
-} from "@/lib/admin-session";
 import { AUTH_SESSION_ABSOLUTE_MAX_AGE_SECONDS, getAuth } from "@/lib/auth";
 
 /**
- * Who is signed in, across both auth paths.
+ * Who is signed in.
  *
- * There are two ways to be an admin right now and every admin page and route
- * goes through this one function rather than picking a side. The Better Auth
- * path is the real one. The ADMIN_SECRET path is the shared secret that has
- * been holding the fort, and it keeps working until Part B removes it, because
- * the treasurer must not be locked out at any point in between.
+ * One way in: a Better Auth session whose user has an active admin_users row.
+ * The shared secret that used to stand beside this is gone, along with the
+ * synthetic "Legacy admin" it resolved to, so every admin action now has a
+ * real person's id on it in audit_log.
  *
- * Better Auth wins when both are present, so an admin who has migrated gets
- * their real role and their real identity in the audit trail rather than the
- * synthetic one.
+ * Every admin page and API route goes through this function. The middleware
+ * only checks that a cookie is present.
  */
 
 export type AdminRole = "viewer" | "treasurer" | "admin";
 
 export type CurrentAdmin = {
-  /** The admin_users row id, or null for the legacy shared secret. */
-  id: string | null;
+  id: string;
   name: string;
-  email: string | null;
+  email: string;
   role: AdminRole;
-  /** Which path authenticated this request. Written into audit rows. */
-  source: "better-auth" | "legacy-secret";
-  /** Whether TOTP is enrolled and verified. Always false on the legacy path. */
+  /** Whether TOTP is enrolled and verified on this account. */
   twoFactorEnabled: boolean;
 };
 
@@ -45,22 +35,9 @@ function isRole(value: string): value is AdminRole {
 }
 
 /**
- * The legacy shared secret holder.
- *
- * Full admin, because that is exactly what the secret granted before roles
- * existed. Narrowing it here would lock the treasurer out of work they can do
- * today, which is the one thing this change must not do.
+ * The current admin, or null. Used by every admin page and API route.
  */
-const LEGACY_ADMIN: CurrentAdmin = {
-  id: null,
-  name: "Legacy admin",
-  email: null,
-  role: "admin",
-  source: "legacy-secret",
-  twoFactorEnabled: false,
-};
-
-async function fromBetterAuth(): Promise<CurrentAdmin | null> {
+export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
   const session = await getAuth()
     .api.getSession({ headers: await headers() })
     .catch(() => null);
@@ -101,23 +78,8 @@ async function fromBetterAuth(): Promise<CurrentAdmin | null> {
     name: row.fullName,
     email: row.email,
     role: row.role,
-    source: "better-auth",
     twoFactorEnabled: session.user.twoFactorEnabled === true,
   };
-}
-
-async function fromLegacySecret(): Promise<CurrentAdmin | null> {
-  const store = await cookies();
-  const value = store.get(ADMIN_COOKIE)?.value;
-  if (!value) return null;
-  return safeEqual(value, adminSessionToken()) ? LEGACY_ADMIN : null;
-}
-
-/**
- * The current admin, or null. Used by every admin page and API route.
- */
-export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
-  return (await fromBetterAuth()) ?? (await fromLegacySecret());
 }
 
 /** Role ranking, so a check reads as "at least this much". */

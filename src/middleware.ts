@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { ADMIN_COOKIE, AUTH_SESSION_COOKIE } from "@/lib/auth-cookies";
+import { AUTH_SESSION_COOKIE } from "@/lib/auth-cookies";
 
 /**
  * The gate in front of the admin area.
@@ -14,9 +14,6 @@ import { ADMIN_COOKIE, AUTH_SESSION_COOKIE } from "@/lib/auth-cookies";
  * The real check is getCurrentAdmin(), which every admin page and API route
  * calls, and which does verify. Nothing is authorised on the strength of this
  * file alone. Deleting it would cost a redirect, not a security boundary.
- *
- * Both auth paths are accepted while the migration is in progress. Part B
- * removes the legacy half.
  */
 
 /*
@@ -33,18 +30,14 @@ const SESSION_COOKIES = [
 
 /**
  * Paths inside the guarded prefixes that have to stay reachable while signed
- * out. /api/admin/session is the legacy unlock endpoint: guarding it would
- * make the old shared secret impossible to exchange for a cookie and would
- * lock the treasurer out, which is the one outcome this change must avoid.
+ * out. The password stage and first run setup both have to answer before there
+ * is a session, and both do their own gating.
  */
 const PUBLIC_ADMIN_PATHS = [
   "/admin/login",
   "/admin/setup",
-  // The password stage, and first run setup. Both have to answer while signed
-  // out, and both do their own gating.
   "/api/admin/login",
   "/api/admin/setup",
-  "/api/admin/session",
 ];
 
 function isPublic(pathname: string): boolean {
@@ -54,10 +47,7 @@ function isPublic(pathname: string): boolean {
 }
 
 function hasSomeSession(request: NextRequest): boolean {
-  const betterAuth = SESSION_COOKIES.some(
-    (name) => request.cookies.get(name)?.value,
-  );
-  return betterAuth || Boolean(request.cookies.get(ADMIN_COOKIE)?.value);
+  return SESSION_COOKIES.some((name) => request.cookies.get(name)?.value);
 }
 
 export function middleware(request: NextRequest) {

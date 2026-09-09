@@ -125,10 +125,9 @@ export const adminUsers = pgTable(
     /*
      * The Better Auth user this admin signs in as, once they have one.
      *
-     * Nullable on purpose. Existing rows have no Better Auth account yet and
-     * must stay valid, and the legacy ADMIN_SECRET path has no user at all.
-     * Role, totp_secret and is_active stay here rather than moving into the
-     * library's tables.
+     * Nullable on purpose, so an admin_users row can be created before its
+     * credential exists. Role, totp_secret and is_active stay here rather than
+     * moving into the library's tables.
      */
     authUserId: text("auth_user_id")
       .unique()

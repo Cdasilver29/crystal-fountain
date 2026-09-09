@@ -28,9 +28,6 @@ const serverSchema = z.object({
   DATABASE_URL: z
     .string({ error: "required. The Neon Postgres connection string." })
     .min(1, "required. The Neon Postgres connection string."),
-  ADMIN_SECRET: z
-    .string({ error: "required. A long random string that unlocks the admin screen." })
-    .min(24, "must be at least 24 characters. Generate one, do not invent one."),
   BETTER_AUTH_SECRET: z
     .string({ error: "required. The signing key for Better Auth sessions." })
     .min(32, "must be at least 32 characters. Generate one, do not invent one."),
@@ -76,7 +73,6 @@ function getServerEnv(): ServerEnv {
   if (!serverEnv) {
     const parsed = serverSchema.safeParse({
       DATABASE_URL: process.env.DATABASE_URL,
-      ADMIN_SECRET: process.env.ADMIN_SECRET,
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     });
