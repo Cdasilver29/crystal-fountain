@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { MPESA } from "@/content/campaign";
-
 /**
  * The closing band.
  *
@@ -22,11 +20,6 @@ export function FinalCta() {
         >
           Make a pledge
         </Link>
-
-        <p className="mt-5 text-sm text-white/90">
-          or give directly via M-Pesa Paybill{" "}
-          <span className="tabular font-semibold">{MPESA.paybill}</span>
-        </p>
       </div>
     </section>
   );

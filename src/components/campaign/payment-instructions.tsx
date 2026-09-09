@@ -33,10 +33,18 @@ const TABS: readonly { id: TabId; label: string }[] = [
 
 export function PaymentInstructions({
   reference,
+  showContact = true,
   className,
 }: {
   /** The pledger's CF26 reference, shown as the bank transfer reference. */
   reference?: string;
+  /**
+   * Whether to print the enquiries line. The home page turns it off, because
+   * the accountability section right below it already carries the same name
+   * and the same number. The confirmation page and the public pledge page
+   * leave it on: there it is the only way to reach anyone.
+   */
+  showContact?: boolean;
   className?: string;
 }) {
   const [active, setActive] = useState<TabId>("mpesa");
@@ -156,15 +164,17 @@ export function PaymentInstructions({
         </section>
       </div>
 
-      <p className="text-sm text-neutral-700">
-        For enquiries contact {CONTACT.leaderName},{" "}
-        <Link
-          href={CONTACT.phoneHref}
-          className="rounded font-medium text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
-        >
-          {CONTACT.phoneDisplay}
-        </Link>
-      </p>
+      {showContact && (
+        <p className="text-sm text-neutral-700">
+          For enquiries contact {CONTACT.leaderName},{" "}
+          <Link
+            href={CONTACT.phoneHref}
+            className="rounded font-medium text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          >
+            {CONTACT.phoneDisplay}
+          </Link>
+        </p>
+      )}
 
       <p className="rounded-2xl bg-navy/5 px-4 py-3 text-sm leading-relaxed text-navy">
         After making your payment, the church treasury will reconcile your

@@ -43,7 +43,7 @@ export default async function HomePage() {
           </p>
 
           <div className="mt-8">
-            <PaymentInstructions />
+            <PaymentInstructions showContact={false} />
           </div>
         </div>
       </section>
