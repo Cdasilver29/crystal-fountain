@@ -320,9 +320,11 @@ async function main() {
   // 6. Clean up
   heading("6. cleanup");
   await sweep();
-  if (temporaryAdminId) {
-    await db.execute(sql`delete from admin_users where id = ${temporaryAdminId}`);
-  }
+  void temporaryAdminId;
+  await db.execute(sql`
+    delete from admin_users
+    where email like 'verify-part-%@example.test' and auth_user_id is null
+  `);
   console.log("  test rows removed");
 
   heading("result");

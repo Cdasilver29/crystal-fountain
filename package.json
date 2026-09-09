@@ -16,7 +16,8 @@
     "db:verify:api": "tsx scripts/verify-part-c.ts",
     "db:verify:allocations": "tsx scripts/verify-part-d.ts",
     "db:verify:payments": "tsx scripts/verify-part-e.ts",
-    "db:verify:suggestions": "tsx scripts/verify-part-f.ts"
+    "db:verify:suggestions": "tsx scripts/verify-part-f.ts",
+    "db:verify:allocate-ui": "tsx scripts/verify-part-g.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",

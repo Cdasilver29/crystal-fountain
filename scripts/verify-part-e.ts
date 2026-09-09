@@ -387,9 +387,19 @@ async function main() {
   await db.execute(sql`
     delete from pledgers where phone_e164 like ${`${TEST_PHONE_PREFIX}%`}
   `);
-  if (temporaryAdminId) {
-    await db.execute(sql`delete from admin_users where id = ${temporaryAdminId}`);
-  }
+  /*
+   * Any verification admin, not just one this run created.
+   *
+   * Deleting only the id this run made left a dangling row behind whenever the
+   * script failed before its cleanup: the next run then found that row, took it
+   * as the existing admin, created nothing, and so deleted nothing either.
+   * Rows with an auth_user_id are real accounts and are never touched.
+   */
+  void temporaryAdminId;
+  await db.execute(sql`
+    delete from admin_users
+    where email like 'verify-part-%@example.test' and auth_user_id is null
+  `);
   console.log("  test rows removed");
 
   heading("result");
