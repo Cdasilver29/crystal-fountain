@@ -350,3 +350,166 @@ export async function listForAdmin(
 
   return rows.map((row) => ({ ...row, status: row.status as PledgeStatus }));
 }
+
+/* ---------------------------------------------------------------------------
+ * Finding a pledge, for the treasurer matching a payment to it.
+ * ------------------------------------------------------------------------- */
+
+/** Why a row came back. Also the ranking, best first. */
+export type PledgeMatchReason = "reference" | "phone" | "name";
+
+export type PledgeSearchResult = {
+  pledgeId: string;
+  reference: string;
+  fullName: string;
+  /** Masked unless the caller is allowed the whole number. Never null. */
+  phone: string;
+  amountMinor: bigint;
+  paidMinor: bigint;
+  outstandingMinor: bigint;
+  status: PledgeStatus;
+  matchReason: PledgeMatchReason;
+};
+
+type SearchRow = {
+  id: string;
+  reference: string;
+  full_name: string;
+  phone_e164: string;
+  amount_minor: string;
+  paid_minor: string;
+  outstanding_minor: string;
+  status: string;
+  match_reason: PledgeMatchReason;
+};
+
+/**
+ * Escapes a term going into a LIKE pattern.
+ *
+ * Without this a search for "100%" matches every pledge, because the percent is
+ * read as the wildcard rather than as a character somebody typed. Backslash is
+ * escaped first, or it would go on to escape the escapes added after it.
+ */
+function escapeLike(term: string): string {
+  return term.replace(/\\/g, "\\\\").replace(/[%_]/g, "\\$&");
+}
+
+/**
+ * Masks a phone number down to its last three digits.
+ *
+ * "+254 ••• ••• 678". Enough for a viewer to confirm they are looking at the
+ * right person when the treasurer reads a number aloud, not enough to be a
+ * contact detail. CLAUDE.md keeps whole numbers off public surfaces; a viewer
+ * is not the public, but they also have no task that needs one.
+ */
+function maskPhone(e164: string): string {
+  const last = e164.slice(-3);
+  const prefix = e164.startsWith("+254") ? "+254" : "";
+  return `${prefix} ••• ••• ${last}`.trim();
+}
+
+export type SearchPledgesArgs = {
+  campaignSlug: string;
+  /** What the treasurer typed. */
+  q: string;
+  limit?: number;
+  /**
+   * Whether the caller may see whole phone numbers. Decided by role in the
+   * route handler and passed in, because a service knows nothing about roles.
+   *
+   * The masking happens here rather than in the handler on purpose: if the
+   * service returned the full number and left masking to its callers, the day
+   * somebody adds a second caller is the day a number leaks.
+   */
+  revealPhone: boolean;
+};
+
+export const SEARCH_LIMIT = 10;
+export const MIN_PHONE_DIGITS = 4;
+
+/**
+ * Finds pledges by reference, phone or name.
+ *
+ * Three matches in one query, ranked, because the treasurer holding an M-Pesa
+ * receipt does not know which of the three they have. A reference is exact and
+ * beats everything. A phone is close to exact, since it is the identity key for
+ * a pledger. A name is a guess and comes last.
+ *
+ * The phone match is a suffix, because a payer writes 0712 345 678 and the
+ * column holds +254712345678, and because the treasurer often has only the last
+ * few digits off a slip. Four digits is the floor; below that it would match
+ * most of the congregation.
+ */
+export async function search(
+  db: Db,
+  args: SearchPledgesArgs,
+): Promise<PledgeSearchResult[]> {
+  const term = args.q.trim();
+
+  if (term === "") return [];
+
+  const limit = Math.min(args.limit ?? SEARCH_LIMIT, SEARCH_LIMIT);
+  const escaped = escapeLike(term);
+
+  // References are stored upper case, so the prefix is compared upper case.
+  const referencePrefix = `${escaped.toUpperCase()}%`;
+  const nameContains = `%${escaped}%`;
+
+  /*
+   * Digits only, so "0712 345 678" and "+254 712 345 678" both reduce to
+   * something the column ends with. Null when there are too few to be
+   * meaningful, and the phone branch then matches nothing rather than
+   * everything.
+   */
+  const digits = term.replace(/\D/g, "");
+  const phoneSuffix =
+    digits.length >= MIN_PHONE_DIGITS ? `%${escapeLike(digits)}` : null;
+
+  const result = await db.execute(sql`
+    select p.id,
+           p.reference,
+           g.full_name,
+           g.phone_e164,
+           b.amount_minor,
+           b.paid_minor,
+           b.outstanding_minor,
+           p.status,
+           case
+             when p.reference like ${referencePrefix} escape '\\' then 'reference'
+             when ${phoneSuffix}::text is not null
+                  and g.phone_e164 like ${phoneSuffix} escape '\\' then 'phone'
+             else 'name'
+           end as match_reason
+    from pledges p
+    join pledgers g on g.id = p.pledger_id
+    join campaigns c on c.id = p.campaign_id
+    join v_pledge_balances b on b.pledge_id = p.id
+    where c.slug = ${args.campaignSlug}
+      and (
+        p.reference like ${referencePrefix} escape '\\'
+        or (${phoneSuffix}::text is not null
+            and g.phone_e164 like ${phoneSuffix} escape '\\')
+        or g.full_name ilike ${nameContains} escape '\\'
+      )
+    order by case
+               when p.reference like ${referencePrefix} escape '\\' then 1
+               when ${phoneSuffix}::text is not null
+                    and g.phone_e164 like ${phoneSuffix} escape '\\' then 2
+               else 3
+             end,
+             p.created_at desc
+    limit ${limit}
+  `);
+
+  return (result.rows as SearchRow[]).map((row) => ({
+    pledgeId: row.id,
+    reference: row.reference,
+    fullName: row.full_name,
+    phone: args.revealPhone ? row.phone_e164 : maskPhone(row.phone_e164),
+    amountMinor: BigInt(row.amount_minor),
+    paidMinor: BigInt(row.paid_minor),
+    outstandingMinor: BigInt(row.outstanding_minor),
+    status: row.status as PledgeStatus,
+    matchReason: row.match_reason,
+  }));
+}
