@@ -272,9 +272,28 @@ export const paymentAllocations = pgTable(
       .notNull()
       .defaultNow(),
     note: text("note"),
+    /*
+     * Reversal, not deletion.
+     *
+     * CLAUDE.md: corrections are new rows, not edits. An allocation drives
+     * v_pledge_balances.paid_minor, so removing one by deleting the row would
+     * destroy the fact that the money was ever matched to that pledge and
+     * leave only an audit_log entry to remember it. Setting reversed_at keeps
+     * both facts. A negative compensating row is not available here, because
+     * payment_allocations_amount_minor_check requires a positive amount.
+     *
+     * v_pledge_balances and assert_allocation_within_payment() both ignore a
+     * reversed row, so a reversal is invisible to every balance and frees the
+     * amount for reallocation. See migration 0004.
+     */
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    reversedBy: uuid("reversed_by").references(() => adminUsers.id),
   },
   (t) => [
     index("alloc_pledge_idx").on(t.pledgeId),
+    // Every allocation and every reversal sums the live allocations for one
+    // payment, and that sum had no index to read.
+    index("alloc_payment_idx").on(t.paymentId),
     check("payment_allocations_amount_minor_check", sql`${t.amountMinor} > 0`),
   ],
 );
