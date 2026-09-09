@@ -184,6 +184,13 @@
  * so the hero carries weight without costing a request.
  */
 .hero-wash {
+  /*
+   * Clips the drifting highlight below. That pseudo-element is inset:0 on this
+   * relatively positioned section, and hero-drift translates it 18% to the
+   * right, which put 65px past a 360px viewport and exposed a strip of the
+   * white body background down the right edge of a phone.
+   */
+  overflow: hidden;
   background-image:
     radial-gradient(
       ellipse 90% 70% at 50% 40%,
