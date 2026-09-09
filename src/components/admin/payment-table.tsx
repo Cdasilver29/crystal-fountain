@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatDate, formatKES } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -84,33 +86,37 @@ export function PaymentTable({ rows }: { rows: AdminPaymentDto[] }) {
       {/* Phone: one card per payment. */}
       <ul className="space-y-3 sm:hidden">
         {rows.map((row) => (
-          <li
-            key={row.id}
-            className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <span className="font-semibold text-navy capitalize">
-                {row.method}
-              </span>
-              <AllocationBadge row={row} />
-            </div>
+          <li key={row.id}>
+            {/* The whole card is the link. It holds no other control, so
+                wrapping it is valid and gives one large tap target. */}
+            <Link
+              href={`/admin/payments/${row.id}`}
+              className="block rounded-2xl border border-black/5 bg-white p-4 shadow-sm transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="font-semibold text-navy capitalize">
+                  {row.method}
+                </span>
+                <AllocationBadge row={row} />
+              </div>
 
-            <p className="mt-2 text-sm text-neutral-800">
-              {row.payerName ?? "No payer recorded"}
-            </p>
+              <p className="mt-2 text-sm text-neutral-800">
+                {row.payerName ?? "No payer recorded"}
+              </p>
 
-            <p className="mt-1 text-xs text-neutral-500">
-              <Reference value={row.externalRef} />
-            </p>
+              <p className="mt-1 text-xs text-neutral-500">
+                <Reference value={row.externalRef} />
+              </p>
 
-            <div className="mt-2 flex items-baseline justify-between gap-3">
-              <span className="tabular text-lg font-semibold text-navy">
-                {formatKES(row.amountMinor)}
-              </span>
-              <span className="text-xs text-neutral-500">
-                {formatDate(row.paidAt)}
-              </span>
-            </div>
+              <div className="mt-2 flex items-baseline justify-between gap-3">
+                <span className="tabular text-lg font-semibold text-navy">
+                  {formatKES(row.amountMinor)}
+                </span>
+                <span className="text-xs text-neutral-500">
+                  {formatDate(row.paidAt)}
+                </span>
+              </div>
+            </Link>
           </li>
         ))}
       </ul>
@@ -134,9 +140,26 @@ export function PaymentTable({ rows }: { rows: AdminPaymentDto[] }) {
           </thead>
           <tbody className="divide-y divide-neutral-100">
             {rows.map((row) => (
-              <tr key={row.id}>
+              /*
+               * The row is clickable, but the link is a real anchor in the
+               * first cell stretched over the row rather than a click handler
+               * on the tr. That keeps it keyboard reachable, middle clickable
+               * and openable in a new tab, none of which a handler gives.
+               */
+              <tr
+                key={row.id}
+                className="relative transition-colors focus-within:bg-neutral-50 hover:bg-neutral-50"
+              >
                 <td className="px-4 py-3 whitespace-nowrap text-neutral-600">
-                  {formatDate(row.paidAt)}
+                  <Link
+                    href={`/admin/payments/${row.id}`}
+                    className="rounded after:absolute after:inset-0 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                  >
+                    {formatDate(row.paidAt)}
+                    <span className="sr-only">
+                      , open this payment
+                    </span>
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-neutral-800 capitalize">
                   {row.method}
