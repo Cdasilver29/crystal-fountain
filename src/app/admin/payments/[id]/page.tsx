@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AllocatePanel } from "@/components/admin/payment-allocate";
 import {
   AllocationsTable,
   Field,
@@ -11,7 +12,7 @@ import {
   UnallocatedSummary,
 } from "@/components/admin/payment-detail";
 import { db } from "@/db";
-import { getCurrentAdmin } from "@/lib/admin-context";
+import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
 import { formatDate, formatKES, formatPhoneForDisplay } from "@/lib/format";
 import { paymentPathParams } from "@/server/contracts/payments";
 import { percentOf } from "@/server/money";
@@ -63,6 +64,24 @@ export default async function PaymentDetailPage({
   });
 
   const percentAllocated = percentOf(payment.allocatedMinor, payment.amountMinor);
+
+  /*
+   * Role decides which of the two suggestion renderings the page uses. A viewer
+   * gets the server rendered list and no client JavaScript at all; a treasurer
+   * gets the panel with the allocate flow in it. Neither is a security
+   * boundary, and both endpoints behind the panel check the role again.
+   */
+  const canAllocate = hasAtLeast(admin, "treasurer");
+  const canRemove = admin.role === "admin";
+  const somethingLeft = payment.unallocatedMinor > 0n;
+
+  const candidates = suggestions.map((row) => ({
+    pledgeId: row.pledgeId,
+    reference: row.reference,
+    fullName: row.fullName,
+    outstandingMinor: row.outstandingMinor.toString(),
+    matchReason: row.matchReason,
+  }));
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
@@ -159,6 +178,8 @@ export default async function PaymentDetailPage({
               Allocations
             </h2>
             <AllocationsTable
+              paymentId={payment.id}
+              canRemove={canRemove}
               rows={payment.allocations.map((row) => ({
                 id: row.id,
                 pledgeId: row.pledgeId,
@@ -173,31 +194,38 @@ export default async function PaymentDetailPage({
             />
           </section>
 
-          {payment.unallocatedMinor > 0n && (
-            <section aria-labelledby="suggestions-heading">
-              <h2
-                id="suggestions-heading"
-                className="mb-1 text-lg font-semibold text-navy"
-              >
-                Suggested matches
-              </h2>
-              <p className="mb-3 text-sm text-neutral-600">
-                Pledges this payment may belong to, best guess first. A
-                reference match is what the payer typed as the account number,
-                so it is the strongest signal. A name match is only a guess.
-              </p>
-              <SuggestionList
-                rows={suggestions.map((row) => ({
-                  pledgeId: row.pledgeId,
-                  reference: row.reference,
-                  fullName: row.fullName,
-                  outstandingMinor: row.outstandingMinor.toString(),
-                  matchReason: row.matchReason,
-                  confidence: row.confidence,
-                }))}
+          {somethingLeft &&
+            (canAllocate ? (
+              <AllocatePanel
+                paymentId={payment.id}
+                unallocatedMinor={payment.unallocatedMinor.toString()}
+                suggestions={candidates}
               />
-            </section>
-          )}
+            ) : (
+              <section aria-labelledby="suggestions-heading">
+                <h2
+                  id="suggestions-heading"
+                  className="mb-1 text-lg font-semibold text-navy"
+                >
+                  Suggested matches
+                </h2>
+                <p className="mb-3 text-sm text-neutral-600">
+                  Pledges this payment may belong to, best guess first. A
+                  reference match is what the payer typed as the account number,
+                  so it is the strongest signal. A name match is only a guess.
+                </p>
+                <SuggestionList
+                  rows={suggestions.map((row) => ({
+                    pledgeId: row.pledgeId,
+                    reference: row.reference,
+                    fullName: row.fullName,
+                    outstandingMinor: row.outstandingMinor.toString(),
+                    matchReason: row.matchReason,
+                    confidence: row.confidence,
+                  }))}
+                />
+              </section>
+            ))}
         </div>
       </main>
     </div>

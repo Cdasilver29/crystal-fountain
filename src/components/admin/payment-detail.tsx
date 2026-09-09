@@ -1,3 +1,5 @@
+import { MatchBadge, type MatchReason } from "@/components/admin/match-badge";
+import { RemoveAllocationButton } from "@/components/admin/payment-allocate";
 import { formatDate, formatKES } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +31,7 @@ export type SuggestionDto = {
   reference: string;
   fullName: string;
   outstandingMinor: string;
-  matchReason: "reference" | "phone" | "name";
+  matchReason: MatchReason;
   confidence: "high" | "medium" | "low";
 };
 
@@ -118,31 +120,6 @@ export function UnallocatedSummary({
   );
 }
 
-const REASON_STYLES: Record<SuggestionDto["matchReason"], string> = {
-  reference: "bg-emerald-100 text-emerald-900",
-  phone: "bg-sky-100 text-sky-900",
-  name: "bg-neutral-200 text-neutral-700",
-};
-
-const REASON_LABELS: Record<SuggestionDto["matchReason"], string> = {
-  reference: "Reference match",
-  phone: "Phone match",
-  name: "Name match",
-};
-
-export function MatchBadge({ reason }: { reason: SuggestionDto["matchReason"] }) {
-  return (
-    <span
-      className={cn(
-        "inline-block rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap",
-        REASON_STYLES[reason],
-      )}
-    >
-      {REASON_LABELS[reason]}
-    </span>
-  );
-}
-
 /**
  * What this payment has already been matched to.
  *
@@ -150,7 +127,20 @@ export function MatchBadge({ reason }: { reason: SuggestionDto["matchReason"] })
  * They count toward no balance, but they are part of what happened to this
  * money, and a screen that dropped them would disagree with the ledger.
  */
-export function AllocationsTable({ rows }: { rows: AllocationDto[] }) {
+export function AllocationsTable({
+  rows,
+  paymentId,
+  canRemove,
+}: {
+  rows: AllocationDto[];
+  paymentId: string;
+  /**
+   * Admin only. Hiding the button is presentation and nothing more: the DELETE
+   * endpoint makes the same check and writes an admin.forbidden row if a
+   * treasurer calls it directly.
+   */
+  canRemove: boolean;
+}) {
   if (rows.length === 0) {
     return (
       <p className="rounded-2xl border border-black/5 bg-white p-6 text-sm text-neutral-600 shadow-sm">
@@ -173,6 +163,11 @@ export function AllocationsTable({ rows }: { rows: AllocationDto[] }) {
             <th scope="col" className="px-4 py-3 text-right font-medium">Amount</th>
             <th scope="col" className="px-4 py-3 font-medium">Allocated</th>
             <th scope="col" className="px-4 py-3 font-medium">By</th>
+            {canRemove && (
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                <span className="sr-only">Action</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -212,6 +207,19 @@ export function AllocationsTable({ rows }: { rows: AllocationDto[] }) {
                     (row.allocatedByName ?? "Unknown")
                   )}
                 </td>
+                {canRemove && (
+                  <td className="px-4 py-3 text-right">
+                    {/* A reversed allocation cannot be reversed again. */}
+                    {!reversed && (
+                      <RemoveAllocationButton
+                        paymentId={paymentId}
+                        allocationId={row.id}
+                        pledgeReference={row.pledgeReference}
+                        amountMinor={row.amountMinor}
+                      />
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}
