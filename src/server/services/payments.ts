@@ -15,6 +15,12 @@ import type {
 import type { PledgeStatus } from "@/server/contracts/pledges";
 import { conflict, notFound } from "@/server/errors";
 import { formatKes, kesToMinor } from "@/server/money";
+import {
+  decodeCursor,
+  pageSize,
+  toPage,
+  type Page,
+} from "@/server/pagination";
 
 /**
  * Money in.
@@ -764,4 +770,133 @@ export async function deallocate(
       pledgeReverted: shouldRevert,
     };
   });
+}
+
+/* ---------------------------------------------------------------------------
+ * Reading the payment book.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * How much of a payment has found a home.
+ *
+ * Derived, never stored. A counter column would be one more thing that can
+ * disagree with payment_allocations, and CLAUDE.md is explicit that totals are
+ * read from the database rather than kept in a field somebody has to remember
+ * to update.
+ */
+export type AllocationStatus = "unallocated" | "partial" | "fully_allocated";
+
+export type AdminPaymentRow = {
+  id: string;
+  paidAt: Date;
+  method: string;
+  externalRef: string | null;
+  amountMinor: bigint;
+  currency: string;
+  payerName: string | null;
+  status: string;
+  allocatedMinor: bigint;
+  unallocatedMinor: bigint;
+  allocationStatus: AllocationStatus;
+};
+
+type PaymentListRow = {
+  id: string;
+  paid_at: string;
+  method: string;
+  external_ref: string | null;
+  amount_minor: string;
+  currency: string;
+  payer_name_raw: string | null;
+  status: string;
+  allocated_minor: string;
+  allocation_status: AllocationStatus;
+};
+
+/**
+ * The treasurer's payment book, newest money first.
+ *
+ * The allocation status is computed in SQL rather than in TypeScript, so the
+ * comparison happens in the same place and the same integer arithmetic as the
+ * sum it depends on. Reversed allocations are excluded, exactly as
+ * v_pledge_balances excludes them, so a corrected match frees the payment here
+ * too instead of leaving it looking permanently spent.
+ *
+ * Keyset paginated on (paid_at, id) descending. A payment recorded while the
+ * treasurer is reading page two cannot push a row across the boundary, which is
+ * the failure offset pagination has on a live campaign.
+ */
+export async function listForAdmin(
+  db: Db,
+  args: { campaignSlug: string; limit?: number; cursor?: string | null },
+): Promise<Page<AdminPaymentRow>> {
+  const limit = pageSize(args.limit);
+  const cursor = decodeCursor(args.cursor);
+
+  /*
+   * The row comparison is what makes this a keyset. (paid_at, id) < (k, i)
+   * compares the pair lexicographically in one indexable expression, which is
+   * both shorter and more correct than spelling out the "or equal and id less
+   * than" form by hand.
+   */
+  const result = await db.execute(sql`
+    select p.id,
+           p.paid_at,
+           p.method,
+           p.external_ref,
+           p.amount_minor,
+           p.currency,
+           p.payer_name_raw,
+           p.status,
+           coalesce(a.allocated_minor, 0) as allocated_minor,
+           case
+             when coalesce(a.allocated_minor, 0) = 0 then 'unallocated'
+             when coalesce(a.allocated_minor, 0) >= p.amount_minor
+               then 'fully_allocated'
+             else 'partial'
+           end as allocation_status
+    from payments p
+    join campaigns c on c.id = p.campaign_id
+    left join lateral (
+      select sum(amount_minor) as allocated_minor
+      from payment_allocations
+      where payment_id = p.id
+        and reversed_at is null
+    ) a on true
+    where c.slug = ${args.campaignSlug}
+      and (
+        ${cursor === null}::boolean
+        or (p.paid_at, p.id) < (${cursor?.key ?? null}::timestamptz,
+                                ${cursor?.id ?? null}::uuid)
+      )
+    order by p.paid_at desc, p.id desc
+    limit ${limit + 1}
+  `);
+
+  const rows = (result.rows as PaymentListRow[]).map((row) => {
+    const amountMinor = BigInt(row.amount_minor);
+    const allocatedMinor = BigInt(row.allocated_minor);
+
+    return {
+      id: row.id,
+      paidAt: new Date(row.paid_at),
+      method: row.method,
+      externalRef: row.external_ref,
+      amountMinor,
+      currency: row.currency,
+      payerName: row.payer_name_raw,
+      status: row.status,
+      allocatedMinor,
+      // Floored at zero. The trigger makes an over allocation impossible, but a
+      // negative remainder on a screen would be a worse way to find that out.
+      unallocatedMinor:
+        amountMinor > allocatedMinor ? amountMinor - allocatedMinor : 0n,
+      allocationStatus: row.allocation_status,
+    };
+  });
+
+  return toPage(rows, limit, (row) => ({
+    key: row.paidAt.toISOString(),
+    id: row.id,
+  }));
 }

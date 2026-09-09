@@ -30,9 +30,9 @@ const RANK: Record<AdminRole, number> = { viewer: 1, treasurer: 2, admin: 3 };
 
 const LINKS: readonly NavLink[] = [
   { href: "/admin/pledges", label: "Pledges", minRole: "viewer" },
-  // Points at the form until the payments list lands, which is the next
-  // session. Moving it is a one line change here.
-  { href: "/admin/payments/new", label: "Record a payment", minRole: "treasurer" },
+  // The book itself, not the form. Every role may read it, and the button to
+  // record one lives on the page, where only a treasurer sees it.
+  { href: "/admin/payments", label: "Payments", minRole: "viewer" },
 ];
 
 export function AdminNav({
