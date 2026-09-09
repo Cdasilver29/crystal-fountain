@@ -19,6 +19,12 @@ import { NAV_LINKS } from "@/content/project";
  *
  * Pages other than the home page have no hero, so there is nothing to observe
  * and the header stays solid from the start.
+ *
+ * The z-50 is load bearing. Being fixed and z-indexed, this header is a
+ * stacking context, so the phone drawer inside it can never climb higher than
+ * the header itself however large its own z-index is. Sections that layer an
+ * image under their content sit at z-10, so the header has to outrank them or
+ * the menu opens underneath the page.
  */
 export function SiteHeader() {
   const [solid, setSolid] = useState(true);
@@ -40,7 +46,7 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-10 h-16 border-b transition-colors duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 h-16 border-b transition-colors duration-300 ${
         solid ? "border-white/10 bg-navy" : "border-transparent"
       }`}
     >

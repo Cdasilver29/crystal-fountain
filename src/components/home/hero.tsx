@@ -18,12 +18,16 @@ import type { CampaignTotalsDto } from "@/lib/campaign";
  * keeps its drifting highlight on top of both. Only the photograph is a
  * request, and it is the one image on the site loaded eagerly, because it is
  * the largest thing above the fold.
+ *
+ * The section isolates, which keeps the z-10 on the content local to it. Left
+ * unscoped that 10 competed with the fixed header's own z-10 at page level and,
+ * being later in the document, won: the phone menu opened behind the hero copy.
  */
 export function Hero({ totals }: { totals: CampaignTotalsDto }) {
   return (
     <section
       id="hero"
-      className="relative -mt-16 flex min-h-[100svh] flex-col overflow-hidden bg-navy px-4 pt-16 pb-24 sm:px-6"
+      className="relative isolate -mt-16 flex min-h-[100svh] flex-col overflow-hidden bg-navy px-4 pt-16 pb-24 sm:px-6"
     >
       <Image
         src="/images/gallery/Hero.PNG"
@@ -35,19 +39,19 @@ export function Hero({ totals }: { totals: CampaignTotalsDto }) {
         className="object-cover object-center"
       />
 
-      <div aria-hidden className="absolute inset-0 bg-navy/[0.72]" />
+      <div aria-hidden className="absolute inset-0 bg-navy/80" />
 
       <div
         aria-hidden
         className="hero-wash pointer-events-none absolute inset-0"
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center py-8 text-center">
-        <p className="text-xl font-extrabold tracking-tight text-balance text-campfire sm:text-3xl">
+      <div className="hero-lift-soft relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center py-8 text-center">
+        <p className="hero-lift text-xl font-extrabold tracking-tight text-balance text-campfire sm:text-3xl">
           {CAMPAIGN.tagline}
         </p>
 
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-balance text-white sm:text-5xl">
+        <h1 className="hero-lift mt-3 text-3xl font-bold tracking-tight text-balance text-white sm:text-5xl">
           {CAMPAIGN.name}
         </h1>
 

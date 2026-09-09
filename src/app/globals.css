@@ -211,6 +211,28 @@
 }
 
 /*
+ * Lifting the hero copy off the photograph.
+ *
+ * The navy overlay does most of the work, but a photograph is never a flat
+ * colour: a white cloud or a sunlit wall can sit under any line of text. The
+ * shadow costs nothing, moves nothing, and means readability does not depend
+ * on which part of the picture a phone happens to crop to.
+ *
+ * The soft one goes on the hero content as a whole and is inherited, so the
+ * figure the congregation is watching and the labels under the progress bar
+ * get it without the shared tracker component knowing anything about heroes.
+ * The stronger one is for the two largest lines, which sit over the brightest
+ * part of the image.
+ */
+.hero-lift-soft {
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+}
+
+.hero-lift {
+  text-shadow: 0 2px 4px rgb(0 0 0 / 0.5);
+}
+
+/*
  * A highlight that drifts across the hero over half a minute. It is a single
  * pseudo-element moving on the compositor, no JavaScript and no repaint of the
  * content above it. Deliberately close to invisible: it should read as the
