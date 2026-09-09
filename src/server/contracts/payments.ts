@@ -115,3 +115,82 @@ export const recordPaymentInput = z
   );
 
 export type RecordPaymentInput = z.infer<typeof recordPaymentInput>;
+
+/**
+ * Matching money to a promise.
+ *
+ * Allocation is the second half of the treasurer's job: a payment arrives, and
+ * later somebody decides which pledge it settles. The amount is optional,
+ * because the common case is "all of it", and the service works out the
+ * default from the payment's unallocated remainder and the pledge's
+ * outstanding balance.
+ */
+
+/** The largest payment the form accepts, in minor units. */
+const MAX_PAYMENT_MINOR = BigInt(MAX_PAYMENT_KES) * 100n;
+
+const DIGITS = /^[0-9]+$/;
+
+/**
+ * An amount in minor units.
+ *
+ * Accepted as a string or a whole number and returned as a bigint. JSON has no
+ * bigint, so the wire carries minor units as a string by convention, but a
+ * form posting a plain number should not be rejected for it. What is rejected
+ * is anything that could have lost precision on the way: a float, an unsafe
+ * integer, or a string that is not simply digits.
+ */
+const minorUnits = z
+  .union([z.string(), z.number()])
+  .transform((value, ctx) => {
+    const invalid = (message: string) => {
+      ctx.addIssue({ code: "custom", message });
+      return z.NEVER;
+    };
+
+    if (typeof value === "number") {
+      if (!Number.isSafeInteger(value)) {
+        return invalid("Enter a whole number of cents.");
+      }
+      if (value <= 0) return invalid("Enter an amount greater than zero.");
+      return BigInt(value);
+    }
+
+    const trimmed = value.trim();
+
+    if (!DIGITS.test(trimmed)) {
+      return invalid("Enter a whole number of cents.");
+    }
+
+    const parsed = BigInt(trimmed);
+
+    if (parsed <= 0n) return invalid("Enter an amount greater than zero.");
+
+    return parsed;
+  })
+  .refine(
+    (value) => value <= MAX_PAYMENT_MINOR,
+    `The largest amount this accepts is KES ${MAX_PAYMENT_KES.toLocaleString("en-KE")}.`,
+  );
+
+export const allocatePaymentInput = z.object({
+  pledgeId: z.uuid("Choose a pledge to allocate this payment to."),
+
+  /**
+   * Optional. Left out, the service allocates the lesser of what is left on
+   * the payment and what is outstanding on the pledge.
+   */
+  amountMinor: minorUnits.optional(),
+});
+
+export type AllocatePaymentInput = z.infer<typeof allocatePaymentInput>;
+
+/** Path parameters for the allocation endpoints. Both are uuids or nothing. */
+export const paymentPathParams = z.object({
+  paymentId: z.uuid("That payment does not exist."),
+});
+
+export const allocationPathParams = z.object({
+  paymentId: z.uuid("That payment does not exist."),
+  allocationId: z.uuid("That allocation does not exist."),
+});
