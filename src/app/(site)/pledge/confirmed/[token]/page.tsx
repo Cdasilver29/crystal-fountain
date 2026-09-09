@@ -9,6 +9,8 @@ import { pageMetadata } from "@/lib/metadata";
 import { publicTokenInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = pageMetadata({
   title: "Your pledge is recorded",
   path: "/pledge",

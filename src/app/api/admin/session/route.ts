@@ -9,6 +9,8 @@ import {
 } from "@/lib/admin-session";
 import { adminUnlockInput } from "@/server/contracts/admin";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/admin/session
  *

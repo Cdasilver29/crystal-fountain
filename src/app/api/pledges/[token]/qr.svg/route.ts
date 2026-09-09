@@ -6,6 +6,8 @@ import { problem, serviceProblem } from "@/lib/api";
 import { publicTokenInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/pledges/:publicToken/qr.svg
  *

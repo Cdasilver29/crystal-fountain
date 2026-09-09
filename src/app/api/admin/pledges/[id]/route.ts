@@ -8,6 +8,8 @@ import { adminPledgeActionInput } from "@/server/contracts/admin";
 import { approvePledgeInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
+export const dynamic = "force-dynamic";
+
 /**
  * PATCH /api/admin/pledges/:id
  *

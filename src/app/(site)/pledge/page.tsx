@@ -6,6 +6,8 @@ import { PledgeForm } from "@/components/pledge/pledge-form";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = pageMetadata({
   title: "Make a pledge",
   description:

@@ -4,6 +4,8 @@ import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { createPledgeInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/pledges
  *

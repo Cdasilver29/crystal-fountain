@@ -4,6 +4,8 @@ import {
   getCampaignTotals,
 } from "@/lib/campaign";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/campaign/summary
  *
