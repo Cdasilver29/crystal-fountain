@@ -39,6 +39,15 @@ const serverSchema = z.object({
    * browser then refuses to store.
    */
   BETTER_AUTH_URL: z.url().optional(),
+  /*
+   * The shared secret the daily snapshot job presents.
+   *
+   * Optional, because a local server has no scheduler pointed at it and the
+   * route refuses every request when this is unset, which is the safe way for
+   * it to be missing. In production it is required: without it the job cannot
+   * authenticate and the snapshot never gets written.
+   */
+  CRON_SECRET: z.string().min(32, "must be at least 32 characters.").optional(),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -75,6 +84,7 @@ function getServerEnv(): ServerEnv {
       DATABASE_URL: process.env.DATABASE_URL,
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+      CRON_SECRET: process.env.CRON_SECRET,
     });
     if (!parsed.success) fail(parsed.error);
     serverEnv = parsed.data;
