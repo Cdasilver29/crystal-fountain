@@ -1,5 +1,7 @@
 import { config } from "dotenv";
 
+import { provisionAdmin, removeVerificationAdmins } from "./verification-admin";
+
 // Load the environment before anything imports src/env.ts.
 config({ path: ".env.local" });
 
@@ -8,13 +10,15 @@ config({ path: ".env.local" });
  *
  * This is the one verification that exercises the route handlers with a real
  * session, so it is what proves the role gating rather than inferring it. It
- * provisions the first administrator, signs in, allocates from a suggestion,
+ * provisions a throwaway administrator, signs in, allocates from a suggestion,
  * removes the allocation, then demotes the same account to treasurer and to
  * viewer to check what each is refused.
  *
  * A fresh account has no TOTP enrolled, so signInEmail returns a session
  * directly instead of the twoFactorRedirect the login form would otherwise
- * follow. That is what makes this scriptable.
+ * follow. That is what makes this scriptable. The account is created directly
+ * rather than through /api/admin/setup, which is closed once a real
+ * administrator exists. See scripts/verification-admin.ts.
  *
  * Usage: pnpm build, pnpm start, then pnpm db:verify:allocate-ui
  *
@@ -83,39 +87,20 @@ async function main() {
       where pledger_id in (select id from pledgers where phone_e164 like ${phones})
     `);
     await db.execute(sql`delete from pledgers where phone_e164 like ${phones}`);
-    // admin_users references auth_users, so the admin row goes first.
-    await db.execute(sql`
-      delete from admin_users
-      where email = ${ADMIN_EMAIL}
-         or (email like 'verify-part-%@example.test' and auth_user_id is null)
-    `);
-    await db.execute(sql`delete from auth_users where email = ${ADMIN_EMAIL}`);
-    await db.execute(sql`delete from admin_login_attempts where email = ${ADMIN_EMAIL}`);
+    await removeVerificationAdmins(db);
   };
 
   await sweep();
 
-  // 0. Provision the first administrator and sign in
+  // 0. Provision an administrator and sign in
   heading("0. sign in as an administrator");
-  const setup = await fetch(`${BASE}/api/admin/setup`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      fullName: "Verification Admin",
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      confirmPassword: ADMIN_PASSWORD,
-    }),
+  const provisioned = await provisionAdmin(db, {
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    fullName: "Verification Admin",
+    role: "admin",
   });
-
-  if (!setup.ok) {
-    console.error(
-      `Setup returned ${setup.status}. This script needs an empty admin_users table, ` +
-        `because it provisions the first administrator. Body: ${await setup.text()}`,
-    );
-    process.exit(1);
-  }
-  check("the first administrator was created", setup.ok);
+  check("a verification admin was provisioned", provisioned.adminUserId.length > 0);
 
   const login = await fetch(`${BASE}/api/admin/login`, {
     method: "POST",
@@ -136,9 +121,7 @@ async function main() {
     headers: { ...(extra.headers ?? {}), cookie },
   });
 
-  const [adminRow] = (
-    await db.execute(sql`select id from admin_users where email = ${ADMIN_EMAIL}`)
-  ).rows as { id: string }[];
+  const adminRow = { id: provisioned.adminUserId };
 
   const setRole = async (role: string) => {
     await db.execute(sql`
