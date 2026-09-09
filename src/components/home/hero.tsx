@@ -59,8 +59,15 @@ export function Hero({ totals }: { totals: CampaignTotalsDto }) {
           {CAMPAIGN.subheading}
         </p>
 
-        {/* The card centres itself and carries its own width. */}
-        <div className="mt-12 sm:mt-16">
+        {/*
+          The card breaks out of the hero's side padding on a phone, so it
+          reaches about 95% of a 360px screen rather than the 91% the padding
+          would otherwise leave it. Only the tracker does this: it is the one
+          element meant to read as a panel sitting on the page rather than as
+          part of the centred column of copy. It still stops 8px short of the
+          viewport edge, so nothing overflows.
+        */}
+        <div className="-mx-2 mt-12 sm:mx-0 sm:mt-16">
           <LiveTracker initial={totals} />
         </div>
 
