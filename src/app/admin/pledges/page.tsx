@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { AdminBar } from "@/components/admin/admin-bar";
 import { PledgeTable } from "@/components/admin/pledge-table";
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { db } from "@/db";
@@ -39,7 +40,9 @@ export default async function AdminPledgesPage() {
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
-          <p className="text-sm text-white/70">
+          <AdminBar name={admin.name} role={admin.role} />
+
+          <p className="mt-6 text-sm text-white/70">
             Crystal Fountain Development Project
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">

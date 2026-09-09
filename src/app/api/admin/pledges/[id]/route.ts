@@ -6,9 +6,13 @@ import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
 import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { adminPledgeActionInput } from "@/server/contracts/admin";
 import { approvePledgeInput } from "@/server/contracts/pledges";
+import * as audit from "@/server/services/admin-audit";
 import * as pledges from "@/server/services/pledges";
 
 export const dynamic = "force-dynamic";
+
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * PATCH /api/admin/pledges/:id
@@ -34,6 +38,17 @@ export async function PATCH(
   // Roles are enforced here, on the server, not by hiding a button. A viewer
   // can read the pledge list and nothing more.
   if (!hasAtLeast(admin, "treasurer")) {
+    const { id: refusedId } = await params;
+    await audit.recordForbidden(db, {
+      adminUserId: admin.id,
+      role: admin.role,
+      attempted: "pledge.approve",
+      entity: "pledge",
+      // Only a real uuid can go in an entity_id column.
+      entityId: UUID.test(refusedId) ? refusedId : null,
+      ip: clientIp(request),
+      userAgent: userAgent(request),
+    });
     return problem(403, "forbidden", "Your account cannot approve pledges.");
   }
 
@@ -61,6 +76,10 @@ export async function PATCH(
   try {
     const result = await pledges.approve(db, {
       pledgeId: target.data.pledgeId,
+      // Now that admins are real people rather than one shared secret, the
+      // approval carries who made it. The service writes it into the audit row
+      // in the same transaction as the status change.
+      adminId: admin.id,
       request: { ip: clientIp(request), userAgent: userAgent(request) },
     });
 
