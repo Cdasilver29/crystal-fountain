@@ -19,7 +19,9 @@
     "db:verify:suggestions": "tsx scripts/verify-part-f.ts",
     "db:verify:allocate-ui": "tsx scripts/verify-part-g.ts",
     "db:verify:filters": "tsx scripts/verify-part-h.ts",
-    "db:verify:exports": "tsx scripts/verify-part-i.ts"
+    "db:backfill:snapshots": "tsx scripts/backfill-snapshots.ts",
+    "db:verify:exports": "tsx scripts/verify-part-i.ts",
+    "db:verify:snapshots": "tsx scripts/verify-part-j.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
