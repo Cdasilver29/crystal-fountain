@@ -257,7 +257,17 @@ async function main() {
 
   check("the pledge is in the file", plainRow !== undefined);
   check("full_name matches the database", plainRow?.[1] === dbPledge.full_name);
-  check("phone is the whole number, unmasked", plainRow?.[2] === dbPledge.phone_e164);
+  // The apostrophe is Excel's text marker, consumed when the file is opened.
+  // The number behind it must still be exactly what the database holds.
+  check(
+    "phone is marked as text for the spreadsheet",
+    plainRow?.[2] === `'${dbPledge.phone_e164}`,
+    plainRow?.[2],
+  );
+  check(
+    "and the number behind the marker is the whole, unmasked one",
+    plainRow?.[2].slice(1) === dbPledge.phone_e164,
+  );
   check("email matches", plainRow?.[3] === dbPledge.email);
   check(
     "amount is whole shillings, not minor units",
@@ -344,7 +354,11 @@ async function main() {
     "amount is whole shillings",
     payRow?.[3] === String(BigInt(dbPay.amount_minor) / 100n),
   );
-  check("payer_phone matches", payRow?.[5] === dbPay.payer_msisdn);
+  check(
+    "payer_phone is marked as text and otherwise exact",
+    payRow?.[5] === `'${dbPay.payer_msisdn}`,
+    payRow?.[5],
+  );
   check("account_ref matches", payRow?.[6] === dbPay.account_ref_raw);
   check(
     "allocation_status is derived, and this one is fully allocated",
@@ -442,7 +456,7 @@ async function main() {
   heading("5b. formula escaping, escaping only what can execute");
   const { csvField } = await import("@/server/csv");
   const cases: [string, string, string][] = [
-    ["a phone number is untouched", "+254712345678", "+254712345678"],
+    ["a phone number is not escaped as a formula", "+254712345678", "+254712345678"],
     ["a negative amount is untouched", "-1500", "-1500"],
     ["a formula behind a plus is escaped", "+cmd|' /c calc'!A1", "'+cmd|' /c calc'!A1"],
     ["a formula behind a minus is escaped", "-2+3+cmd", "'-2+3+cmd"],
@@ -455,6 +469,14 @@ async function main() {
   for (const [label, input, expected] of cases) {
     check(label, csvField(input) === expected, `got ${csvField(input)}`);
   }
+
+  const { csvText } = await import("@/server/csv");
+  check(
+    "csvText marks a phone as text for the spreadsheet",
+    csvText("+254712345678") === "'+254712345678",
+  );
+  check("csvText leaves a missing value missing", csvText(null) === null);
+  check("csvText leaves an empty value empty", csvText("") === "");
 
   // 6. Clean up
   heading("6. cleanup");

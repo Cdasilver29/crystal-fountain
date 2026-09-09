@@ -63,6 +63,30 @@ export function csvField(value: string | number | bigint | null | undefined): st
   return text;
 }
 
+/**
+ * A field the spreadsheet must read as text, whatever it looks like.
+ *
+ * The apostrophe is Excel's own marker for "this cell is text". Excel and
+ * Google Sheets both consume it on open and show the value as written, so the
+ * treasurer sees +254712345678 rather than 254712345678, which is what a bare
+ * leading plus turns into once the spreadsheet decides the cell is a number.
+ *
+ * Reach for this only where a spreadsheet would otherwise change the value.
+ * Phone numbers need it. Names, amounts and dates do not, and marking them
+ * would put an apostrophe in front of data that nothing was going to mangle.
+ *
+ * The cost is that the apostrophe is a real character in the file, so a script
+ * reading the CSV sees it. That is the trade: this file is written to be opened
+ * in a spreadsheet, and a number the treasurer cannot dial is worse than one a
+ * parser has to strip.
+ */
+export function csvText(
+  value: string | null | undefined,
+): string | null | undefined {
+  if (value === null || value === undefined || value === "") return value;
+  return `'${value}`;
+}
+
 export function csvRow(fields: readonly (string | number | bigint | null | undefined)[]): string {
   return fields.map(csvField).join(",");
 }

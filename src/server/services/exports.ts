@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 
 import type { Db } from "@/db";
 import { auditLog } from "@/db/schema";
-import { csvFile, exportDateStamp } from "@/server/csv";
+import { csvFile, csvText, exportDateStamp } from "@/server/csv";
 import { notFound } from "@/server/errors";
 import { minorToKes } from "@/server/money";
 
@@ -115,9 +115,10 @@ export async function pledges(
   const rows = (result.rows as PledgeExportRow[]).map((row) => [
     row.reference,
     row.full_name,
-    // The whole number. This is a treasurer export, not a public surface, and
-    // ringing a pledger is the point of it.
-    row.phone_e164,
+    // The whole number, unmasked. This is a treasurer export, not a public
+    // surface, and ringing a pledger is the point of it. Marked as text so a
+    // spreadsheet keeps the leading plus instead of reading it as a number.
+    csvText(row.phone_e164),
     row.email,
     // Whole shillings, from the minor units, as an integer. Never a float.
     minorToKes(BigInt(row.amount_minor)),
@@ -207,7 +208,7 @@ export async function payments(
     row.external_ref,
     minorToKes(BigInt(row.amount_minor)),
     row.payer_name_raw,
-    row.payer_msisdn,
+    csvText(row.payer_msisdn),
     row.account_ref_raw,
     row.status,
     row.allocation_status,
