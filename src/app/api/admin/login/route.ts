@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { clientIp, problem, userAgent, validationProblem } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { adminLoginInput } from "@/server/contracts/auth";
+import * as audit from "@/server/services/admin-audit";
 import * as attempts from "@/server/services/login-attempts";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,11 @@ export const dynamic = "force-dynamic";
  *
  * The response from Better Auth is forwarded whole, cookies included, so the
  * session cookie it sets survives the wrapping.
+ *
+ * The success row is not written here. A session is only created once the
+ * second factor has also passed, so admin.login hangs off the session row
+ * itself in lib/auth.ts, where both flows converge. Only the two failure
+ * cases, which never reach a session, are recorded from this route.
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -42,6 +48,13 @@ export async function POST(request: Request) {
   const lockout = await attempts.getLockoutState(db, { email });
 
   if (lockout.locked) {
+    await audit.recordLoginLocked(db, {
+      email,
+      retryAfterSeconds: lockout.retryAfterSeconds,
+      ip,
+      userAgent: agent,
+    });
+
     const minutes = Math.max(1, Math.ceil(lockout.retryAfterSeconds / 60));
     return problem(
       429,
@@ -61,6 +74,7 @@ export async function POST(request: Request) {
 
   if (!response || !response.ok) {
     await attempts.recordFailure(db, { email, ip, userAgent: agent });
+    await audit.recordLoginFailed(db, { email, ip, userAgent: agent });
 
     const remaining = Math.max(0, attempts.MAX_FAILURES - (lockout.failures + 1));
 

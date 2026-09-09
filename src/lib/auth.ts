@@ -5,7 +5,18 @@ import { twoFactor } from "better-auth/plugins/two-factor";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { env } from "@/env";
+import { clientIp } from "@/lib/api";
 import { AUTH_SESSION_COOKIE } from "@/lib/auth-cookies";
+import * as audit from "@/server/services/admin-audit";
+
+/**
+ * The caller IP for an audit row, reusing the same parser the route handlers
+ * use. audit_log.ip is an inet column, so anything that is not plausibly an
+ * address has to become null rather than poison the insert.
+ */
+function requestIp(context: { request?: Request } | null): string | null {
+  return context?.request ? clientIp(context.request) : null;
+}
 
 /**
  * Better Auth server configuration.
@@ -118,6 +129,67 @@ function createAuth() {
       customRules: {
         "/sign-in/email": { window: 60 * 15, max: 20 },
         "/two-factor/verify-totp": { window: 60 * 15, max: 20 },
+      },
+    },
+
+    /*
+     * Audit rows for the two events that do not pass through a route of ours.
+     *
+     * A session row is created at the exact moment a sign in completes, which
+     * is after the password for an account with no second factor and after the
+     * code for one with. Hanging admin.login off the row rather than off an
+     * endpoint means both flows are covered and a half finished sign in is
+     * not recorded as a success.
+     *
+     * Neither hook is allowed to fail the request it rides on. An audit write
+     * that throws here would turn a good login into a 500, so both are caught
+     * and logged. That is a deliberate trade: CLAUDE.md requires the row, but
+     * locking the treasurer out because the audit insert failed would be the
+     * worse outcome, and the failure is loud in the logs.
+     */
+    databaseHooks: {
+      session: {
+        create: {
+          after: async (session, context) => {
+            try {
+              const admin = await audit.findAdminByAuthUserId(
+                db,
+                session.userId,
+              );
+              if (!admin) return;
+              await audit.recordLoginSuccess(db, {
+                adminUserId: admin.id,
+                email: admin.email,
+                role: admin.role,
+                ip: session.ipAddress ?? requestIp(context),
+                userAgent: session.userAgent ?? null,
+              });
+            } catch (error) {
+              console.error("audit admin.login failed", error);
+            }
+          },
+        },
+      },
+      user: {
+        update: {
+          after: async (user, context) => {
+            // Only the enrolment transition is interesting, and the recorder
+            // itself is guarded so it writes once.
+            if (user.twoFactorEnabled !== true) return;
+            try {
+              const admin = await audit.findAdminByAuthUserId(db, user.id);
+              if (!admin) return;
+              await audit.recordTotpEnrolled(db, {
+                adminUserId: admin.id,
+                email: admin.email,
+                ip: requestIp(context),
+                userAgent: context?.request?.headers.get("user-agent") ?? null,
+              });
+            } catch (error) {
+              console.error("audit admin.totp_enrolled failed", error);
+            }
+          },
+        },
       },
     },
 
