@@ -59,7 +59,7 @@ export function SiteHeader() {
             Three lines set identically, so the block reads as one lockup
             rather than a label with a headline under it.
           */}
-          <span className="flex flex-col text-[0.58rem] leading-[1.4] font-medium tracking-[0.12em] text-white uppercase sm:text-[0.66rem]">
+          <span className="flex flex-col text-[0.5rem] leading-[1.4] font-medium tracking-[0.12em] text-white uppercase sm:text-[0.58rem]">
             <span>Seventh-day</span>
             <span>Adventist Church</span>
             <span>Newlife Nairobi</span>
