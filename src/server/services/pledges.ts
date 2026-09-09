@@ -1,10 +1,16 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { Db } from "@/db";
 import { auditLog, campaigns, pledgers, pledges } from "@/db/schema";
 import { conflict, notFound } from "@/server/errors";
 import { kesToMinor } from "@/server/money";
+import {
+  decodeCursor,
+  pageSize,
+  toPage,
+  type Page,
+} from "@/server/pagination";
 import { escapeLike } from "@/server/sql";
 import {
   PRIVACY_VERSION,
@@ -317,39 +323,89 @@ export type AdminPledgeRow = {
   createdAt: Date;
 };
 
+type PledgeListRow = {
+  id: string;
+  reference: string;
+  full_name: string;
+  amount_minor: string;
+  currency: string;
+  status: string;
+  created_at: string;
+};
+
+export type ListPledgesArgs = {
+  campaignSlug: string;
+  /** Free text, matched exactly as the search endpoint matches it. */
+  q?: string | null;
+  /** One status, or null for every status. */
+  status?: PledgeStatus | null;
+  limit?: number;
+  cursor?: string | null;
+};
+
 /**
- * Every pledge, newest first, for the admin screen.
+ * Pledges for the admin screen, newest first, filtered and paginated.
  *
  * This is the one place a pledger's name is returned alongside an amount, and
- * it is behind admin auth. No phone number and no email, because approving a
- * pledge does not require either and the screen has no use for them.
+ * it is behind admin auth. No phone number and no email: the screen filters on
+ * the phone but never shows it, because approving a pledge does not need it.
  *
- * Capped rather than paginated. The realistic volume for this congregation is
- * single digit thousands, and PLAN.md section 13 calls for cursor pagination
- * when this screen grows past being a launch stopgap.
+ * Keyset paginated on (created_at, id) descending, which replaces the cap this
+ * had before. The filters are part of the query rather than something applied
+ * to a page after it is fetched, so a page is always a full page and the
+ * cursor stays meaningful. A cursor is only valid for the filters it was
+ * produced under, which is why changing a filter clears it.
  */
 export async function listForAdmin(
   db: Db,
-  args: { campaignSlug: string; limit?: number },
-): Promise<AdminPledgeRow[]> {
-  const rows = await db
-    .select({
-      id: pledges.id,
-      reference: pledges.reference,
-      fullName: pledgers.fullName,
-      amountMinor: pledges.amountMinor,
-      currency: pledges.currency,
-      status: pledges.status,
-      createdAt: pledges.createdAt,
-    })
-    .from(pledges)
-    .innerJoin(pledgers, eq(pledgers.id, pledges.pledgerId))
-    .innerJoin(campaigns, eq(campaigns.id, pledges.campaignId))
-    .where(eq(campaigns.slug, args.campaignSlug))
-    .orderBy(desc(pledges.createdAt))
-    .limit(Math.min(args.limit ?? 200, 500));
+  args: ListPledgesArgs,
+): Promise<Page<AdminPledgeRow>> {
+  const limit = pageSize(args.limit);
+  const cursor = decodeCursor(args.cursor);
 
-  return rows.map((row) => ({ ...row, status: row.status as PledgeStatus }));
+  const term = args.q?.trim() ?? "";
+  // Below the search endpoint's own minimum the term is ignored rather than
+  // matched on, so a single stray character does not empty the screen.
+  const patterns = term.length >= 2 ? searchPatterns(term) : null;
+  const status = args.status ?? null;
+
+  const result = await db.execute(sql`
+    select p.id,
+           p.reference,
+           g.full_name,
+           p.amount_minor,
+           p.currency,
+           p.status,
+           p.created_at
+    from pledges p
+    join pledgers g on g.id = p.pledger_id
+    join campaigns c on c.id = p.campaign_id
+    where c.slug = ${args.campaignSlug}
+      and (${status}::text is null or p.status = ${status}::pledge_status)
+      and ${patterns ? matchesTerm(patterns) : sql`true`}
+      and (
+        ${cursor === null}::boolean
+        or (p.created_at, p.id) < (${cursor?.key ?? null}::timestamptz,
+                                   ${cursor?.id ?? null}::uuid)
+      )
+    order by p.created_at desc, p.id desc
+    limit ${limit + 1}
+  `);
+
+  const rows = (result.rows as PledgeListRow[]).map((row) => ({
+    id: row.id,
+    reference: row.reference,
+    fullName: row.full_name,
+    amountMinor: BigInt(row.amount_minor),
+    currency: row.currency,
+    status: row.status as PledgeStatus,
+    createdAt: new Date(row.created_at),
+  }));
+
+  return toPage(rows, limit, (row) => ({
+    key: row.createdAt.toISOString(),
+    id: row.id,
+  }));
 }
 
 /* ---------------------------------------------------------------------------
@@ -430,6 +486,56 @@ export const MIN_PHONE_DIGITS = 4;
  * few digits off a slip. Four digits is the floor; below that it would match
  * most of the congregation.
  */
+/** The three LIKE patterns one search term turns into. */
+export type SearchPatterns = {
+  referencePrefix: string;
+  nameContains: string;
+  /** Null when the term holds too few digits to be a phone number. */
+  phoneSuffix: string | null;
+};
+
+/**
+ * Turns what somebody typed into the patterns both callers match on.
+ *
+ * Shared by search(), which the allocate panel calls, and listForAdmin(), which
+ * the pledge list filters with. One definition, so a term cannot mean one thing
+ * in the search box on one screen and something else on another.
+ */
+export function searchPatterns(term: string): SearchPatterns {
+  const escaped = escapeLike(term);
+
+  /*
+   * Digits only, so "0712 345 678" and "+254 712 345 678" both reduce to
+   * something the column ends with. Null when there are too few to be
+   * meaningful, and the phone branch then matches nothing rather than
+   * everything.
+   */
+  const digits = term.replace(/\D/g, "");
+
+  return {
+    // References are stored upper case, so the prefix is compared upper case.
+    referencePrefix: `${escaped.toUpperCase()}%`,
+    nameContains: `%${escaped}%`,
+    phoneSuffix:
+      digits.length >= MIN_PHONE_DIGITS ? `%${escapeLike(digits)}` : null,
+  };
+}
+
+/**
+ * The condition that decides whether a pledge matches the term.
+ *
+ * Written against the aliases p (pledges) and g (pledgers), so every query
+ * using it has to name its tables the same way.
+ */
+function matchesTerm(patterns: SearchPatterns) {
+  return sql`(
+    p.reference like ${patterns.referencePrefix} escape '\\'
+    or (${patterns.phoneSuffix}::text is not null
+        and g.phone_e164 like ${patterns.phoneSuffix} escape '\\')
+    or g.full_name ilike ${patterns.nameContains} escape '\\'
+  )`;
+}
+
 export async function search(
   db: Db,
   args: SearchPledgesArgs,
@@ -439,21 +545,7 @@ export async function search(
   if (term === "") return [];
 
   const limit = Math.min(args.limit ?? SEARCH_LIMIT, SEARCH_LIMIT);
-  const escaped = escapeLike(term);
-
-  // References are stored upper case, so the prefix is compared upper case.
-  const referencePrefix = `${escaped.toUpperCase()}%`;
-  const nameContains = `%${escaped}%`;
-
-  /*
-   * Digits only, so "0712 345 678" and "+254 712 345 678" both reduce to
-   * something the column ends with. Null when there are too few to be
-   * meaningful, and the phone branch then matches nothing rather than
-   * everything.
-   */
-  const digits = term.replace(/\D/g, "");
-  const phoneSuffix =
-    digits.length >= MIN_PHONE_DIGITS ? `%${escapeLike(digits)}` : null;
+  const { referencePrefix, nameContains, phoneSuffix } = searchPatterns(term);
 
   const result = await db.execute(sql`
     select p.id,

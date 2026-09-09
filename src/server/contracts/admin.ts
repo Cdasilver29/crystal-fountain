@@ -26,3 +26,35 @@ export const pledgeSearchQuery = z.object({
 });
 
 export type PledgeSearchQuery = z.infer<typeof pledgeSearchQuery>;
+
+/**
+ * The pledge list filters, as they arrive in the query string.
+ *
+ * Everything is optional and everything tolerates rubbish. These values come
+ * from a URL somebody may have edited or bookmarked before a status was
+ * renamed, and the right answer to an unreadable filter is the unfiltered
+ * screen, not an error page.
+ */
+export const PLEDGE_STATUS_FILTERS = [
+  "all",
+  "pending",
+  "verified",
+  "fulfilled",
+  "cancelled",
+  "void",
+] as const;
+
+export type PledgeStatusFilter = (typeof PLEDGE_STATUS_FILTERS)[number];
+
+export const pledgeListFilters = z.object({
+  q: z
+    .string()
+    .trim()
+    .max(64)
+    .catch("")
+    .transform((value) => (value === "" ? null : value)),
+  status: z.enum(PLEDGE_STATUS_FILTERS).catch("all"),
+  cursor: z.string().max(512).catch("").transform((value) => value || null),
+});
+
+export type PledgeListFilters = z.infer<typeof pledgeListFilters>;
