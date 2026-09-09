@@ -31,6 +31,17 @@ const serverSchema = z.object({
   ADMIN_SECRET: z
     .string({ error: "required. A long random string that unlocks the admin screen." })
     .min(24, "must be at least 24 characters. Generate one, do not invent one."),
+  BETTER_AUTH_SECRET: z
+    .string({ error: "required. The signing key for Better Auth sessions." })
+    .min(32, "must be at least 32 characters. Generate one, do not invent one."),
+  /*
+   * The origin Better Auth is actually being served from. Defaults to the
+   * public site URL, which is right everywhere except a local server: the
+   * protocol decides whether cookies get the __Secure- prefix, so pointing a
+   * localhost server at the https production URL makes it issue cookies the
+   * browser then refuses to store.
+   */
+  BETTER_AUTH_URL: z.url().optional(),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -66,6 +77,8 @@ function getServerEnv(): ServerEnv {
     const parsed = serverSchema.safeParse({
       DATABASE_URL: process.env.DATABASE_URL,
       ADMIN_SECRET: process.env.ADMIN_SECRET,
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+      BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     });
     if (!parsed.success) fail(parsed.error);
     serverEnv = parsed.data;

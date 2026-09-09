@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   bigserial,
   boolean,
@@ -121,6 +122,20 @@ export const adminUsers = pgTable(
     role: text("role").notNull(),
     totpSecret: bytea("totp_secret"),
     isActive: boolean("is_active").notNull().default(true),
+    /*
+     * The Better Auth user this admin signs in as, once they have one.
+     *
+     * Nullable on purpose. Existing rows have no Better Auth account yet and
+     * must stay valid, and the legacy ADMIN_SECRET path has no user at all.
+     * Role, totp_secret and is_active stay here rather than moving into the
+     * library's tables.
+     */
+    authUserId: text("auth_user_id")
+      .unique()
+      // Declared with the callback form because auth_users is declared further
+      // down this file. Deleting the Better Auth user detaches the admin row
+      // rather than destroying the audit trail attached to it.
+      .references((): AnyPgColumn => authUsers.id, { onDelete: "set null" }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -314,4 +329,157 @@ export const auditLog = pgTable(
       sql`${t.actorType} in ('public','admin','system','webhook')`,
     ),
   ],
+);
+
+// better auth
+//
+// Better Auth owns these six tables outright. They are declared here rather
+// than generated so drizzle-kit sees them and the migration is checked into the
+// repo like every other one.
+//
+// Two things are deliberate. The drizzle property names are Better Auth's field
+// names verbatim (emailVerified, not email_verified), because the drizzle
+// adapter indexes the table object by field name and silently fails to match
+// otherwise. The physical tables are prefixed auth_, both because "user" is a
+// reserved word in Postgres and because it should be obvious at a glance which
+// tables this project owns and which the library does.
+//
+// admin_users is untouched apart from one new nullable column. Better Auth does
+// not adopt it as its user table: admin_users.id is a uuid, its totp_secret
+// predates the two factor plugin and means something different from the
+// plugin's secret, and adopting it would put role and is_active under the
+// library's lifecycle.
+
+export const authUsers = pgTable("auth_users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: citext("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  // Set by the two factor plugin once TOTP is verified.
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("auth_sessions_user_id_idx").on(t.userId)],
+);
+
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    // The scrypt hash for the credential provider. Never the password.
+    password: text("password"),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+      withTimezone: true,
+    }),
+    scope: text("scope"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("auth_accounts_user_id_idx").on(t.userId)],
+);
+
+export const authVerifications = pgTable(
+  "auth_verifications",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("auth_verifications_identifier_idx").on(t.identifier)],
+);
+
+export const authTwoFactors = pgTable(
+  "auth_two_factors",
+  {
+    id: text("id").primaryKey(),
+    // The TOTP shared secret, and the encoded backup codes. Both are secrets
+    // and neither is ever returned to a client by the plugin.
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true),
+    failedVerificationCount: integer("failed_verification_count").default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [
+    index("auth_two_factors_user_id_idx").on(t.userId),
+    index("auth_two_factors_secret_idx").on(t.secret),
+  ],
+);
+
+/** Better Auth's own limiter, keyed on ip and path. Not the per email rule. */
+export const authRateLimits = pgTable("auth_rate_limits", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
+
+/**
+ * Failed admin logins, for the per email lockout.
+ *
+ * Better Auth's limiter keys on ip and path and counts every request rather
+ * than every failure, so it cannot express "five failures for this account in
+ * fifteen minutes". This table can. Only failures are written, and a successful
+ * login clears the account's rows, so the count is always consecutive failures.
+ */
+export const adminLoginAttempts = pgTable(
+  "admin_login_attempts",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    email: citext("email").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    ip: inet("ip"),
+    userAgent: text("user_agent"),
+  },
+  (t) => [index("admin_login_attempts_email_at_idx").on(t.email, t.at)],
 );
