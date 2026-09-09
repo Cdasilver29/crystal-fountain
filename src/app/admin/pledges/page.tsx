@@ -3,11 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { ExportButton } from "@/components/admin/export-button";
 import { PledgeFilters } from "@/components/admin/pledge-filters";
 import { PledgeTable } from "@/components/admin/pledge-table";
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { db } from "@/db";
-import { getCurrentAdmin } from "@/lib/admin-context";
+import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
 import { formatNumber } from "@/lib/format";
 import { pledgeListFilters } from "@/server/contracts/admin";
@@ -100,7 +101,20 @@ export default async function AdminPledgesPage({
 
       <main className="px-4 py-8 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
-          <PledgeFilters q={filters.q} status={filters.status} />
+          {/*
+            The export sits beside the filters but is not one of them: it hands
+            out the whole book, not the filtered page, so it does not move when
+            a filter changes.
+          */}
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="flex-1">
+              <PledgeFilters q={filters.q} status={filters.status} />
+            </div>
+
+            {hasAtLeast(admin, "treasurer") && (
+              <ExportButton href="/api/admin/exports/pledges.csv" />
+            )}
+          </div>
 
           <p className="mb-4 text-sm text-neutral-600">
             {filtering ? (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { ExportButton } from "@/components/admin/export-button";
 import { PaymentTable } from "@/components/admin/payment-table";
 import { db } from "@/db";
 import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
@@ -91,11 +92,18 @@ export default async function AdminPaymentsPage({
 
       <main className="px-4 py-8 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
-          <p className="mb-4 text-sm text-neutral-600">
-            {formatNumber(page.items.length)} payments on this page,{" "}
-            {formatNumber(unallocatedCount)} not yet fully matched to a pledge,{" "}
-            {formatKES(unallocatedMinor)} still to allocate.
-          </p>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-neutral-600">
+              {formatNumber(page.items.length)} payments on this page,{" "}
+              {formatNumber(unallocatedCount)} not yet fully matched to a
+              pledge, {formatKES(unallocatedMinor)} still to allocate.
+            </p>
+
+            {/* The whole book, not this page of it. */}
+            {hasAtLeast(admin, "treasurer") && (
+              <ExportButton href="/api/admin/exports/payments.csv" />
+            )}
+          </div>
 
           <PaymentTable
             rows={page.items.map((row) => ({

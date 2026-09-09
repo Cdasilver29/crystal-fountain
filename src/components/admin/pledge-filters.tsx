@@ -87,7 +87,9 @@ export function PledgeFilters({
   const filtered = q !== null || status !== "all";
 
   return (
-    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+    // No bottom margin: the page places this in a row with the export control
+    // and owns the spacing below it.
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="flex-1">
         <label htmlFor="pledge-search" className="sr-only">
           Search pledges by reference, name or phone number
