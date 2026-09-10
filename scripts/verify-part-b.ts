@@ -73,7 +73,7 @@ async function main() {
   heading("2. contract rejects bad input");
   const badCases: [string, unknown][] = [
     ["amount below the minimum", { amountKes: 50 }],
-    ["amount above the maximum", { amountKes: 100_000_001 }],
+    ["amount above the maximum", { amountKes: 1_000_000_001 }],
     ["fractional amount", { amountKes: 100.5 }],
     ["missing record consent", { recordConsent: false }],
     ["one character name", { fullName: "A" }],

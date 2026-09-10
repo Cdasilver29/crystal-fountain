@@ -33,9 +33,17 @@ export const PLEDGE_STATUSES = [
 ] as const;
 export type PledgeStatus = (typeof PLEDGE_STATUSES)[number];
 
-/** Shillings, not cents. Converted to minor units in the money module. */
+/**
+ * Shillings, not cents. Converted to minor units in the money module.
+ *
+ * The ceiling is KES 1,000,000,000, which is 100000000000 minor units. It was
+ * raised from KES 100,000,000 when the form started suggesting family pledges
+ * of up to KES 10,000,000, so that one large family or corporate commitment is
+ * not turned away by the form. The reference is unaffected: it encodes a
+ * sequence and not an amount, so it stays inside its 12 characters.
+ */
 export const MIN_PLEDGE_KES = 100;
-export const MAX_PLEDGE_KES = 100_000_000;
+export const MAX_PLEDGE_KES = 1_000_000_000;
 
 const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;

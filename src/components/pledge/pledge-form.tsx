@@ -29,7 +29,20 @@ import { createPledgeInput } from "@/server/contracts/pledges";
  * convenience only. The server revalidates everything.
  */
 
-const QUICK_AMOUNTS = [10_000, 50_000, 100_000, 500_000, 1_000_000];
+/**
+ * The suggested amounts, in two tiers.
+ *
+ * The family tier comes first and is set larger, because the decision this form
+ * is really asking about is a household's three year commitment. The old single
+ * row ran 10,000 to 1,000,000, which made 1,000,000 read as the ceiling; here
+ * it is where the family tier starts. The individual tier is still one tap
+ * away, and any figure at all can be typed underneath.
+ */
+const FAMILY_AMOUNTS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000];
+const INDIVIDUAL_AMOUNTS = [10_000, 50_000, 100_000, 250_000, 500_000];
+
+/** Digits the amount field accepts, enough for the KES 1,000,000,000 ceiling. */
+const MAX_AMOUNT_DIGITS = 10;
 
 const STEP_LABELS = ["Amount", "Your details", "Review"] as const;
 
@@ -194,57 +207,109 @@ export function PledgeForm() {
         >
         {step === 0 && (
           <div className="mt-5">
-            <Label htmlFor="amount" className="text-sm text-neutral-600">
-              Amount in Kenyan shillings
-            </Label>
+            {/*
+              The family tier sits on its own tinted panel so it reads as the
+              option on offer rather than the first of two equal lists. The
+              largest chip runs the full width of the panel, which both ranks it
+              and keeps "KES 10,000,000" off a second line on a narrow phone.
+            */}
+            <div className="rounded-xl border border-campfire/30 bg-campfire/5 p-4">
+              <h3 id="family-tier" className="text-base font-semibold text-navy">
+                Family commitment
+              </h3>
+              <p className="mt-0.5 text-sm text-neutral-600">
+                Family pledge over 3 years
+              </p>
 
-            <div className="mt-2 flex items-baseline gap-2 border-b-2 border-neutral-200 pb-2 has-[:focus-visible]:border-campfire">
-              <span className="text-2xl font-medium text-neutral-400">KES</span>
-              <input
-                id="amount"
-                // type="text" with inputMode numeric gives the Android and iOS
-                // numeric keypad while still allowing grouped digits. type
-                // "number" would forbid the separators and add spinners.
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="off"
-                placeholder="0"
-                aria-describedby={errors.amountKes ? "amount-error" : undefined}
-                aria-invalid={Boolean(errors.amountKes)}
-                value={groupDigits(amountDigits)}
-                onChange={(event) =>
-                  setAmountDigits(
-                    event.target.value.replace(/\D/g, "").slice(0, 9),
-                  )
-                }
-                className="tabular w-full min-w-0 rounded bg-transparent text-4xl font-semibold tracking-tight text-navy outline-none placeholder:text-neutral-300 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
-              />
+              <div
+                role="group"
+                aria-labelledby="family-tier"
+                className="mt-3 grid grid-cols-2 gap-2"
+              >
+                {FAMILY_AMOUNTS.map((amount, index) => (
+                  <AmountChip
+                    key={amount}
+                    amount={amount}
+                    tier="family"
+                    selected={amountDigits === String(amount)}
+                    onSelect={setAmountDigits}
+                    className={
+                      index === FAMILY_AMOUNTS.length - 1
+                        ? "col-span-2"
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
             </div>
 
-            {errors.amountKes && <FieldError id="amount-error">{errors.amountKes}</FieldError>}
+            <div className="mt-6">
+              <h3 id="individual-tier" className="text-sm font-medium text-navy">
+                Individual contribution
+              </h3>
+              <p className="mt-0.5 text-sm text-neutral-600">
+                Or choose an amount
+              </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {QUICK_AMOUNTS.map((amount) => {
-                const selected = amountDigits === String(amount);
-                return (
-                  <button
+              <div
+                role="group"
+                aria-labelledby="individual-tier"
+                className="mt-3 flex flex-wrap gap-2"
+              >
+                {INDIVIDUAL_AMOUNTS.map((amount) => (
+                  <AmountChip
                     key={amount}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setAmountDigits(String(amount))}
-                    className={cn(
-                      "tabular rounded-full border px-3.5 py-2 text-sm font-medium transition-colors",
-                      "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
-                      selected
-                        ? "border-navy bg-navy text-white"
-                        : "border-neutral-200 bg-white text-navy hover:border-denim",
-                    )}
-                  >
-                    {formatNumber(amount)}
-                  </button>
-                );
-              })}
+                    amount={amount}
+                    tier="individual"
+                    selected={amountDigits === String(amount)}
+                    onSelect={setAmountDigits}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/*
+              Any figure at all, below both tiers. A chip writes into this same
+              field, so whatever is about to be pledged is always readable here.
+            */}
+            <div className="mt-6 border-t border-neutral-100 pt-5">
+              <Label htmlFor="amount" className="text-sm text-neutral-600">
+                Enter your own amount
+              </Label>
+
+              <div className="mt-2 flex items-baseline gap-2 border-b-2 border-neutral-200 pb-2 has-[:focus-visible]:border-campfire">
+                <span className="text-2xl font-medium text-neutral-400">
+                  KES
+                </span>
+                <input
+                  id="amount"
+                  // type="text" with inputMode numeric gives the Android and iOS
+                  // numeric keypad while still allowing grouped digits. type
+                  // "number" would forbid the separators and add spinners.
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  placeholder="0"
+                  aria-describedby={
+                    errors.amountKes ? "amount-error" : undefined
+                  }
+                  aria-invalid={Boolean(errors.amountKes)}
+                  value={groupDigits(amountDigits)}
+                  onChange={(event) =>
+                    setAmountDigits(
+                      event.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, MAX_AMOUNT_DIGITS),
+                    )
+                  }
+                  className="tabular w-full min-w-0 rounded bg-transparent text-3xl font-semibold tracking-tight text-navy outline-none placeholder:text-neutral-300 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none sm:text-4xl"
+                />
+              </div>
+
+              {errors.amountKes && (
+                <FieldError id="amount-error">{errors.amountKes}</FieldError>
+              )}
             </div>
           </div>
         )}
@@ -436,6 +501,67 @@ export function PledgeForm() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * One suggested amount.
+ *
+ * The family tier is the same control a size up: more padding, a heavier
+ * numeral and a squarer corner, so the hierarchy is legible without turning the
+ * individual tier into something a member has to hunt for. The currency sits in
+ * front of every figure, muted, because "KES 5,000,000" is the thing meant to
+ * anchor the decision.
+ */
+function AmountChip({
+  amount,
+  tier,
+  selected,
+  onSelect,
+  className,
+}: {
+  amount: number;
+  tier: "family" | "individual";
+  selected: boolean;
+  onSelect: (digits: string) => void;
+  className?: string;
+}) {
+  const family = tier === "family";
+
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={() => onSelect(String(amount))}
+      className={cn(
+        "flex items-baseline justify-center gap-1 border transition-colors",
+        "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
+        family ? "rounded-xl px-3 py-3" : "rounded-full px-3 py-1.5",
+        selected
+          ? "border-navy bg-navy text-white"
+          : family
+            ? "border-campfire/40 bg-white text-navy hover:border-campfire"
+            : "border-neutral-200 bg-white text-navy hover:border-denim",
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          family ? "text-[11px]" : "text-[10px]",
+          selected ? "text-white/70" : "text-neutral-500",
+        )}
+      >
+        KES
+      </span>
+      <span
+        className={cn(
+          "tabular",
+          family ? "text-sm font-semibold sm:text-base" : "text-xs font-medium",
+        )}
+      >
+        {formatNumber(amount)}
+      </span>
+    </button>
   );
 }
 
