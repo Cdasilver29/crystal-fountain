@@ -30,12 +30,15 @@ import {
 } from "@/server/pagination";
 import { escapeLike } from "@/server/sql";
 import {
+  instalmentMinor,
   PRIVACY_VERSION,
   PUBLIC_TOKEN_LENGTH,
   type CreatePledgeInput,
   type PledgeChannel,
+  type PledgeFrequency,
   type PledgeIntent,
   type PledgeStatus,
+  type RedemptionChoice,
 } from "@/server/contracts/pledges";
 
 /**
@@ -361,6 +364,23 @@ async function createOnce(
     const status: PledgeStatus = autoApproved ? "verified" : "pending";
     const verifiedAt = autoApproved ? now : null;
 
+    /*
+     * The redemption plan, worked out here rather than taken from the client.
+     *
+     * The frequency is what decides, so intent can never disagree with the
+     * frequency column beside it. The instalment amount is derived from the
+     * whole pledge total and not from what this submission added: somebody who
+     * pledges 1,000,000 and later adds 4,000,000 is paying off 5,000,000 over
+     * the three years, and quoting them a plan for the addition alone would be
+     * wrong.
+     */
+    const redemption: RedemptionChoice = input.installmentFrequency ?? "one_off";
+    const intent: PledgeIntent =
+      redemption === "one_off" ? "one_off" : "installment";
+    const installmentFrequency =
+      redemption === "one_off" ? null : redemption;
+    const installmentAmountMinor = instalmentMinor(total, redemption);
+
     let pledge;
 
     if (existing) {
@@ -382,7 +402,9 @@ async function createOnce(
         .update(pledges)
         .set({
           amountMinor: total,
-          intent: input.intent,
+          intent,
+          installmentFrequency,
+          installmentAmountMinor,
           status,
           verifiedAt,
           updatedAt: now,
@@ -435,7 +457,9 @@ async function createOnce(
           reference: sql`next_pledge_reference()`,
           publicToken: nanoid(PUBLIC_TOKEN_LENGTH),
           amountMinor: addedMinor,
-          intent: input.intent,
+          intent,
+          installmentFrequency,
+          installmentAmountMinor,
           status,
           verifiedAt,
           channel,
@@ -628,6 +652,10 @@ export type PublicPledgeView = {
   currency: string;
   status: PledgeStatus;
   intent: PledgeIntent;
+  /** Null on a one off pledge. */
+  installmentFrequency: PledgeFrequency | null;
+  /** What one instalment comes to, in minor units. Null on a one off pledge. */
+  installmentAmountMinor: bigint | null;
   createdAt: Date;
   /** Null unless the pledger ticked the display consent box. */
   displayName: string | null;
@@ -652,6 +680,8 @@ export async function getByPublicToken(
       currency: pledges.currency,
       status: pledges.status,
       intent: pledges.intent,
+      installmentFrequency: pledges.installmentFrequency,
+      installmentAmountMinor: pledges.installmentAmountMinor,
       createdAt: pledges.createdAt,
       displayName: pledgers.displayName,
       displayConsent: pledgers.displayConsent,
@@ -669,6 +699,8 @@ export async function getByPublicToken(
     currency: row.currency,
     status: row.status as PledgeStatus,
     intent: row.intent as PledgeIntent,
+    installmentFrequency: row.installmentFrequency as PledgeFrequency | null,
+    installmentAmountMinor: row.installmentAmountMinor,
     createdAt: row.createdAt,
     displayName: row.displayConsent ? row.displayName : null,
   };

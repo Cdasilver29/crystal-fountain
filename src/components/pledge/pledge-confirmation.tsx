@@ -6,6 +6,8 @@ import { CopyButton } from "@/components/pledge/copy-button";
 import { ShareButton } from "@/components/pledge/share-button";
 import type { CampaignTotalsDto } from "@/lib/campaign";
 import { formatDate, formatKES } from "@/lib/format";
+import { redemptionSummary } from "@/lib/redemption";
+import { REDEMPTION_PLANS } from "@/server/contracts/pledges";
 import type { PublicPledgeView } from "@/server/services/pledges";
 
 /**
@@ -33,6 +35,14 @@ export function PledgeConfirmation({
   justCreated?: boolean;
 }) {
   const pledgeUrl = `${siteUrl.replace(/\/$/, "")}/p/${token}`;
+
+  /*
+   * The redemption plan, rebuilt from the columns rather than from a stored
+   * sentence, so a pledge that later accumulates shows the plan for what it now
+   * owes rather than for what it owed when the sentence was written.
+   */
+  const plan = pledge.installmentFrequency;
+  const planSummary = plan ? redemptionSummary(pledge.amountMinor, plan) : null;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
@@ -102,6 +112,19 @@ export function PledgeConfirmation({
                   {formatKES(pledge.amountMinor)}
                 </dd>
               </div>
+              {plan && (
+                <div className="flex items-baseline justify-between gap-4 py-3">
+                  <dt className="text-neutral-500">Redemption plan</dt>
+                  <dd className="text-right font-medium text-navy">
+                    {REDEMPTION_PLANS[plan].label}
+                    {planSummary && (
+                      <span className="tabular block text-xs font-normal text-neutral-500">
+                        {planSummary}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
               <div className="flex items-baseline justify-between gap-4 py-3">
                 <dt className="text-neutral-500">Recorded on</dt>
                 <dd className="font-medium text-navy">

@@ -50,6 +50,93 @@ export type PledgeFrequency = (typeof PLEDGE_FREQUENCIES)[number];
 export const PLEDGE_CATEGORIES = ["family", "individual"] as const;
 export type PledgeCategory = (typeof PLEDGE_CATEGORIES)[number];
 
+/**
+ * How long a pledge is understood to run.
+ *
+ * Three years, matching the commitment table the campaign has been presented
+ * with from the start. Every instalment figure the form quotes is this number
+ * divided down, so a member reading "per month" on the form and a member
+ * reading the commitment table are looking at the same arithmetic.
+ */
+export const REDEMPTION_PERIOD_MONTHS = 36;
+
+/** What the redemption dropdown offers. One off, or one of the frequencies. */
+export const REDEMPTION_CHOICES = [
+  "one_off",
+  ...PLEDGE_FREQUENCIES,
+] as const;
+export type RedemptionChoice = (typeof REDEMPTION_CHOICES)[number];
+
+export type RedemptionPlan = {
+  /** The dropdown label. */
+  label: string;
+  /** How many payments the pledge is split into over the three years. */
+  instalments: number;
+  /** What to call those payments when counting them. */
+  periodNoun: string;
+  /** How to describe one of them. */
+  eachLabel: string;
+};
+
+export const REDEMPTION_PLANS: Record<RedemptionChoice, RedemptionPlan> = {
+  one_off: {
+    label: "One-off payment",
+    instalments: 1,
+    periodNoun: "payment",
+    eachLabel: "in one payment",
+  },
+  monthly: {
+    label: "Monthly",
+    instalments: REDEMPTION_PERIOD_MONTHS,
+    periodNoun: "months",
+    eachLabel: "per month",
+  },
+  quarterly: {
+    label: "Quarterly",
+    instalments: REDEMPTION_PERIOD_MONTHS / 3,
+    periodNoun: "quarters",
+    eachLabel: "per quarter",
+  },
+  semi_annually: {
+    label: "Semi-annually",
+    instalments: REDEMPTION_PERIOD_MONTHS / 6,
+    periodNoun: "payments",
+    eachLabel: "every six months",
+  },
+  annually: {
+    label: "Annually",
+    instalments: REDEMPTION_PERIOD_MONTHS / 12,
+    periodNoun: "years",
+    eachLabel: "per year",
+  },
+};
+
+/**
+ * What one instalment comes to, in minor units, or null for a one off pledge.
+ *
+ * Whole shillings, rounded up. Nobody pays 138,888 shillings and 89 cents by
+ * M-Pesa, and rounding up rather than down means somebody who follows the plan
+ * to the letter finishes having covered the pledge rather than a few shillings
+ * short of it. The last payment is smaller in practice, which is the treasurer's
+ * business and not the form's.
+ *
+ * All integer arithmetic on bigints. Nothing here turns money into a JavaScript
+ * number, per CLAUDE.md.
+ */
+export function instalmentMinor(
+  totalMinor: bigint,
+  choice: RedemptionChoice,
+): bigint | null {
+  if (choice === "one_off") return null;
+
+  const instalments = BigInt(REDEMPTION_PLANS[choice].instalments);
+  const shillings = totalMinor / 100n;
+  // Integer ceiling: (a + b - 1) / b.
+  const perInstalment = (shillings + instalments - 1n) / instalments;
+
+  return perInstalment * 100n;
+}
+
 export const PLEDGE_TIERS = [
   "family_above_10m",
   "family_1m_to_10m",
@@ -120,7 +207,24 @@ export const createPledgeInput = z.object({
       `The largest pledge this form accepts is KES ${MAX_PLEDGE_KES.toLocaleString("en-KE")}. Contact the treasurer for anything larger.`,
     ),
 
+  /*
+   * Kept for the callers that already send it, but the frequency below is what
+   * actually decides. A submission carrying a frequency is an instalment
+   * pledge and one without is a one off, whatever intent says, so the two
+   * columns cannot end up disagreeing with each other in the database.
+   */
   intent: z.enum(PLEDGE_INTENTS),
+
+  /*
+   * How the pledger plans to redeem, when they picked something other than a
+   * single payment. Optional, because one off is the default and sends nothing.
+   *
+   * The instalment amount is deliberately not accepted here. It is money, it is
+   * derived from the pledge total, and the total can change under accumulation,
+   * so the server works it out and the client is never asked to be right about
+   * it.
+   */
+  installmentFrequency: z.enum(PLEDGE_FREQUENCIES).optional(),
 
   // Analytics metadata. Optional, because the treasurer's own entry point and
   // any older client have neither, and a pledge is perfectly valid without.

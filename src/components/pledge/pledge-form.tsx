@@ -15,8 +15,16 @@ import {
   formatPhoneForDisplay,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { redemptionSummary } from "@/lib/redemption";
 import { normalizeKenyanPhone } from "@/server/contracts/phone";
-import { createPledgeInput } from "@/server/contracts/pledges";
+import {
+  createPledgeInput,
+  REDEMPTION_CHOICES,
+  REDEMPTION_PLANS,
+  type PledgeCategory,
+  type PledgeTier,
+  type RedemptionChoice,
+} from "@/server/contracts/pledges";
 
 /**
  * The three step pledge form.
@@ -31,33 +39,91 @@ import { createPledgeInput } from "@/server/contracts/pledges";
  */
 
 /**
- * The suggested amounts, in two tiers.
+ * The suggested amounts, as two categories of three tiers each.
  *
- * The family tier comes first and is set larger, because the decision this form
- * is really asking about is a household's three year commitment. The old single
- * row ran 10,000 to 1,000,000, which made 1,000,000 read as the ceiling; here
- * it is where the family tier starts. The individual tier is still one tap
- * away, and any figure at all can be typed underneath.
+ * A household deciding together and a member deciding alone are answering
+ * different questions, and a single list of chips has to pick one of them to
+ * insult. Two tabs let each see figures that make sense for them, with the
+ * family tab first and selected by default because the campaign's own
+ * commitment table is built around what a household gives over three years.
  *
- * The individual tier starts at 50,000 rather than at the smallest pledge the
- * form takes. A suggestion is an anchor, so the lowest one on offer is the one
- * a hesitant member settles on; somebody giving less than that types it in and
- * is accepted, which is what the contract floor of KES 100 is for.
+ * Within a tab the tiers run from largest to smallest, so the first thing read
+ * is the most ambitious one on offer. A suggestion is an anchor, and the lowest
+ * figure on screen is the one a hesitant member settles on, so the bottom tier
+ * is a floor for the suggestions rather than a floor for the pledge: anything
+ * at all can be typed into the custom field, down to the contract minimum of
+ * KES 100.
  *
- * 1,000,000 is deliberately in both tiers: it is the top of what one person
- * gives and the floor of what a household commits over three years. That means
- * a value alone cannot say which chip is pressed, so the selection carries its
- * tier as well.
+ * The tier keys are the ones the contract stores on each increment, so what the
+ * form calls a tier and what analytics later counts as one are the same thing.
  */
-const FAMILY_AMOUNTS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000];
-const INDIVIDUAL_AMOUNTS = [50_000, 100_000, 250_000, 500_000, 1_000_000];
+export type Tier = {
+  key: PledgeTier;
+  /** The heading. What choosing this tier means. */
+  label: string;
+  /** The range it covers, read underneath the label. */
+  range: string;
+  amounts: number[];
+  /**
+   * Whether to give this tier the gold treatment. Only the family landmark
+   * tier has it: making every top tier look special would make none of them.
+   */
+  premium?: boolean;
+};
+
+export const CATEGORY_TIERS: Record<PledgeCategory, Tier[]> = {
+  family: [
+    {
+      key: "family_above_10m",
+      label: "Landmark commitment",
+      range: "Above KES 10 million",
+      amounts: [10_000_000, 15_000_000, 20_000_000, 50_000_000],
+      premium: true,
+    },
+    {
+      key: "family_1m_to_10m",
+      label: "Family pledge over 3 years",
+      range: "KES 1 million to 10 million",
+      amounts: [1_000_000, 2_000_000, 3_000_000, 5_000_000, 7_000_000],
+    },
+    {
+      key: "family_below_1m",
+      label: "Every contribution counts",
+      range: "Below KES 1 million",
+      amounts: [100_000, 250_000, 500_000, 750_000],
+    },
+  ],
+  individual: [
+    {
+      key: "individual_above_1m",
+      label: "Lead the way",
+      range: "Above KES 1 million",
+      amounts: [1_000_000, 2_000_000, 5_000_000],
+    },
+    {
+      key: "individual_100k_to_1m",
+      label: "Individual commitment",
+      range: "KES 100,000 to 1 million",
+      amounts: [100_000, 250_000, 500_000, 750_000],
+    },
+    {
+      key: "individual_below_100k",
+      label: "Start your journey",
+      range: "Below KES 100,000",
+      amounts: [10_000, 25_000, 50_000, 75_000],
+    },
+  ],
+};
+
+export const CATEGORY_LABELS: Record<PledgeCategory, string> = {
+  family: "Family / group pledge",
+  individual: "Individual pledge",
+};
 
 /** Digits the amount field accepts, enough for the KES 1,000,000,000 ceiling. */
 const MAX_AMOUNT_DIGITS = 10;
 
 const STEP_LABELS = ["Amount", "Your details", "Review"] as const;
-
-type AmountTier = "family" | "individual";
 
 type Errors = Record<string, string>;
 
@@ -82,10 +148,15 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
   // came from. Reset on every move, never read for anything but the animation.
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [amountDigits, setAmountDigits] = useState("");
-  // Which chip is pressed, or null when the amount was typed. Two chips share
-  // the value 1,000,000, so the tier is part of the identity.
+  // Which tab is open. Family first, because that is the decision the campaign
+  // is really asking a household to make.
+  const [category, setCategory] = useState<PledgeCategory>("family");
+  const [redemption, setRedemption] = useState<RedemptionChoice>("one_off");
+  // Which chip is pressed, or null when the amount was typed. Several tiers
+  // share a value, 1,000,000 and 100,000 among them, so the tier is part of the
+  // identity and a value alone cannot say which chip is lit.
   const [chosen, setChosen] = useState<{
-    tier: AmountTier;
+    tier: PledgeTier;
     amount: number;
   } | null>(null);
   const [fullName, setFullName] = useState("");
@@ -112,7 +183,7 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
 
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  function chooseAmount(tier: AmountTier, amount: number) {
+  function chooseAmount(tier: PledgeTier, amount: number) {
     setAmountDigits(String(amount));
     setChosen({ tier, amount });
   }
@@ -122,7 +193,35 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
     setChosen(null);
   }
 
+  /*
+   * Switching tabs drops the pressed chip but keeps the amount.
+   *
+   * Somebody who taps 1,000,000 on the family tab and then looks at the
+   * individual one has not changed their mind about the figure, so throwing it
+   * away would be rude. The chip cannot stay lit, though: it belongs to a tier
+   * that is no longer on screen. The amount then counts as custom, which is
+   * what it has become.
+   */
+  function chooseCategory(next: PledgeCategory) {
+    setCategory(next);
+    setChosen(null);
+  }
+
   const amountKes = amountDigits === "" ? Number.NaN : Number(amountDigits);
+
+  /*
+   * The instalment sentence, or null when there is nothing to divide.
+   *
+   * Built from the digits as a bigint rather than from amountKes, so the
+   * arithmetic behind the figure a member reads is the same integer arithmetic
+   * the server does, per CLAUDE.md. The server recomputes it from the pledge
+   * total anyway, which under accumulation can be larger than what is on screen
+   * here.
+   */
+  const breakdown =
+    amountDigits === ""
+      ? null
+      : redemptionSummary(BigInt(amountDigits) * 100n, redemption);
 
   const payload = {
     fullName,
@@ -130,9 +229,19 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
     email,
     membershipNo,
     amountKes,
-    // The instalment toggle is hidden for now. Every pledge is one off until
-    // the treasurer asks for instalments.
-    intent: "one_off" as const,
+    /*
+     * The frequency is what decides, and the server derives the intent from it
+     * rather than trusting this field, so the two can never disagree in the
+     * database. It is sent because the contract still carries it.
+     */
+    intent: (redemption === "one_off" ? "one_off" : "installment") as
+      | "one_off"
+      | "installment",
+    installmentFrequency: redemption === "one_off" ? undefined : redemption,
+    // Analytics only. A typed figure carries the tab it was typed on and the
+    // tier "custom", because that is exactly what it is.
+    category,
+    tier: chosen?.tier ?? ("custom" as PledgeTier),
     recordConsent,
     contactConsent,
     displayConsent,
@@ -277,80 +386,118 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
         {step === 0 && (
           <div className="mt-5">
             {/*
-              The family tier sits on its own tinted panel so it reads as the
-              option on offer rather than the first of two equal lists. The
-              largest chip runs the full width of the panel, which both ranks it
-              and keeps "KES 10,000,000" off a second line on a narrow phone.
+              Two tabs rather than two headings, because these are alternative
+              ways of answering the same question and only one of them applies
+              to any given person. Arrow keys move between them, which is what a
+              keyboard user expects from a tablist and what a pair of plain
+              buttons would not give them.
             */}
-            <div className="rounded-xl border border-campfire/30 bg-campfire/5 p-4">
-              <h3 id="family-tier" className="text-base font-semibold text-navy">
-                Family commitment
-              </h3>
-              <p className="mt-0.5 text-sm text-neutral-600">
-                Family pledge over 3 years
-              </p>
-
-              <div
-                role="group"
-                aria-labelledby="family-tier"
-                className="mt-3 grid grid-cols-2 gap-2"
-              >
-                {FAMILY_AMOUNTS.map((amount, index) => (
-                  <AmountChip
-                    key={amount}
-                    amount={amount}
-                    tier="family"
-                    selected={
-                      chosen?.tier === "family" && chosen.amount === amount
-                    }
-                    onSelect={chooseAmount}
-                    className={
-                      index === FAMILY_AMOUNTS.length - 1
-                        ? "col-span-2"
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
+            <div
+              role="tablist"
+              aria-label="Who is making this pledge"
+              className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1"
+              onKeyDown={(event) => {
+                if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+                  return;
+                }
+                event.preventDefault();
+                chooseCategory(category === "family" ? "individual" : "family");
+              }}
+            >
+              {(Object.keys(CATEGORY_TIERS) as PledgeCategory[]).map((key) => {
+                const active = category === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    id={`tab-${key}`}
+                    aria-selected={active}
+                    aria-controls={`panel-${key}`}
+                    tabIndex={active ? 0 : -1}
+                    onClick={() => chooseCategory(key)}
+                    className={cn(
+                      "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
+                      active
+                        ? "bg-white text-navy shadow-sm"
+                        : "text-neutral-600 hover:text-navy",
+                    )}
+                  >
+                    {CATEGORY_LABELS[key]}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="mt-6">
-              <h3 id="individual-tier" className="text-sm font-medium text-navy">
-                Individual contribution
-              </h3>
-              <p className="mt-0.5 text-sm text-neutral-600">
-                Or choose an amount
-              </p>
+            <div
+              role="tabpanel"
+              id={`panel-${category}`}
+              aria-labelledby={`tab-${category}`}
+              className="mt-4 space-y-3"
+            >
+              {CATEGORY_TIERS[category].map((tier) => (
+                <div
+                  key={tier.key}
+                  className={cn(
+                    "rounded-xl border p-4",
+                    tier.premium
+                      ? "border-campfire/40 bg-campfire/5"
+                      : "border-neutral-200 bg-white",
+                  )}
+                >
+                  <h3
+                    id={`tier-${tier.key}`}
+                    className={cn(
+                      "text-base font-semibold",
+                      tier.premium ? "text-campfire" : "text-navy",
+                    )}
+                  >
+                    {tier.label}
+                  </h3>
+                  <p className="mt-0.5 text-sm text-neutral-600">
+                    {tier.range}
+                  </p>
 
-              <div
-                role="group"
-                aria-labelledby="individual-tier"
-                className="mt-3 flex flex-wrap gap-2"
-              >
-                {INDIVIDUAL_AMOUNTS.map((amount) => (
-                  <AmountChip
-                    key={amount}
-                    amount={amount}
-                    tier="individual"
-                    selected={
-                      chosen?.tier === "individual" && chosen.amount === amount
-                    }
-                    onSelect={chooseAmount}
-                  />
-                ))}
-              </div>
+                  <div
+                    role="group"
+                    aria-labelledby={`tier-${tier.key}`}
+                    className="mt-3 flex flex-wrap gap-2"
+                  >
+                    {tier.amounts.map((amount) => (
+                      <AmountChip
+                        key={amount}
+                        amount={amount}
+                        tierKey={tier.key}
+                        premium={Boolean(tier.premium)}
+                        selected={
+                          chosen?.tier === tier.key && chosen.amount === amount
+                        }
+                        onSelect={chooseAmount}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/*
-              Any figure at all, below both tiers. A chip writes into this same
-              field, so whatever is about to be pledged is always readable here.
+              Its own card rather than a line under the chips. Plenty of people
+              arrive knowing exactly what they intend to give, and for them the
+              suggestions are the thing to skip past; this has to look like a
+              way of pledging rather than an escape hatch from one. A chip
+              writes into this same field, so whatever is about to be pledged is
+              always readable in one place.
             */}
-            <div className="mt-6 border-t border-neutral-100 pt-5">
-              <Label htmlFor="amount" className="text-sm text-neutral-600">
-                Enter your own amount
+            <div className="mt-5 rounded-xl border-2 border-denim/25 bg-denim/5 p-4">
+              <Label htmlFor="amount" className="text-base font-semibold text-navy">
+                Create your own pledge
               </Label>
+              <p className="mt-0.5 text-sm text-neutral-600">
+                Any amount from KES 100 upward.
+              </p>
 
-              <div className="mt-2 flex items-baseline gap-2 border-b-2 border-neutral-200 pb-2 has-[:focus-visible]:border-campfire">
+              <div className="mt-3 flex items-baseline gap-2 border-b-2 border-denim/30 pb-2 has-[:focus-visible]:border-campfire">
                 <span className="text-2xl font-medium text-neutral-400">
                   KES
                 </span>
@@ -511,6 +658,51 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
                 pledges feed on the website.
               </Consent>
             </fieldset>
+
+            {/*
+              After the consents, because it is the last thing to decide and the
+              only one of these questions that changes what the pledge says.
+              Nothing here is binding: the treasurer records what actually
+              arrives, and this is a statement of how somebody means to pay.
+            */}
+            <div className="border-t border-neutral-100 pt-5">
+              <Label htmlFor="redemption">
+                How do you plan to redeem your pledge?
+              </Label>
+
+              <select
+                id="redemption"
+                value={redemption}
+                onChange={(event) =>
+                  setRedemption(event.target.value as RedemptionChoice)
+                }
+                className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              >
+                {REDEMPTION_CHOICES.map((choice) => (
+                  <option key={choice} value={choice}>
+                    {REDEMPTION_PLANS[choice].label}
+                  </option>
+                ))}
+              </select>
+
+              {/*
+                The arithmetic, shown the moment a frequency is picked. A
+                member deciding between monthly and quarterly is really asking
+                what each one costs them, and making them work it out is how a
+                form loses somebody at the last step.
+              */}
+              {breakdown && (
+                <p className="tabular mt-2 rounded-lg bg-denim/5 px-3 py-2 text-sm text-navy">
+                  {breakdown}
+                </p>
+              )}
+
+              <p className="mt-2 text-xs text-neutral-500">
+                Over 3 years, matching the campaign commitment table. You can
+                pay faster or in different amounts; this is a plan, not a
+                schedule you are held to.
+              </p>
+            </div>
           </div>
         )}
 
@@ -534,6 +726,19 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
               </Row>
               {email && <Row label="Email">{email}</Row>}
               {membershipNo && <Row label="Membership">{membershipNo}</Row>}
+              <Row label="Pledging as">
+                {category === "family" ? "Family or group" : "Individual"}
+              </Row>
+              <Row label="Redeeming">
+                <span className="text-right">
+                  {REDEMPTION_PLANS[redemption].label}
+                  {breakdown && (
+                    <span className="tabular block text-xs text-neutral-500">
+                      {breakdown}
+                    </span>
+                  )}
+                </span>
+              </Row>
               <Row label="Contact me">{contactConsent ? "Yes" : "No"}</Row>
               <Row label="Show in recent pledges">
                 {displayConsent ? "Yes" : "No"}
@@ -633,39 +838,37 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
  */
 function AmountChip({
   amount,
-  tier,
+  tierKey,
+  premium,
   selected,
   onSelect,
-  className,
 }: {
   amount: number;
-  tier: AmountTier;
+  tierKey: PledgeTier;
+  /** The landmark tier's chips are larger and gold, matching their card. */
+  premium: boolean;
   selected: boolean;
-  onSelect: (tier: AmountTier, amount: number) => void;
-  className?: string;
+  onSelect: (tier: PledgeTier, amount: number) => void;
 }) {
-  const family = tier === "family";
-
   return (
     <button
       type="button"
       aria-pressed={selected}
-      onClick={() => onSelect(tier, amount)}
+      onClick={() => onSelect(tierKey, amount)}
       className={cn(
         "flex items-baseline justify-center gap-1 border transition-colors",
         "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
-        family ? "rounded-xl px-3 py-3" : "rounded-full px-3 py-1.5",
+        premium ? "rounded-xl px-3.5 py-2.5" : "rounded-full px-3 py-1.5",
         selected
           ? "border-navy bg-navy text-white"
-          : family
+          : premium
             ? "border-campfire/40 bg-white text-navy hover:border-campfire"
             : "border-neutral-200 bg-white text-navy hover:border-denim",
-        className,
       )}
     >
       <span
         className={cn(
-          family ? "text-[11px]" : "text-[10px]",
+          premium ? "text-[11px]" : "text-[10px]",
           selected ? "text-white/70" : "text-neutral-500",
         )}
       >
@@ -674,7 +877,7 @@ function AmountChip({
       <span
         className={cn(
           "tabular",
-          family ? "text-sm font-semibold sm:text-base" : "text-xs font-medium",
+          premium ? "text-sm font-semibold sm:text-base" : "text-xs font-medium",
         )}
       >
         {formatNumber(amount)}
