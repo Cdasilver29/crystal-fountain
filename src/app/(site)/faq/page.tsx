@@ -20,7 +20,7 @@ export default function FaqPage() {
           rather than competing with the fixed header and its phone drawer. */}
       <section className="relative isolate overflow-hidden bg-navy px-4 py-12 sm:px-6 sm:py-16">
         <SectionBackground
-          src="/images/gallery/FAQ.PNG"
+          src="/images/gallery/faq.jpg"
           overlayClassName="bg-navy/[0.75]"
         />
 

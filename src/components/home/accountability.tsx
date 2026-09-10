@@ -20,14 +20,15 @@ export function Accountability() {
       <div className="mx-auto w-full max-w-5xl">
         <div className="grid gap-8 md:grid-cols-[9fr_11fr] md:items-start md:gap-12">
           {/*
-            Fixed height on a phone, the file's own three by two above it, so
-            the picture is never squashed and the row it occupies is known
-            before it loads.
+            The file's own ratio at every width, rather than a fixed height on a
+            phone and three by two above it. Both of those cropped the model,
+            and the space the picture will occupy is still known before it
+            loads, which is the point of stating a ratio at all.
           */}
-          <div className="relative h-[300px] w-full overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/5 md:h-auto md:aspect-[3/2]">
+          <div className="relative aspect-[1312/1199] w-full overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/5">
             <Image
-              src="/images/gallery/Accountability.PNG"
-              alt="The Crystal Fountain site from above, the tower and centre behind the perimeter wall"
+              src="/images/gallery/accountability.jpg"
+              alt="The scale model seen from one corner, the twin towers and the domed centre inside the tree lined perimeter"
               fill
               sizes="(max-width: 768px) 100vw, 45vw"
               quality={75}

@@ -27,14 +27,16 @@ export function JourneyTimeline() {
 
         <div className="mt-10 grid gap-10 md:grid-cols-[3fr_2fr] md:items-start md:gap-12">
           {/*
-            Three by two, the aspect ratio of the file itself, so the picture is
-            never stretched and the space it will occupy is known before it
-            arrives.
+            The file's own ratio, so nothing is cropped here. The crop happened
+            once, in the file: the square original ended in a white nameplate
+            reading "The Crystal Fountain, Sanctuary and Centre of Influence",
+            which the heading beside it already says. It is cut at the dark rim
+            of the plinth, so the model sits on its own base.
           */}
-          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/10">
+          <div className="relative aspect-[1254/1028] w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/10">
             <Image
-              src="/images/gallery/Vision.PNG"
-              alt="The Crystal Fountain Cathedral and Centre seen from the road, with the tower behind it"
+              src="/images/gallery/vision-reality.jpg"
+              alt="The scale model of the Crystal Fountain Cathedral and Centre, the sanctuary in front of the tower, on its plinth in the church lobby"
               fill
               sizes="(max-width: 768px) 100vw, 60vw"
               quality={75}

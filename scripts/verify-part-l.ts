@@ -180,10 +180,14 @@ async function main() {
     "the hero links to /faq",
     /href="\/faq"/.test(heroSection),
   );
-  check("it is labelled", heroSection.includes("Read the FAQ"));
+  check(
+    "it is labelled",
+    heroSection.includes("Frequently asked questions"),
+  );
   check(
     "the pledge button is still the first action in it",
-    heroSection.indexOf("Make a pledge") < heroSection.indexOf("Read the FAQ"),
+    heroSection.indexOf("Make a pledge") <
+      heroSection.indexOf("Frequently asked questions"),
   );
 
   // 3. Accountability copy
@@ -307,6 +311,58 @@ async function main() {
   ];
   const withEmDash = copy.filter((line) => line.includes("—"));
   check("no em dash in any of it", withEmDash.length === 0, withEmDash.join(" | "));
+
+  // 6b. Images
+  heading("6b. every image the pages reference is served");
+  const referenced = [
+    ...new Set(
+      [homeHtml, faqHtml].flatMap(
+        (html) => html.match(/\/images\/gallery\/[A-Za-z0-9_.-]+/g) ?? [],
+      ),
+    ),
+  ];
+  const fetched = await Promise.all(
+    referenced.map(async (path) => {
+      const response = await fetch(`${BASE}${path}`);
+      return {
+        path: path.replace("/images/gallery/", ""),
+        status: response.status,
+        type: response.headers.get("content-type"),
+        kb: Math.round(
+          Number(response.headers.get("content-length") ?? 0) / 1024,
+        ),
+      };
+    }),
+  );
+  show(fetched);
+
+  check(
+    "every referenced file is there",
+    fetched.every((f) => f.status === 200),
+    fetched
+      .filter((f) => f.status !== 200)
+      .map((f) => f.path)
+      .join(", ") || "all 200",
+  );
+  check(
+    "none of the retired PNGs is referenced any more",
+    !referenced.some((path) => /\.PNG$/i.test(path)),
+    referenced.filter((path) => /\.PNG$/i.test(path)).join(", ") || "clean",
+  );
+  check(
+    "the hero is art directed, one crop per breakpoint",
+    homeHtml.includes("hero-mobile.jpg") &&
+      homeHtml.includes("hero-desktop.jpg") &&
+      homeHtml.includes('media="(min-width: 768px)"'),
+  );
+  check(
+    "no hero file is over 300kB",
+    fetched.filter((f) => f.path.startsWith("hero-")).every((f) => f.kb <= 300),
+    fetched
+      .filter((f) => f.path.startsWith("hero-"))
+      .map((f) => `${f.path} ${f.kb}kB`)
+      .join(", "),
+  );
 
   // 7. The raised ceiling through the real route
   heading("7. POST /api/pledges accepts a family sized pledge");

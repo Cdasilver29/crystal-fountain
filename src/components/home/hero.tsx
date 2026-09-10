@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { LiveTracker } from "@/components/campaign/live-tracker";
@@ -19,6 +18,19 @@ import type { CampaignTotalsDto } from "@/lib/campaign";
  * request, and it is the one image on the site loaded eagerly, because it is
  * the largest thing above the fold.
  *
+ * The photograph is art directed: a wide crop of the model on a desktop, and a
+ * square one on a phone, where a 16 by 9 picture in a full height section would
+ * be reduced to a strip of its middle. That is what picture and source are for,
+ * and it is why this one image is not a next/image. Two Image elements toggled
+ * by a class would both be fetched, and this is the largest request on the page
+ * for somebody opening a WhatsApp link on a phone. The files are converted and
+ * sized ahead of time instead, two widths per crop.
+ *
+ * It covers the section rather than fitting inside it. The section is a full
+ * 100svh and no photograph is that shape, so a band of the picture is what
+ * shows, which is what a backdrop under an 80 per cent overlay is for. Fitting
+ * the whole picture in was tried and put a visible rectangle across the hero.
+ *
  * The section isolates, which keeps the z-10 on the content local to it. Left
  * unscoped that 10 competed with the fixed header's own z-10 at page level and,
  * being later in the document, won: the phone menu opened behind the hero copy.
@@ -35,15 +47,24 @@ export function Hero({
       id="hero"
       className="relative isolate -mt-16 flex min-h-[100svh] flex-col overflow-hidden bg-navy px-4 pt-16 pb-24 sm:px-6"
     >
-      <Image
-        src="/images/gallery/Hero.PNG"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        quality={75}
-        className="object-cover object-center"
-      />
+      <picture>
+        <source
+          media="(min-width: 768px)"
+          srcSet="/images/gallery/hero-desktop-1100.jpg 1100w, /images/gallery/hero-desktop.jpg 1672w"
+          sizes="100vw"
+        />
+        <source
+          srcSet="/images/gallery/hero-mobile-720.jpg 720w, /images/gallery/hero-mobile.jpg 1254w"
+          sizes="100vw"
+        />
+        <img
+          src="/images/gallery/hero-desktop.jpg"
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 size-full object-cover object-center"
+        />
+      </picture>
 
       <div aria-hidden className="absolute inset-0 bg-navy/80" />
 
@@ -93,9 +114,9 @@ export function Hero({
 
           <Link
             href="/faq"
-            className="inline-flex h-14 items-center justify-center rounded-xl border border-white/30 px-8 text-lg font-medium text-white transition-colors hover:border-white/60 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="inline-flex h-14 items-center justify-center rounded-xl border border-white/30 px-6 text-base font-medium text-white transition-colors hover:border-white/60 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none sm:px-8 sm:text-lg"
           >
-            Read the FAQ
+            Frequently asked questions
           </Link>
         </div>
 

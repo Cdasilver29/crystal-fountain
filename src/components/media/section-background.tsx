@@ -5,11 +5,15 @@ import { cn } from "@/lib/utils";
 /**
  * A photographic backdrop for a full width section.
  *
- * The source files are 900kB to 2.5MB PNGs, so nothing here links a raw file:
- * the image goes through next/image, which serves a WebP at the width the
+ * The source files are a few hundred kB of JPEG, and nothing here links a raw
+ * file: the image goes through next/image, which serves a WebP at the width the
  * viewport actually needs. It is laid out with fill inside a positioned,
  * clipped section, so it takes no space of its own and cannot shift the
  * content or push the page sideways on a narrow screen.
+ *
+ * It covers the band and crops whatever does not fit, which is what a backdrop
+ * is: the picture is a texture behind a heading, not something a reader is
+ * being asked to look at.
  *
  * The overlay is a separate layer above the image and below the content, so
  * the section keeps its own colour and the text on top stays readable whatever
