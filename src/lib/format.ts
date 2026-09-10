@@ -78,3 +78,43 @@ export function formatDate(value: Date | string): string {
     year: "numeric",
   });
 }
+
+/**
+ * A large amount, shortened for a chart axis or a metric card.
+ *
+ * "KES 1.2M", "KES 125K", "KES 900". Charts and small cards have no room for
+ * eleven digits, and a reader scanning an axis wants the magnitude rather than
+ * the exact figure. Anywhere the exact figure matters, formatKES is still the
+ * one to use.
+ *
+ * The rounding happens on whole shillings, after the division out of minor
+ * units, so this never turns a money value into a float before it has already
+ * stopped being money and become a label.
+ */
+export function formatKESCompact(minor: bigint | string): string {
+  const shillings = toBigInt(minor) / MINOR_UNITS_PER_KES;
+  const negative = shillings < 0n;
+  const value = negative ? -shillings : shillings;
+  const sign = negative ? "-" : "";
+
+  if (value >= 1_000_000_000n) {
+    return `KES ${sign}${(Number(value) / 1_000_000_000).toFixed(1)}B`;
+  }
+  if (value >= 1_000_000n) {
+    return `KES ${sign}${(Number(value) / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1_000n) {
+    return `KES ${sign}${Math.round(Number(value) / 1_000)}K`;
+  }
+  return `KES ${sign}${value}`;
+}
+
+/** "Jul 25", "Sep 26". A chart axis tick, not a date anybody has to act on. */
+export function formatMonthShort(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(`${value.slice(0, 10)}T12:00:00Z`) : value;
+  return date.toLocaleDateString("en-KE", {
+    month: "short",
+    year: "2-digit",
+    timeZone: "UTC",
+  });
+}
