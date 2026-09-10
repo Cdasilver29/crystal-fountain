@@ -77,12 +77,25 @@ export function Hero({
           <LiveTracker initial={totals} sparkline={sparkline} />
         </div>
 
-        <div className="mt-11">
+        {/*
+          One action, and a way out for somebody who is not ready to take it.
+          The pledge button keeps the only warm colour and its full width on a
+          phone; the FAQ sits beside it outlined, so a member with a question
+          has somewhere to go that is not the back button.
+        */}
+        <div className="mt-11 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
           <Link
             href="/pledge"
             className="inline-flex h-14 items-center justify-center rounded-xl bg-campfire px-10 text-lg font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Make a pledge
+          </Link>
+
+          <Link
+            href="/faq"
+            className="inline-flex h-14 items-center justify-center rounded-xl border border-white/30 px-8 text-lg font-medium text-white transition-colors hover:border-white/60 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+          >
+            Read the FAQ
           </Link>
         </div>
 

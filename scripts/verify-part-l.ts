@@ -110,7 +110,7 @@ async function main() {
   const pledgeHtml = await get("/pledge");
 
   const family = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000];
-  const individual = [10_000, 50_000, 100_000, 250_000, 500_000];
+  const individual = [50_000, 100_000, 250_000, 500_000, 1_000_000];
   const grouped = (n: number) => n.toLocaleString("en-KE");
 
   const missing = [...family, ...individual].filter(
@@ -149,6 +149,42 @@ async function main() {
       pledgeHtml.indexOf("Or choose an amount"),
   );
   check("the old 1,000,000 ceiling chip is now the family floor", family[0] === 1_000_000);
+  check(
+    "the individual tier starts at 50,000 and no chip suggests less",
+    Math.min(...individual) === 50_000,
+  );
+  check(
+    "the individual tier tops out where the family tier begins",
+    Math.max(...individual) === family[0],
+  );
+  check(
+    "a smaller amount is still accepted even though nothing suggests it",
+    accepts(10_000) && accepts(500),
+  );
+
+  // 1,000,000 is deliberately in both tiers, so the page carries two chips for
+  // it and neither may be pressed before anybody has chosen. Which one is lit
+  // after a tap is client state and is not visible here.
+  const pressed = pledgeHtml.match(/aria-pressed="(true|false)"/g) ?? [];
+  check(
+    "ten chips are rendered, none of them pressed on arrival",
+    pressed.length === 10 && pressed.every((a) => a.includes("false")),
+    `${pressed.length} chips`,
+  );
+
+  // 2b. The hero
+  heading("2b. the hero offers a way to the FAQ");
+  const heroHtml = await get("/");
+  const heroSection = heroHtml.slice(0, heroHtml.indexOf("</section>"));
+  check(
+    "the hero links to /faq",
+    /href="\/faq"/.test(heroSection),
+  );
+  check("it is labelled", heroSection.includes("Read the FAQ"));
+  check(
+    "the pledge button is still the first action in it",
+    heroSection.indexOf("Make a pledge") < heroSection.indexOf("Read the FAQ"),
+  );
 
   // 3. Accountability copy
   heading("3. accountability copy");
@@ -224,6 +260,24 @@ async function main() {
     COMMITMENT_TIERS.filter((tier) => tier.sweetSpot).length === 2,
   );
   check("the heading renders", homeHtml.includes(COMMITMENT_COPY.heading));
+  check(
+    "the families counts render",
+    COMMITMENT_TIERS.every((tier) =>
+      homeHtml.includes(`${grouped(tier.families)} families`),
+    ),
+  );
+  // Counted inside the section only. The whole document also carries the
+  // server component payload in a script tag, where every string appears again.
+  const sectionStart = homeHtml.indexOf(COMMITMENT_COPY.heading);
+  const sectionHtml = homeHtml.slice(
+    sectionStart,
+    homeHtml.indexOf("</section>", sectionStart),
+  );
+  check(
+    "the target is stated once beside the heading, not on every row",
+    (sectionHtml.match(/campaign target/g) ?? []).length === 1,
+    `${(sectionHtml.match(/campaign target/g) ?? []).length} time(s)`,
+  );
   check("the subheading renders", homeHtml.includes(COMMITMENT_COPY.subheading));
   check(
     "the three steps render",
