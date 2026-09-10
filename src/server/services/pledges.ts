@@ -989,3 +989,75 @@ export async function search(
     matchReason: row.match_reason,
   }));
 }
+
+/* ---------------------------------------------------------------------------
+ * The public feed of recent pledges.
+ * ------------------------------------------------------------------------- */
+
+/** One entry in the recent pledges feed. */
+export type RecentPledge = {
+  /** Stable per pledge, so the feed can tell a new entry from a moved one. */
+  id: string;
+  /** First name only. Never the full name, and never anybody who declined. */
+  firstName: string;
+  amountMinor: bigint;
+  createdAt: Date;
+};
+
+export const RECENT_PLEDGE_LIMIT = 10;
+
+type RecentRow = {
+  id: string;
+  display_name: string;
+  amount_minor: string;
+  created_at: string;
+};
+
+/**
+ * The last few pledges, for the feed on the home page.
+ *
+ * Consented pledges only. The display consent box says, in as many words, that
+ * ticking it is what allows a first name and a pledge amount to appear in this
+ * feed, so a pledge from somebody who left it unticked cannot appear here in
+ * any form. An amount with a timestamp and no name is still that person's
+ * pledge amount published on a public page, and CLAUDE.md allows a public
+ * endpoint aggregates and consented display names, which that is neither.
+ *
+ * The status filter is the one v_campaign_totals uses, so this feed and the
+ * figure above it can never disagree about whether a pledge counts.
+ *
+ * Only the first word of the display name is returned. The column holds the
+ * full name because that is what the pledger typed and what the treasurer needs
+ * on the admin screen, and cutting it down here rather than in the caller means
+ * a full name has no route to a public surface at all.
+ */
+export async function recent(
+  db: Db,
+  args: { campaignSlug: string; limit?: number },
+): Promise<RecentPledge[]> {
+  const limit = Math.min(args.limit ?? RECENT_PLEDGE_LIMIT, RECENT_PLEDGE_LIMIT);
+
+  const result = await db.execute(sql`
+    select p.id,
+           g.display_name,
+           p.amount_minor,
+           p.created_at
+    from pledges p
+    join pledgers g on g.id = p.pledger_id
+    join campaigns c on c.id = p.campaign_id
+    where c.slug = ${args.campaignSlug}
+      and p.status in ('verified', 'fulfilled')
+      and g.display_consent = true
+      and g.display_name is not null
+      and length(trim(g.display_name)) > 0
+    order by p.created_at desc, p.id desc
+    limit ${limit}
+  `);
+
+  return (result.rows as RecentRow[]).map((row) => ({
+    id: row.id,
+    firstName: row.display_name.trim().split(/\s+/)[0],
+    amountMinor: BigInt(row.amount_minor),
+    createdAt: new Date(row.created_at),
+  }));
+}

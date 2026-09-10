@@ -120,10 +120,17 @@ export default async function ProgressPage() {
                 accent
                 hint={`${formatPercent(totals.percentPledged)} of the target`}
               />
+              {/*
+                The hint says what share of the pledges has arrived, not what
+                share of the target, matching the "redeemed" figure on the hero
+                tracker. Against the target it is the same money counted a
+                second time; against the pledges it answers a question the other
+                cards do not.
+              */}
               <Card
                 label="Received"
                 value={formatKES(totals.receivedMinor)}
-                hint={`${formatPercent(totals.percentReceived)} of the target`}
+                hint={`${formatPercent(totals.percentRedeemed)} of what has been pledged`}
               />
               <Card
                 label="Remaining"
@@ -131,9 +138,13 @@ export default async function ProgressPage() {
                 hint="Still to be pledged"
               />
               <Card
-                label="Progress"
-                value={formatPercent(totals.percentPledged)}
-                hint="Pledged against the target"
+                label="Still to come in"
+                value={formatKES(
+                  BigInt(totals.pledgedMinor) - BigInt(totals.receivedMinor) > 0n
+                    ? BigInt(totals.pledgedMinor) - BigInt(totals.receivedMinor)
+                    : 0n,
+                )}
+                hint="Pledged but not yet received"
               />
               <Card
                 label="Pledges"

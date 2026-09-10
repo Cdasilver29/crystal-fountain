@@ -118,3 +118,35 @@ export function formatMonthShort(value: Date | string): string {
     timeZone: "UTC",
   });
 }
+
+/**
+ * How long ago something happened, in words.
+ *
+ * "just now", "2 hours ago", "yesterday", "3 days ago", and a plain date once
+ * it is older than a week, because "23 days ago" is arithmetic the reader has
+ * to do and a date is not.
+ *
+ * Rendered on the server and then polled, so the wording is only as fresh as
+ * the last refresh. That is the right trade for a feed: a line that says two
+ * hours when it has been two hours and a minute is nobody's problem, and
+ * re-rendering the page every minute to keep a phrase exact would be.
+ */
+export function formatRelativeTime(value: Date | string, now = new Date()): string {
+  const then = typeof value === "string" ? new Date(value) : value;
+  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+
+  // A clock a little behind the server's reads as the present, not the future.
+  if (seconds < 60) return "just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  return formatDate(then);
+}

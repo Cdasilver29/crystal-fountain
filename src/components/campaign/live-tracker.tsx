@@ -79,8 +79,21 @@ export function LiveTracker({
     };
   }, []);
 
-  // Always show a sliver, so the bar never reads as broken at the very start.
-  const fill = Math.max(Math.min(totals.percentPledged, 100), 0.4);
+  /*
+   * Two fills in one track, both measured against the target.
+   *
+   * The lighter one runs to what has been pledged and the solid one to what has
+   * actually arrived, so the gap between them is the money still to come in. A
+   * single bar could only ever show one of those, and the congregation has been
+   * asking about both: how far the campaign has got, and how much of what was
+   * promised has been paid.
+   *
+   * The pledged fill keeps a sliver so the bar never reads as broken at the
+   * start. The received fill does not: nothing received is a true zero and
+   * drawing a sliver for it would be a small lie about money.
+   */
+  const pledgedFill = Math.max(Math.min(totals.percentPledged, 100), 0.4);
+  const receivedFill = Math.min(totals.percentReceived, 100);
 
   return (
     /*
@@ -96,33 +109,77 @@ export function LiveTracker({
       </p>
 
       <p className="mt-2 text-sm text-white/70 sm:text-base">
-        pledged toward {formatKES(totals.targetMinor)}
+        pledged so far
       </p>
 
       <div
-        className="mt-6 h-3 w-full overflow-hidden rounded-full bg-white/10"
+        className="relative mt-6 h-3 w-full overflow-hidden rounded-full bg-white/10"
         role="progressbar"
         aria-valuenow={totals.percentPledged}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="Pledged against the campaign target"
       >
+        {/*
+          One progressbar, not two. Nesting a second one inside would have a
+          screen reader announce two competing percentages for the same bar;
+          the two lines underneath say both figures in words instead, which is
+          what somebody who cannot see the fills actually needs.
+        */}
         <div
-          className="tracker-fill h-full rounded-full transition-[width] duration-700 ease-out"
-          style={{ width: `${fill}%` }}
+          aria-hidden
+          className="tracker-fill absolute inset-y-0 left-0 rounded-full opacity-40 transition-[width] duration-700 ease-out"
+          style={{ width: `${pledgedFill}%` }}
+        />
+        <div
+          aria-hidden
+          className="tracker-fill-solid absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-out"
+          style={{ width: `${receivedFill}%` }}
         />
       </div>
 
-      <dl className="mt-6 grid grid-cols-3 gap-2">
-        <Stat
-          label="of goal"
-          value={formatPercent(totals.percentPledged)}
-        />
+      {/*
+        Which fill is which, said in words and colour rather than left to a
+        legend. The received line comes first because it is the solid one and
+        the harder figure: it is money in the bank.
+      */}
+      <dl className="mt-4 space-y-1 text-sm">
+        <div className="flex items-baseline justify-center gap-2">
+          <dt className="sr-only">Received</dt>
+          <span aria-hidden className="size-2 rounded-full bg-campfire" />
+          <dd className="tabular font-semibold text-white">
+            {formatKES(totals.receivedMinor)}
+            <span className="ml-1 font-normal text-white/60">received</span>
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-center gap-2">
+          <dt className="sr-only">Pledged</dt>
+          <span aria-hidden className="size-2 rounded-full bg-campfire/40" />
+          <dd className="tabular font-semibold text-white">
+            {formatKES(totals.pledgedMinor)}
+            <span className="ml-1 font-normal text-white/60">pledged</span>
+          </dd>
+        </div>
+        <p className="pt-0.5 text-xs text-white/50">
+          out of {formatKES(totals.targetMinor)} target
+        </p>
+      </dl>
+
+      <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-5">
+        <Stat label="of goal" value={formatPercent(totals.percentPledged)} />
         <Stat
           label={totals.pledgeCount === 1 ? "pledge" : "pledges"}
           value={formatNumber(totals.pledgeCount)}
         />
-        <Stat label="received" value={formatKES(totals.receivedMinor)} />
+        {/*
+          Received as a share of pledged, not of the target. It answers how much
+          of what was promised has been honoured, which is the question the
+          other two do not.
+        */}
+        <Stat
+          label="redeemed"
+          value={formatPercent(totals.percentRedeemed)}
+        />
       </dl>
 
       {sparkline && (

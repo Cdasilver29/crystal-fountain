@@ -7,11 +7,16 @@ import { BrochureGallery } from "@/components/home/brochure-gallery";
 import { FinalCta } from "@/components/home/final-cta";
 import { Hero } from "@/components/home/hero";
 import { JourneyTimeline } from "@/components/home/journey-timeline";
+import { RecentPledges } from "@/components/home/recent-pledges";
 import { TargetedCommitment } from "@/components/home/targeted-commitment";
 import { VisionSection } from "@/components/home/vision-section";
 import { CAMPAIGN } from "@/content/campaign";
 import { db } from "@/db";
-import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
+import {
+  CAMPAIGN_SLUG,
+  getCampaignTotals,
+  getRecentPledges,
+} from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 import * as snapshots from "@/server/services/snapshots";
 
@@ -30,9 +35,10 @@ export default async function HomePage() {
   // as an element. Drawing it in the client component would ship the drawing
   // code to a browser for a picture that never changes after first paint, and
   // this is the page most people arrive on.
-  const [totals, recent] = await Promise.all([
+  const [totals, recent, recentPledges] = await Promise.all([
     getCampaignTotals(),
     snapshots.series(db, { campaignSlug: CAMPAIGN_SLUG, days: 30 }),
+    getRecentPledges(),
   ]);
 
   return (
@@ -45,6 +51,15 @@ export default async function HomePage() {
             values={recent.map((day) => day.pledgedMinor.toString())}
           />
         }
+      />
+      {/*
+        Between the tracker and the vision, because the figure above says what
+        the congregation has done together and this says who is doing it, and
+        both belong before the case for why.
+      */}
+      <RecentPledges
+        initial={recentPledges}
+        renderedAt={new Date().toISOString()}
       />
       <VisionSection />
       <TargetedCommitment targetMinor={totals.targetMinor} />

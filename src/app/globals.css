@@ -394,6 +394,7 @@
 
   .progress-fill,
   .tracker-fill,
+  .tracker-fill-solid,
   .tab-fade,
   .faq-fade,
   .drawer-in,
@@ -511,6 +512,18 @@
 }
 
 /*
+ * The received money, drawn inside the pledged fill.
+ *
+ * The same gradient so the two read as one bar rather than two colours, but no
+ * leading edge glow: with both fills glowing, the dimmer one would put a bright
+ * spot in the middle of the bar where nothing is happening.
+ */
+.tracker-fill-solid {
+  background-image: linear-gradient(90deg, #e36520, #f59e0b);
+  animation: progress-fill 1.5s ease-out;
+}
+
+/*
  * A glow riding the leading edge, breathing on a two second loop.
  *
  * Centred on the end of the fill, so half of it sits over the track ahead. The
@@ -597,5 +610,34 @@
   .success-tick {
     animation: none !important;
     stroke-dashoffset: 0;
+  }
+}
+
+/*
+ * A new entry arriving in the recent pledges feed.
+ *
+ * Only rows that came in on a poll carry this class; the ones that arrived with
+ * the page do not, because they did not just happen. Short and small, because
+ * this is a list somebody may be reading when it moves, and a row that slides a
+ * long way is a row that has to be found again.
+ */
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.375rem);
+  }
+}
+
+.feed-in {
+  animation: feed-in 400ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * Switched off outright rather than left to the duration collapse, which
+   * would strand an entering row on its first frame at zero opacity.
+   */
+  .feed-in {
+    animation: none !important;
   }
 }

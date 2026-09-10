@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { getTotals } from "@/server/services/campaign";
+import * as pledges from "@/server/services/pledges";
 
 /**
  * Cached campaign totals.
@@ -28,6 +29,7 @@ export type CampaignTotalsDto = {
   remainingMinor: string;
   percentPledged: number;
   percentReceived: number;
+  percentRedeemed: number;
   pledgeCount: number;
   pledgerCount: number;
 };
@@ -43,10 +45,47 @@ export const getCampaignTotals = unstable_cache(
       remainingMinor: totals.remainingMinor.toString(),
       percentPledged: totals.percentPledged,
       percentReceived: totals.percentReceived,
+      percentRedeemed: totals.percentRedeemed,
       pledgeCount: totals.pledgeCount,
       pledgerCount: totals.pledgerCount,
     };
   },
   [CAMPAIGN_TOTALS_TAG],
+  { revalidate: CAMPAIGN_TOTALS_MAX_AGE_SECONDS, tags: [CAMPAIGN_TOTALS_TAG] },
+);
+
+/**
+ * One entry in the recent pledges feed, as it crosses to the client.
+ *
+ * Minor units as a string and the timestamp as an ISO string, because this goes
+ * through unstable_cache and through JSON, and neither carries a bigint or a
+ * Date. Both are still exact.
+ */
+export type RecentPledgeDto = {
+  id: string;
+  firstName: string;
+  amountMinor: string;
+  createdAt: string;
+};
+
+/**
+ * The feed, cached on the same tag as the totals.
+ *
+ * The same tag on purpose: the two are one story. Whatever makes a pledge count
+ * toward the figure at the top of the page is the same event that should put it
+ * in the list underneath, so they are invalidated together and can never be a
+ * revalidation apart from each other.
+ */
+export const getRecentPledges = unstable_cache(
+  async (): Promise<RecentPledgeDto[]> => {
+    const rows = await pledges.recent(db, { campaignSlug: CAMPAIGN_SLUG });
+    return rows.map((row) => ({
+      id: row.id,
+      firstName: row.firstName,
+      amountMinor: row.amountMinor.toString(),
+      createdAt: row.createdAt.toISOString(),
+    }));
+  },
+  [`${CAMPAIGN_TOTALS_TAG}-recent`],
   { revalidate: CAMPAIGN_TOTALS_MAX_AGE_SECONDS, tags: [CAMPAIGN_TOTALS_TAG] },
 );

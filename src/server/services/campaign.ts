@@ -20,6 +20,15 @@ export type CampaignTotals = {
   remainingMinor: bigint;
   percentPledged: number;
   percentReceived: number;
+  /**
+   * Received as a share of pledged, not of the target.
+   *
+   * How much of what was promised has actually arrived, which is a different
+   * question from how far the campaign has got and the one the congregation
+   * asks second. Zero while nothing has been pledged, because a share of
+   * nothing is not a hundred percent.
+   */
+  percentRedeemed: number;
   pledgeCount: number;
   pledgerCount: number;
 };
@@ -80,6 +89,7 @@ export async function getTotals(
       targetMinor > pledgedMinor ? targetMinor - pledgedMinor : 0n,
     percentPledged: percentOf(pledgedMinor, targetMinor),
     percentReceived: percentOf(receivedMinor, targetMinor),
+    percentRedeemed: percentOf(receivedMinor, pledgedMinor),
     // Counts, not money, so a number is the right type here.
     pledgeCount: Number(row.pledge_count),
     pledgerCount: Number(row.pledger_count),
