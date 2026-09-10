@@ -58,3 +58,48 @@ export const pledgeListFilters = z.object({
 });
 
 export type PledgeListFilters = z.infer<typeof pledgeListFilters>;
+
+/**
+ * The audit log filters, as they arrive in the query string.
+ *
+ * Same tolerance as the pledge list: everything optional, everything catches.
+ * These arrive from a URL somebody may have bookmarked, and the right answer
+ * to an unreadable filter is the unfiltered screen rather than an error page.
+ */
+export const AUDIT_FILTERS = [
+  "all",
+  "pledges",
+  "payments",
+  "auth",
+  "exports",
+] as const;
+
+export type AuditFilter = (typeof AUDIT_FILTERS)[number];
+
+/**
+ * Which action prefixes each filter covers.
+ *
+ * Held as data rather than as a switch in the query so that the screen, the
+ * verification and any later endpoint all agree on what "auth" means. Empty
+ * for "all", which the service reads as no restriction at all.
+ */
+export const AUDIT_FILTER_PREFIXES: Record<AuditFilter, readonly string[]> = {
+  all: [],
+  pledges: ["pledge."],
+  payments: ["payment."],
+  auth: ["admin.login", "admin.logout", "admin.totp"],
+  exports: ["admin.export"],
+};
+
+export const auditListFilters = z.object({
+  q: z
+    .string()
+    .trim()
+    .max(64)
+    .catch("")
+    .transform((value) => (value === "" ? null : value)),
+  filter: z.enum(AUDIT_FILTERS).catch("all"),
+  cursor: z.string().max(512).catch("").transform((value) => value || null),
+});
+
+export type AuditListFilters = z.infer<typeof auditListFilters>;

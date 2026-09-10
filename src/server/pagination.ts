@@ -30,9 +30,18 @@ export type Cursor = {
   id: string;
 };
 
+/*
+ * The tie breaker is a uuid on every table but one. audit_log is keyed by a
+ * bigserial, because it is an append only journal where the insertion order is
+ * itself the thing being recorded, so a numeric id is accepted here too.
+ *
+ * Both forms are compared as opaque values in a keyset expression against a
+ * column of a known type, so a numeric cursor handed to a uuid keyed screen
+ * simply matches nothing. It cannot widen what a caller can read.
+ */
 const cursorShape = z.object({
   k: z.iso.datetime({ offset: true }),
-  i: z.uuid(),
+  i: z.union([z.uuid(), z.string().regex(/^\d{1,19}$/)]),
 });
 
 /**
