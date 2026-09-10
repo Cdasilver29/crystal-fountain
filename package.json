@@ -22,7 +22,8 @@
     "db:backfill:snapshots": "tsx scripts/backfill-snapshots.ts",
     "db:verify:exports": "tsx scripts/verify-part-i.ts",
     "db:verify:snapshots": "tsx scripts/verify-part-j.ts",
-    "db:verify:progress": "tsx scripts/verify-part-k.ts"
+    "db:verify:progress": "tsx scripts/verify-part-k.ts",
+    "db:verify:content": "tsx scripts/verify-part-l.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
