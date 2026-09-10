@@ -7,7 +7,7 @@ import { BrochureGallery } from "@/components/home/brochure-gallery";
 import { FinalCta } from "@/components/home/final-cta";
 import { Hero } from "@/components/home/hero";
 import { JourneyTimeline } from "@/components/home/journey-timeline";
-import { KeyNumbers } from "@/components/home/key-numbers";
+import { TargetedCommitment } from "@/components/home/targeted-commitment";
 import { VisionSection } from "@/components/home/vision-section";
 import { CAMPAIGN } from "@/content/campaign";
 import { db } from "@/db";
@@ -47,7 +47,7 @@ export default async function HomePage() {
         }
       />
       <VisionSection />
-      <KeyNumbers />
+      <TargetedCommitment targetMinor={totals.targetMinor} />
       <JourneyTimeline />
       <BrochureGallery />
 
