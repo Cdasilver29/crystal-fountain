@@ -33,6 +33,10 @@ const LINKS: readonly NavLink[] = [
   // The book itself, not the form. Every role may read it, and the button to
   // record one lives on the page, where only a treasurer sees it.
   { href: "/admin/payments", label: "Payments", minRole: "viewer" },
+  // Counts and totals only, nothing to act on and nobody named, so a viewer
+  // sees the same page a treasurer does. It belongs between Payments and the
+  // audit log; the audit log has no screen yet, so for now it sits last.
+  { href: "/admin/analytics", label: "Analytics", minRole: "viewer" },
 ];
 
 export function AdminNav({
