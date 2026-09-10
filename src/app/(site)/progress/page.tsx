@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import {
-  CumulativeChart,
-  MonthlyChart,
-} from "@/components/campaign/progress-charts";
+import { MonthlyChart } from "@/components/campaign/progress-charts";
+import { CumulativeChart } from "@/components/charts/cumulative-chart";
 import { db } from "@/db";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
 import {
