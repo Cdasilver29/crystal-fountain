@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { PledgeForm } from "@/components/pledge/pledge-form";
+import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 
@@ -40,7 +41,13 @@ export default async function PledgePage() {
       </header>
 
       <main className="px-4 py-8 pb-16 sm:px-6">
-        <PledgeForm />
+        {/*
+          The site key is not secret and is meant to be rendered. Reading it
+          here rather than from a NEXT_PUBLIC_ variable keeps the name the one
+          Cloudflare prints on its dashboard, and an empty value simply means
+          the form renders no widget, which is what a local machine wants.
+        */}
+        <PledgeForm turnstileSiteKey={env.TURNSTILE_SITE_KEY || null} />
 
         <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-neutral-600">
           A pledge is a promise to give, not a payment. You will receive a

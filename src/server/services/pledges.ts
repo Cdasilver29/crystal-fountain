@@ -9,8 +9,19 @@ import {
   pledgers,
   pledges,
 } from "@/db/schema";
-import { conflict, notFound } from "@/server/errors";
+import {
+  conflict,
+  notFound,
+  rejected,
+  ServiceError,
+  tooManyRequests,
+} from "@/server/errors";
 import { kesToMinor } from "@/server/money";
+import {
+  isTurnstileConfigured,
+  verify as verifyTurnstile,
+  type TurnstileKeys,
+} from "@/server/services/turnstile";
 import {
   decodeCursor,
   pageSize,
@@ -42,12 +53,44 @@ export type RequestContext = {
   userAgent?: string | null;
 };
 
+/**
+ * Everything the service needs to decide whether a submission is trustworthy
+ * and whether it may skip the treasurer.
+ *
+ * The keys and the limit arrive as data rather than being read from the
+ * environment here, so the policy is testable without one and the route handler
+ * stays the only place that knows where configuration comes from.
+ *
+ * Leaving this off entirely is the safe default and not a bypass: a submission
+ * with no security context is never auto approved and lands as pending, which
+ * is exactly how every pledge behaved before auto approval existed.
+ */
+export type PledgeSecurityArgs = {
+  /** The token the Turnstile widget produced, as the client sent it. */
+  token?: string | null;
+  keys: TurnstileKeys;
+  /**
+   * Whether running with Turnstile switched off is permitted. False in
+   * production, where absent keys are a failed deploy rather than an open door.
+   */
+  bypassAllowed: boolean;
+  /** Whole shillings. A pledge total under this is verified without a person. */
+  autoApproveLimitKes: number;
+};
+
 export type CreatePledgeArgs = {
   input: CreatePledgeInput;
   campaignSlug: string;
   channel?: PledgeChannel;
   request?: RequestContext;
+  security?: PledgeSecurityArgs;
 };
+
+/** How many submissions one phone number may make in the window. */
+export const PLEDGE_RATE_LIMIT = 5;
+
+/** The window that limit is counted over. */
+export const PLEDGE_RATE_WINDOW_SECONDS = 60 * 60;
 
 export type CreatePledgeResult = {
   pledgeId: string;
@@ -61,6 +104,12 @@ export type CreatePledgeResult = {
   previousAmountMinor: bigint | null;
   /** True when this added to a pledge that was already there. */
   isAddition: boolean;
+  /**
+   * True when this submission was verified on the spot rather than left for the
+   * treasurer. The caller uses it to decide whether the campaign total just
+   * moved and the cache needs revalidating.
+   */
+  autoApproved: boolean;
   currency: string;
   status: PledgeStatus;
   intent: PledgeIntent;
@@ -117,17 +166,71 @@ export async function create(
   db: Db,
   args: CreatePledgeArgs,
 ): Promise<CreatePledgeResult> {
+  // Before the transaction, deliberately. Asking Cloudflare is a network round
+  // trip, and holding a database transaction open across one would lock the
+  // pledger's row for as long as somebody else's service takes to answer.
+  const trusted = await checkSecurity(args.security, args.request);
+
   try {
-    return await createOnce(db, args);
+    return await createOnce(db, args, trusted);
   } catch (error) {
     if (!isOneLivePledgeViolation(error)) throw error;
-    return createOnce(db, args);
+    return createOnce(db, args, trusted);
   }
+}
+
+/**
+ * Whether this submission has cleared the bot check.
+ *
+ * Returns false rather than throwing when there is no security context at all,
+ * because that is a caller with no opinion, not a failed check. It throws only
+ * for a submission that was actually refused, or for a configuration that
+ * cannot be honoured safely.
+ */
+async function checkSecurity(
+  security: PledgeSecurityArgs | undefined,
+  request: RequestContext | undefined,
+): Promise<boolean> {
+  if (!security) return false;
+
+  // Throws on a half configured pair rather than picking one of two bad guesses.
+  if (!isTurnstileConfigured(security.keys)) {
+    if (!security.bypassAllowed) {
+      throw new ServiceError(
+        "turnstile_misconfigured",
+        "The security check is not configured. A pledge cannot be recorded until it is.",
+        500,
+      );
+    }
+    // A laptop with no Cloudflare account. Verification is skipped, and a
+    // pledge under the limit is still approved, so the local form behaves the
+    // way the deployed one does.
+    return true;
+  }
+
+  const result = await verifyTurnstile({
+    token: security.token,
+    secretKey: security.keys.secretKey!,
+    ip: request?.ip,
+  });
+
+  if (!result.ok) {
+    // Cloudflare's codes are for us, not for the pledger. Somebody who has just
+    // typed their name and their phone number gets told what to do next.
+    console.warn("turnstile refused a pledge", result.errorCodes);
+    throw rejected(
+      "turnstile_failed",
+      "The security check did not pass. Please complete it again and resubmit.",
+    );
+  }
+
+  return true;
 }
 
 async function createOnce(
   db: Db,
   args: CreatePledgeArgs,
+  trusted: boolean,
 ): Promise<CreatePledgeResult> {
   const { input, campaignSlug, channel = "web", request } = args;
 
@@ -173,6 +276,35 @@ async function createOnce(
       .returning({ id: pledgers.id });
 
     /*
+     * Five submissions an hour from one phone number.
+     *
+     * Counted off pledge_increments, because an increment is exactly one
+     * submission and there is no separate attempts table to keep in step with
+     * reality. Counting from the database rather than memory means the limit
+     * holds across every serverless instance and survives a redeploy, which an
+     * in process counter would not.
+     *
+     * Inside the transaction and after the pledger is upserted, so two
+     * submissions racing each other cannot both read a count of four.
+     */
+    const recent = await tx.execute(sql`
+      select count(*)::int as submissions
+      from pledge_increments i
+      join pledges p on p.id = i.pledge_id
+      where p.pledger_id = ${pledger.id}::uuid
+        and i.created_at > now() - make_interval(secs => ${PLEDGE_RATE_WINDOW_SECONDS})
+    `);
+
+    const submissions = (recent.rows[0] as { submissions: number }).submissions;
+
+    if (submissions >= PLEDGE_RATE_LIMIT) {
+      throw tooManyRequests(
+        "pledge_rate_limited",
+        `That number has recorded ${PLEDGE_RATE_LIMIT} pledges in the last hour. Please wait a little while, or call the treasurer.`,
+      );
+    }
+
+    /*
      * Locked for update, so a second submission from the same person waits here
      * rather than reading a total that is about to change underneath it. The
      * lock is what makes read then add then write safe. It does nothing when
@@ -206,6 +338,29 @@ async function createOnce(
       createdAt: pledges.createdAt,
     };
 
+    /*
+     * Whether the treasurer needs to look at this.
+     *
+     * The test is the whole pledge total, not what this submission added, so
+     * five separate submissions cannot walk past a threshold one submission
+     * would have been held at. That has a consequence worth knowing: an
+     * addition that carries an already verified pledge over the limit puts the
+     * whole pledge back to pending, and it leaves the public total until the
+     * treasurer approves it. Holding the larger figure for review is the point
+     * of having a limit at all.
+     *
+     * Without a security context there is nothing to trust, so nothing is
+     * approved and every pledge lands as pending, exactly as it did before.
+     */
+    const previousMinor = existing ? existing.amountMinor : null;
+    const total = previousMinor === null ? addedMinor : previousMinor + addedMinor;
+    const limitMinor = args.security
+      ? kesToMinor(args.security.autoApproveLimitKes)
+      : 0n;
+    const autoApproved = trusted && total < limitMinor;
+    const status: PledgeStatus = autoApproved ? "verified" : "pending";
+    const verifiedAt = autoApproved ? now : null;
+
     let pledge;
 
     if (existing) {
@@ -222,11 +377,16 @@ async function createOnce(
        * just said how they intend to pay the larger figure.
        */
       const previous = existing.amountMinor;
-      const total = previous + addedMinor;
 
       [pledge] = await tx
         .update(pledges)
-        .set({ amountMinor: total, intent: input.intent, updatedAt: now })
+        .set({
+          amountMinor: total,
+          intent: input.intent,
+          status,
+          verifiedAt,
+          updatedAt: now,
+        })
         .where(eq(pledges.id, existing.id))
         .returning(returning);
 
@@ -252,6 +412,8 @@ async function createOnce(
           channel,
           category: input.category ?? null,
           tier: input.tier ?? null,
+          autoApproved,
+          heldForReview: !autoApproved && trusted,
           campaignId: campaign.id,
           pledgerId: pledger.id,
         },
@@ -274,6 +436,8 @@ async function createOnce(
           publicToken: nanoid(PUBLIC_TOKEN_LENGTH),
           amountMinor: addedMinor,
           intent: input.intent,
+          status,
+          verifiedAt,
           channel,
         })
         .returning(returning);
@@ -292,8 +456,42 @@ async function createOnce(
           channel,
           category: input.category ?? null,
           tier: input.tier ?? null,
+          autoApproved,
+          heldForReview: !autoApproved && trusted,
           campaignId: campaign.id,
           pledgerId: pledger.id,
+        },
+        ip: request?.ip ?? null,
+        userAgent: request?.userAgent ?? null,
+      });
+    }
+
+    /*
+     * A second row for the approval itself.
+     *
+     * The created or increased row says a pledge happened; this one says why it
+     * counts toward the public total without anybody having looked at it. They
+     * are two different facts, and an approval that only ever appeared as a
+     * field inside another row would be invisible on the audit screen, which is
+     * where the treasurer goes to ask exactly that question. CLAUDE.md: every
+     * write that changes what the congregation sees leaves a trail.
+     */
+    if (autoApproved) {
+      await tx.insert(auditLog).values({
+        actorType: "system",
+        action: "pledge.auto_approved",
+        entity: "pledge",
+        entityId: pledge.id,
+        before: { status: existing ? existing.status : "pending" },
+        after: {
+          reference: pledge.reference,
+          status: pledge.status,
+          amountMinor: total.toString(),
+          limitMinor: limitMinor.toString(),
+          verifiedAt: verifiedAt?.toISOString() ?? null,
+          turnstile: isTurnstileConfigured(args.security!.keys)
+            ? "verified"
+            : "not configured",
         },
         ip: request?.ip ?? null,
         userAgent: request?.userAgent ?? null,
@@ -320,8 +518,9 @@ async function createOnce(
       publicToken: pledge.publicToken,
       amountMinor: pledge.amountMinor,
       addedMinor,
-      previousAmountMinor: existing ? existing.amountMinor : null,
+      previousAmountMinor: previousMinor,
       isAddition: Boolean(existing),
+      autoApproved,
       currency: pledge.currency,
       status: pledge.status as PledgeStatus,
       intent: pledge.intent as PledgeIntent,

@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +61,20 @@ type AmountTier = "family" | "individual";
 
 type Errors = Record<string, string>;
 
-export function PledgeForm() {
+export type PledgeFormProps = {
+  /**
+   * The Turnstile site key, or null when Turnstile is not configured.
+   *
+   * Passed down from the page, which is a server component, rather than read
+   * from a NEXT_PUBLIC_ variable. The key is not secret and ends up in the
+   * markup either way; handing it over as a prop keeps the environment variable
+   * named the way Cloudflare names it and keeps the widget out of the bundle
+   * when there is no key to render it with.
+   */
+  turnstileSiteKey?: string | null;
+};
+
+export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
@@ -83,6 +97,18 @@ export function PledgeForm() {
   const [displayConsent, setDisplayConsent] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
+  // The Turnstile token, and the widget itself so a spent one can be replaced.
+  // A token is single use: once the server has redeemed it, a retry with the
+  // same one is refused, so every failed submission asks for a fresh one.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
+
+  const needsTurnstile = Boolean(turnstileSiteKey);
+
+  function freshTurnstileToken() {
+    setTurnstileToken(null);
+    turnstileRef.current?.reset();
+  }
 
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -110,6 +136,7 @@ export function PledgeForm() {
     recordConsent,
     contactConsent,
     displayConsent,
+    turnstileToken: turnstileToken ?? undefined,
   };
 
   function collect(issues: { path: PropertyKey[]; message: string }[]): Errors {
@@ -165,6 +192,16 @@ export function PledgeForm() {
       return;
     }
 
+    // The server refuses a submission with no token anyway. Catching it here
+    // saves a round trip and says something more useful than the refusal would.
+    if (needsTurnstile && !turnstileToken) {
+      setErrors({
+        turnstileToken:
+          "Please complete the security check below before submitting.",
+      });
+      return;
+    }
+
     setSubmitting(true);
     setErrors({});
 
@@ -185,6 +222,10 @@ export function PledgeForm() {
               "We could not record your pledge. Please try again in a moment.",
           },
         );
+        // Whatever went wrong, the token that went with it is spent. Without a
+        // fresh one the next attempt fails the check rather than the thing the
+        // pledger has just corrected.
+        freshTurnstileToken();
         setSubmitting(false);
         return;
       }
@@ -504,6 +545,48 @@ export function PledgeForm() {
               now. You will get a reference number to use when you pay, and the
               treasurer&rsquo;s receipt is the only receipt.
             </p>
+
+            {/*
+              The bot check sits on the review step rather than with the
+              details, so the token is as fresh as it can be when the pledge is
+              actually submitted. Cloudflare expires one after a few minutes,
+              and somebody who solves it, then goes back to change their amount,
+              then returns, would otherwise submit a token that has already run
+              out.
+            */}
+            {turnstileSiteKey && (
+              <div className="mt-5">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={turnstileSiteKey}
+                  onSuccess={(token) => {
+                    setTurnstileToken(token);
+                    // Clear only this field's error. Anything else the pledger
+                    // still has to fix stays on screen.
+                    setErrors((current) => {
+                      if (!current.turnstileToken) return current;
+                      const next = { ...current };
+                      delete next.turnstileToken;
+                      return next;
+                    });
+                  }}
+                  onExpire={freshTurnstileToken}
+                  onError={() => {
+                    setTurnstileToken(null);
+                    setErrors({
+                      turnstileToken:
+                        "The security check could not load. Check your connection and try again.",
+                    });
+                  }}
+                  options={{ theme: "light", size: "flexible" }}
+                />
+                {errors.turnstileToken && (
+                  <FieldError id="turnstileToken-error">
+                    {errors.turnstileToken}
+                  </FieldError>
+                )}
+              </div>
+            )}
           </div>
         )}
 

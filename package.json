@@ -26,9 +26,11 @@
     "db:verify:content": "tsx scripts/verify-part-l.ts",
     "db:verify:analytics": "tsx scripts/verify-part-m.ts",
     "db:verify:audit": "tsx scripts/verify-part-n.ts",
-    "db:verify:accumulation": "tsx scripts/verify-part-o.ts"
+    "db:verify:accumulation": "tsx scripts/verify-part-o.ts",
+    "db:verify:turnstile": "tsx scripts/verify-part-p.ts"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "1.6.1",
     "@neondatabase/serverless": "1.1.0",
     "better-auth": "1.7.3",
     "class-variance-authority": "0.7.1",

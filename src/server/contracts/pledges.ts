@@ -127,6 +127,20 @@ export const createPledgeInput = z.object({
   category: z.enum(PLEDGE_CATEGORIES).optional(),
   tier: z.enum(PLEDGE_TIERS).optional(),
 
+  /*
+   * The Turnstile token, when the form rendered a widget to produce one.
+   *
+   * Optional here on purpose. Whether a token is required is a server side
+   * decision that depends on whether Turnstile is configured, and the schema
+   * has no way to know that. Making it required in the contract would only
+   * break the local form, which legitimately has no widget, while doing nothing
+   * to stop a robot that simply posts a token shaped string.
+   */
+  turnstileToken: z.preprocess(
+    emptyToUndefined,
+    z.string().max(4096).optional(),
+  ),
+
   // The three consents are separate and none of them is pre-ticked.
   // Recording the pledge is the only one that is required.
   recordConsent: z.literal(

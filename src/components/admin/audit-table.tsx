@@ -40,7 +40,9 @@ const TONE_CLASSES: Record<Tone, string> = {
 export const AUDIT_TONES: Record<string, Tone> = {
   // Green: created or approved.
   "pledge.created": "green",
+  "pledge.increased": "green",
   "pledge.approved": "green",
+  "pledge.auto_approved": "green",
   "payment.recorded": "green",
   "payment.allocated": "green",
   "admin.created": "green",

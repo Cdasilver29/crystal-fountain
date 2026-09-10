@@ -23,6 +23,14 @@ export const notFound = (code: string, message: string) =>
 export const conflict = (code: string, message: string) =>
   new ServiceError(code, message, 409);
 
+/** The request was understood and refused. A failed bot check lands here. */
+export const rejected = (code: string, message: string) =>
+  new ServiceError(code, message, 422);
+
+/** Too many of the same thing, too fast. */
+export const tooManyRequests = (code: string, message: string) =>
+  new ServiceError(code, message, 429);
+
 export function isServiceError(error: unknown): error is ServiceError {
   return error instanceof ServiceError;
 }

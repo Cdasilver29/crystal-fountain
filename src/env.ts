@@ -48,6 +48,43 @@ const serverSchema = z.object({
    * authenticate and the snapshot never gets written.
    */
   CRON_SECRET: z.string().min(32, "must be at least 32 characters.").optional(),
+  /*
+   * Cloudflare Turnstile, the bot check standing in front of the pledge form.
+   *
+   * Both are optional and both are read together. Set, they gate every pledge:
+   * a submission without a token that Cloudflare accepts is refused. Unset,
+   * verification is skipped entirely so the form works on a laptop with no
+   * Cloudflare account. See isTurnstileConfigured, which refuses to treat a
+   * half configured pair as either state, and turnstileBypassAllowed, which
+   * refuses to skip the check in production.
+   *
+   * The site key is not secret and is rendered into the widget. It is a server
+   * key here rather than a NEXT_PUBLIC_ one on purpose: the pledge page is a
+   * server component and hands it to the form as a prop, so the name stays the
+   * one Cloudflare prints on the dashboard and no build time inlining is
+   * involved.
+   */
+  TURNSTILE_SITE_KEY: z.string().optional(),
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+  /*
+   * The ceiling for approving a pledge without a person looking at it, in whole
+   * shillings. A pledge whose total lands under this is verified on submission.
+   * Anything at or above it waits for the treasurer.
+   *
+   * Read as a string and coerced, because everything in process.env is a string
+   * and an unparseable value must fail loudly rather than quietly become NaN
+   * and auto approve nothing, or worse, everything.
+   */
+  PLEDGE_AUTO_APPROVE_LIMIT_KES: z
+    .string()
+    .optional()
+    .transform((value) => (value === undefined || value === "" ? 5_000_000 : Number(value)))
+    .pipe(
+      z
+        .number("must be a whole number of shillings.")
+        .int("must be a whole number of shillings.")
+        .positive("must be greater than zero."),
+    ),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -85,6 +122,9 @@ function getServerEnv(): ServerEnv {
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
       CRON_SECRET: process.env.CRON_SECRET,
+      TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
+      TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+      PLEDGE_AUTO_APPROVE_LIMIT_KES: process.env.PLEDGE_AUTO_APPROVE_LIMIT_KES,
     });
     if (!parsed.success) fail(parsed.error);
     serverEnv = parsed.data;

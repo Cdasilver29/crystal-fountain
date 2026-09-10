@@ -51,6 +51,11 @@ Security:
 - No tokens in localStorage. Admin sessions are httpOnly, Secure, SameSite=Lax cookies.
 - Every admin write appends a row to `audit_log`. No exceptions.
 - Zod validation server side on every route handler. Client validation is convenience only.
+- Every pledge passes Cloudflare Turnstile before it is recorded. Verification is skipped
+  only outside production and only when both keys are absent. A half configured pair is an
+  error, and absent keys in production refuse the pledge rather than open the door.
+- Five pledges per phone number per hour, counted from pledge_increments in the database so
+  the limit holds across instances and survives a redeploy.
 - Sentry PII scrubbing is configured before the first production deploy.
 
 Architecture:
@@ -93,8 +98,11 @@ Do not build these unless explicitly asked, even if they seem useful:
 
 - M-Pesa or any payment integration. Manual payment entry by the treasurer only.
 - Member accounts, login, or personal dashboards.
-- SMS OTP. v1 gates pledges with admin approval instead. The schema and service layer are
-  written so OTP drops in later without a rewrite.
+- SMS OTP. v1 gates pledges with Cloudflare Turnstile and an approval limit instead: a
+  submission that passes the bot check and whose pledge total lands under
+  PLEDGE_AUTO_APPROVE_LIMIT_KES is verified on the spot, and anything at or above that
+  waits for the treasurer. The schema and service layer are written so OTP drops in later
+  without a rewrite.
 - Charts and analytics beyond the single progress tracker. The daily snapshot table is
   populated from day one so the history exists when charts are built.
 - Machine learning of any kind.
