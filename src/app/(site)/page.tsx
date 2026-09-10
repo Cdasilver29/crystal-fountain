@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
+import { Sparkline } from "@/components/campaign/sparkline";
 import { Accountability } from "@/components/home/accountability";
 import { BrochureGallery } from "@/components/home/brochure-gallery";
 import { FinalCta } from "@/components/home/final-cta";
@@ -9,8 +10,10 @@ import { JourneyTimeline } from "@/components/home/journey-timeline";
 import { KeyNumbers } from "@/components/home/key-numbers";
 import { VisionSection } from "@/components/home/vision-section";
 import { CAMPAIGN } from "@/content/campaign";
-import { getCampaignTotals } from "@/lib/campaign";
+import { db } from "@/db";
+import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
+import * as snapshots from "@/server/services/snapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +25,27 @@ export const metadata: Metadata = pageMetadata({
 export default async function HomePage() {
   // Read on the server so the first paint carries real numbers and the page is
   // correct with JavaScript disabled. LiveTracker takes over after hydration.
-  const totals = await getCampaignTotals();
+  //
+  // The sparkline is rendered here too, on the server, and handed to the hero
+  // as an element. Drawing it in the client component would ship the drawing
+  // code to a browser for a picture that never changes after first paint, and
+  // this is the page most people arrive on.
+  const [totals, recent] = await Promise.all([
+    getCampaignTotals(),
+    snapshots.series(db, { campaignSlug: CAMPAIGN_SLUG, days: 30 }),
+  ]);
 
   return (
     <>
-      <Hero totals={totals} />
+      <Hero
+        totals={totals}
+        sparkline={
+          <Sparkline
+            className="h-10 w-full"
+            values={recent.map((day) => day.pledgedMinor.toString())}
+          />
+        }
+      />
       <VisionSection />
       <KeyNumbers />
       <JourneyTimeline />

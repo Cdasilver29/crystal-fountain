@@ -34,7 +34,20 @@ const COUNT_UP_MS = 1_500;
 /** A later poll moving the total. Short, because it is an update, not an entrance. */
 const DELTA_MS = 600;
 
-export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
+export function LiveTracker({
+  initial,
+  sparkline,
+}: {
+  initial: CampaignTotalsDto;
+  /**
+   * The momentum line, already rendered on the server.
+   *
+   * Passed in as an element rather than imported here, because this is a
+   * client component and importing it would ship the drawing code to the
+   * browser for a picture that never changes after first paint.
+   */
+  sparkline?: React.ReactNode;
+}) {
   const [totals, setTotals] = useState(initial);
 
   useEffect(() => {
@@ -111,6 +124,12 @@ export function LiveTracker({ initial }: { initial: CampaignTotalsDto }) {
         />
         <Stat label="received" value={formatKES(totals.receivedMinor)} />
       </dl>
+
+      {sparkline && (
+        <div className="mt-5 text-white/20" aria-hidden>
+          {sparkline}
+        </div>
+      )}
     </div>
   );
 }

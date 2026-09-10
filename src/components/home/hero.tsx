@@ -23,7 +23,13 @@ import type { CampaignTotalsDto } from "@/lib/campaign";
  * unscoped that 10 competed with the fixed header's own z-10 at page level and,
  * being later in the document, won: the phone menu opened behind the hero copy.
  */
-export function Hero({ totals }: { totals: CampaignTotalsDto }) {
+export function Hero({
+  totals,
+  sparkline,
+}: {
+  totals: CampaignTotalsDto;
+  sparkline?: React.ReactNode;
+}) {
   return (
     <section
       id="hero"
@@ -68,7 +74,7 @@ export function Hero({ totals }: { totals: CampaignTotalsDto }) {
           viewport edge, so nothing overflows.
         */}
         <div className="-mx-2 mt-12 sm:mx-0 sm:mt-16">
-          <LiveTracker initial={totals} />
+          <LiveTracker initial={totals} sparkline={sparkline} />
         </div>
 
         <div className="mt-11">
