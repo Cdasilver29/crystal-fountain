@@ -34,9 +34,11 @@ const LINKS: readonly NavLink[] = [
   // record one lives on the page, where only a treasurer sees it.
   { href: "/admin/payments", label: "Payments", minRole: "viewer" },
   // Counts and totals only, nothing to act on and nobody named, so a viewer
-  // sees the same page a treasurer does. It belongs between Payments and the
-  // audit log; the audit log has no screen yet, so for now it sits last.
+  // sees the same page a treasurer does.
   { href: "/admin/analytics", label: "Analytics", minRole: "viewer" },
+  // The one screen a treasurer cannot open. The journal records what the
+  // treasurer did, and a record its subjects can read is a weaker one.
+  { href: "/admin/audit", label: "Audit log", minRole: "admin" },
 ];
 
 export function AdminNav({

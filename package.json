@@ -24,7 +24,8 @@
     "db:verify:snapshots": "tsx scripts/verify-part-j.ts",
     "db:verify:progress": "tsx scripts/verify-part-k.ts",
     "db:verify:content": "tsx scripts/verify-part-l.ts",
-    "db:verify:analytics": "tsx scripts/verify-part-m.ts"
+    "db:verify:analytics": "tsx scripts/verify-part-m.ts",
+    "db:verify:audit": "tsx scripts/verify-part-n.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
