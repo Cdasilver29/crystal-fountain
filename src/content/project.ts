@@ -25,6 +25,7 @@ export const NAV_LINKS: readonly { href: string; label: string }[] = [
   { href: "/", label: "Home" },
   { href: "/vision", label: "Vision" },
   { href: "/faq", label: "FAQ" },
+  { href: "/progress", label: "Progress" },
   { href: "/updates", label: "Updates" },
 ];
 
