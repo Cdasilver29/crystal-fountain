@@ -7,7 +7,7 @@ import { kenyanPhone } from "./phone";
  * whenever the notice changes, so consent is always attributable to the wording
  * that was actually on screen.
  */
-export const PRIVACY_VERSION = "2026-09-01";
+export const PRIVACY_VERSION = "2026-09-10";
 
 /** Length of the public token used in /p/<token> and the QR code. */
 export const PUBLIC_TOKEN_LENGTH = 22;
@@ -23,6 +23,43 @@ export const PLEDGE_CHANNELS = [
   "import",
 ] as const;
 export type PledgeChannel = (typeof PLEDGE_CHANNELS)[number];
+
+/**
+ * How a pledger plans to redeem an instalment pledge.
+ *
+ * Semi annual joined the list with the redemption plan dropdown. The database
+ * check constraint on pledges.installment_frequency holds the same four values
+ * and migration 0005 widened it, so the two cannot drift apart silently.
+ */
+export const PLEDGE_FREQUENCIES = [
+  "monthly",
+  "quarterly",
+  "semi_annually",
+  "annually",
+] as const;
+export type PledgeFrequency = (typeof PLEDGE_FREQUENCIES)[number];
+
+/**
+ * Which tab the pledger was on, and which tier the amount came from.
+ *
+ * Metadata for analytics and nothing else. Neither value changes what a pledge
+ * does, what it is worth or how it is approved, and both are optional: an
+ * amount typed into the custom field carries the tier "custom", and a pledge
+ * recorded by the treasurer carries neither.
+ */
+export const PLEDGE_CATEGORIES = ["family", "individual"] as const;
+export type PledgeCategory = (typeof PLEDGE_CATEGORIES)[number];
+
+export const PLEDGE_TIERS = [
+  "family_above_10m",
+  "family_1m_to_10m",
+  "family_below_1m",
+  "individual_above_1m",
+  "individual_100k_to_1m",
+  "individual_below_100k",
+  "custom",
+] as const;
+export type PledgeTier = (typeof PLEDGE_TIERS)[number];
 
 export const PLEDGE_STATUSES = [
   "pending",
@@ -84,6 +121,11 @@ export const createPledgeInput = z.object({
     ),
 
   intent: z.enum(PLEDGE_INTENTS),
+
+  // Analytics metadata. Optional, because the treasurer's own entry point and
+  // any older client have neither, and a pledge is perfectly valid without.
+  category: z.enum(PLEDGE_CATEGORIES).optional(),
+  tier: z.enum(PLEDGE_TIERS).optional(),
 
   // The three consents are separate and none of them is pre-ticked.
   // Recording the pledge is the only one that is required.

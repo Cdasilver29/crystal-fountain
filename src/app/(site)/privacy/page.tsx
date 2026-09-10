@@ -50,9 +50,10 @@ export default function PrivacyPage() {
 
           <Section title="Who sees it">
             <p>
-              The church development team and the treasury. Your name and pledge
-              amount appear publicly only if you gave explicit consent by
-              ticking the box that says so. That box is never ticked for you,
+              The church development team and the treasury. Your first name and
+              pledge amount appear in the recent pledges feed on this site only
+              if you gave explicit consent by ticking the box that says so.
+              Your full name is never shown. That box is never ticked for you,
               and you can pledge without ticking it.
             </p>
           </Section>

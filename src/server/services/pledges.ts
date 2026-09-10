@@ -1,8 +1,14 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { Db } from "@/db";
-import { auditLog, campaigns, pledgers, pledges } from "@/db/schema";
+import {
+  auditLog,
+  campaigns,
+  pledgeIncrements,
+  pledgers,
+  pledges,
+} from "@/db/schema";
 import { conflict, notFound } from "@/server/errors";
 import { kesToMinor } from "@/server/money";
 import {
@@ -47,7 +53,14 @@ export type CreatePledgeResult = {
   pledgeId: string;
   reference: string;
   publicToken: string;
+  /** The cumulative total on the pledge, after this submission. */
   amountMinor: bigint;
+  /** What this submission added. The same as amountMinor for a first pledge. */
+  addedMinor: bigint;
+  /** The total before this submission, or null when the pledge is new. */
+  previousAmountMinor: bigint | null;
+  /** True when this added to a pledge that was already there. */
+  isAddition: boolean;
   currency: string;
   status: PledgeStatus;
   intent: PledgeIntent;
@@ -55,17 +68,64 @@ export type CreatePledgeResult = {
 };
 
 /**
- * Records a pledge.
+ * The statuses a pledge can be in and still accumulate.
  *
- * One transaction covering: find or create the pledger, allocate the reference
- * and public token, insert the pledge as pending, append the audit row. If any
- * step fails, none of it happened.
+ * A fulfilled pledge has been paid off, and a cancelled or void one is not a
+ * promise any more, so neither takes an addition: the next submission from that
+ * phone number starts a fresh pledge with a fresh reference. This list is the
+ * one the partial unique index in migration 0005 is built on, and the two have
+ * to stay in step.
+ */
+const ACCUMULATING_STATUSES = ["pending", "verified"] as const;
+
+/** The unique index that stops one person holding two live pledges. */
+const ONE_LIVE_PLEDGE_INDEX = "pledges_one_live_per_pledger_idx";
+
+function isOneLivePledgeViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as { code?: unknown; constraint?: unknown };
+  return (
+    candidate.code === "23505" && candidate.constraint === ONE_LIVE_PLEDGE_INDEX
+  );
+}
+
+/**
+ * Records a pledge, accumulating onto the pledger's existing one.
  *
- * The reference comes from next_pledge_reference() evaluated inside the insert
- * statement, so there is no read then write window in application code and two
- * simultaneous pledges cannot be handed the same number. See migration 0000.
+ * The phone number is the identity key, so a second submission from a number
+ * that already has a live pledge is not a second pledge. It adds to the amount
+ * on the pledge that is already there and hands back the same reference, the
+ * same public token and therefore the same QR code. One person, one reference.
+ *
+ * Either way the submission also writes a pledge_increments row, and the
+ * deferred constraint trigger from migration 0005 refuses the commit unless the
+ * pledge amount equals the sum of its increments. CLAUDE.md: corrections are new
+ * rows, not edits, and a total that only ever got UPDATEd would leave nothing to
+ * reconcile against.
+ *
+ * One transaction covering all of it: find or create the pledger, find or create
+ * the pledge, write the increment, append the audit row. If any step fails, none
+ * of it happened.
+ *
+ * The retry covers one narrow race. Two submissions from the same number
+ * arriving together can both find no existing pledge, because there is no row
+ * yet to lock, and both go on to insert one. The unique index rejects the loser,
+ * and running it again finds the pledge the winner just committed and
+ * accumulates onto it, which is what the pledger asked for in the first place.
  */
 export async function create(
+  db: Db,
+  args: CreatePledgeArgs,
+): Promise<CreatePledgeResult> {
+  try {
+    return await createOnce(db, args);
+  } catch (error) {
+    if (!isOneLivePledgeViolation(error)) throw error;
+    return createOnce(db, args);
+  }
+}
+
+async function createOnce(
   db: Db,
   args: CreatePledgeArgs,
 ): Promise<CreatePledgeResult> {
@@ -86,6 +146,7 @@ export async function create(
     }
 
     const now = new Date();
+    const addedMinor = kesToMinor(input.amountKes);
 
     // The phone number is the identity key. A second pledge from the same
     // number updates the person rather than creating a duplicate, and the
@@ -111,47 +172,146 @@ export async function create(
       })
       .returning({ id: pledgers.id });
 
-    const [pledge] = await tx
-      .insert(pledges)
-      .values({
-        campaignId: campaign.id,
-        pledgerId: pledger.id,
-        reference: sql`next_pledge_reference()`,
-        publicToken: nanoid(PUBLIC_TOKEN_LENGTH),
-        amountMinor: kesToMinor(input.amountKes),
-        intent: input.intent,
-        channel,
-      })
-      .returning({
+    /*
+     * Locked for update, so a second submission from the same person waits here
+     * rather than reading a total that is about to change underneath it. The
+     * lock is what makes read then add then write safe. It does nothing when
+     * there is no row yet, which is what the retry above is for.
+     */
+    const [existing] = await tx
+      .select({
         id: pledges.id,
-        reference: pledges.reference,
-        publicToken: pledges.publicToken,
         amountMinor: pledges.amountMinor,
-        currency: pledges.currency,
         status: pledges.status,
-        intent: pledges.intent,
-        createdAt: pledges.createdAt,
-      });
+      })
+      .from(pledges)
+      .where(
+        and(
+          eq(pledges.campaignId, campaign.id),
+          eq(pledges.pledgerId, pledger.id),
+          inArray(pledges.status, [...ACCUMULATING_STATUSES]),
+        ),
+      )
+      .for("update")
+      .limit(1);
 
-    await tx.insert(auditLog).values({
-      actorType: "public",
-      action: "pledge.created",
-      entity: "pledge",
-      entityId: pledge.id,
-      // jsonb cannot carry a bigint, so the amount goes in as a string. It is
-      // still minor units and it is still exact.
-      after: {
-        reference: pledge.reference,
-        amountMinor: pledge.amountMinor.toString(),
-        currency: pledge.currency,
-        status: pledge.status,
-        intent: pledge.intent,
-        channel,
-        campaignId: campaign.id,
-        pledgerId: pledger.id,
-      },
-      ip: request?.ip ?? null,
-      userAgent: request?.userAgent ?? null,
+    const returning = {
+      id: pledges.id,
+      reference: pledges.reference,
+      publicToken: pledges.publicToken,
+      amountMinor: pledges.amountMinor,
+      currency: pledges.currency,
+      status: pledges.status,
+      intent: pledges.intent,
+      createdAt: pledges.createdAt,
+    };
+
+    let pledge;
+
+    if (existing) {
+      /*
+       * Adding to the pledge that is already there.
+       *
+       * The reference and the public token are deliberately not touched.
+       * Somebody may have the first QR code saved on their phone or printed on
+       * a card, and it has to keep resolving to the same pledge showing the new
+       * total.
+       *
+       * The intent moves to whatever was chosen this time, because a redemption
+       * plan describes how the whole pledge will be paid and the pledger has
+       * just said how they intend to pay the larger figure.
+       */
+      const previous = existing.amountMinor;
+      const total = previous + addedMinor;
+
+      [pledge] = await tx
+        .update(pledges)
+        .set({ amountMinor: total, intent: input.intent, updatedAt: now })
+        .where(eq(pledges.id, existing.id))
+        .returning(returning);
+
+      await tx.insert(auditLog).values({
+        actorType: "public",
+        action: "pledge.increased",
+        entity: "pledge",
+        entityId: pledge.id,
+        // jsonb cannot carry a bigint, so every amount goes in as a string. It
+        // is still minor units and it is still exact.
+        before: {
+          amountMinor: previous.toString(),
+          status: existing.status,
+        },
+        after: {
+          reference: pledge.reference,
+          previousAmountMinor: previous.toString(),
+          addedMinor: addedMinor.toString(),
+          amountMinor: total.toString(),
+          currency: pledge.currency,
+          status: pledge.status,
+          intent: pledge.intent,
+          channel,
+          category: input.category ?? null,
+          tier: input.tier ?? null,
+          campaignId: campaign.id,
+          pledgerId: pledger.id,
+        },
+        ip: request?.ip ?? null,
+        userAgent: request?.userAgent ?? null,
+      });
+    } else {
+      /*
+       * The reference comes from next_pledge_reference() evaluated inside the
+       * insert statement, so there is no read then write window in application
+       * code and two simultaneous pledges cannot be handed the same number.
+       * See migration 0000.
+       */
+      [pledge] = await tx
+        .insert(pledges)
+        .values({
+          campaignId: campaign.id,
+          pledgerId: pledger.id,
+          reference: sql`next_pledge_reference()`,
+          publicToken: nanoid(PUBLIC_TOKEN_LENGTH),
+          amountMinor: addedMinor,
+          intent: input.intent,
+          channel,
+        })
+        .returning(returning);
+
+      await tx.insert(auditLog).values({
+        actorType: "public",
+        action: "pledge.created",
+        entity: "pledge",
+        entityId: pledge.id,
+        after: {
+          reference: pledge.reference,
+          amountMinor: pledge.amountMinor.toString(),
+          currency: pledge.currency,
+          status: pledge.status,
+          intent: pledge.intent,
+          channel,
+          category: input.category ?? null,
+          tier: input.tier ?? null,
+          campaignId: campaign.id,
+          pledgerId: pledger.id,
+        },
+        ip: request?.ip ?? null,
+        userAgent: request?.userAgent ?? null,
+      });
+    }
+
+    /*
+     * What the total is made of. Written for a first pledge as much as for an
+     * addition, so the sum of a pledge's increments is always its amount and
+     * the trigger has something to hold true.
+     */
+    await tx.insert(pledgeIncrements).values({
+      pledgeId: pledge.id,
+      amountMinor: addedMinor,
+      channel,
+      category: input.category ?? null,
+      tier: input.tier ?? null,
+      createdAt: now,
     });
 
     return {
@@ -159,6 +319,9 @@ export async function create(
       reference: pledge.reference,
       publicToken: pledge.publicToken,
       amountMinor: pledge.amountMinor,
+      addedMinor,
+      previousAmountMinor: existing ? existing.amountMinor : null,
+      isAddition: Boolean(existing),
       currency: pledge.currency,
       status: pledge.status as PledgeStatus,
       intent: pledge.intent as PledgeIntent,

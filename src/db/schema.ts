@@ -201,11 +201,69 @@ export const pledges = pgTable(
     check("pledges_intent_check", sql`${t.intent} in ('one_off','installment')`),
     check(
       "pledges_installment_frequency_check",
-      sql`${t.installmentFrequency} in ('monthly','quarterly','annually')`,
+      sql`${t.installmentFrequency} in ('monthly','quarterly','semi_annually','annually')`,
     ),
     check(
       "pledges_channel_check",
       sql`${t.channel} in ('web','admin','event','sms','import')`,
+    ),
+    /*
+     * One live pledge per person per campaign.
+     *
+     * A second submission from the same phone number adds to this row instead
+     * of making another one, and two submissions arriving together could both
+     * read nothing and both insert. The predicate matches the status filter the
+     * accumulation query uses: a fulfilled, cancelled or void pledge is
+     * finished and does not stand in the way of a fresh one. See migration 0005.
+     */
+    uniqueIndex("pledges_one_live_per_pledger_idx")
+      .on(t.campaignId, t.pledgerId)
+      .where(sql`status in ('pending','verified')`),
+  ],
+);
+
+/*
+ * What a pledge is made of.
+ *
+ * One row per submission. The pledge row accumulates, this table remembers how
+ * it got there, and a deferred constraint trigger holds pledges.amount_minor
+ * equal to the sum of its increments at every commit. CLAUDE.md: corrections
+ * are new rows, not edits, and a running total kept only by UPDATE would leave
+ * nothing behind to audit against.
+ */
+export const pledgeIncrements = pgTable(
+  "pledge_increments",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /*
+     * Cascading, because an increment is part of a pledge rather than a record
+     * that outlives one. Nothing else references it, and a pledge that is
+     * deleted outright leaving its parts behind would be an orphan that no
+     * balance could ever reconcile.
+     */
+    pledgeId: uuid("pledge_id")
+      .notNull()
+      .references(() => pledges.id, { onDelete: "cascade" }),
+    amountMinor: minor("amount_minor").notNull(),
+    channel: text("channel").notNull().default("web"),
+    // Which tab and which tier the pledger picked on the form. Analytics only.
+    // Neither column changes what the pledge does.
+    category: text("category"),
+    tier: text("tier"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("pledge_increments_pledge_idx").on(t.pledgeId, t.createdAt),
+    check("pledge_increments_amount_minor_check", sql`${t.amountMinor} > 0`),
+    check(
+      "pledge_increments_channel_check",
+      sql`${t.channel} in ('web','admin','event','sms','import')`,
+    ),
+    check(
+      "pledge_increments_category_check",
+      sql`${t.category} is null or ${t.category} in ('family','individual')`,
     ),
   ],
 );

@@ -14,6 +14,13 @@ export const dynamic = "force-dynamic";
  *
  * A new pledge is pending and does not count toward the public total, so this
  * route does not revalidate the campaign totals cache. Approval does.
+ *
+ * A submission from a phone number that already has a live pledge adds to that
+ * pledge rather than creating another one, so the reference and the public
+ * token that come back are the ones the pledger already has. 200 rather than
+ * 201 says so: nothing was created. The isAddition flag is what the form reads
+ * to decide between telling somebody their pledge is recorded and telling them
+ * it has been updated.
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -45,10 +52,13 @@ export async function POST(request: Request) {
         // Amounts always cross the wire as integer minor units with an
         // explicit currency, per PLAN.md section 13.
         amountMinor: result.amountMinor.toString(),
+        addedMinor: result.addedMinor.toString(),
+        previousAmountMinor: result.previousAmountMinor?.toString() ?? null,
+        isAddition: result.isAddition,
         currency: result.currency,
         status: result.status,
       },
-      { status: 201 },
+      { status: result.isAddition ? 200 : 201 },
     );
   } catch (error) {
     return serviceProblem(error);

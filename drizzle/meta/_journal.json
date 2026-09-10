@@ -36,6 +36,13 @@
       "when": 1788944684541,
       "tag": "0004_fat_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789071139102,
+      "tag": "0005_pledge_accumulation",
+      "breakpoints": true
     }
   ]
 }

@@ -466,7 +466,8 @@ export function PledgeForm() {
                 checked={displayConsent}
                 onChange={setDisplayConsent}
               >
-                You may show my name publicly on the list of pledgers.
+                You may show my first name and pledge amount in the recent
+                pledges feed on the website.
               </Consent>
             </fieldset>
           </div>
@@ -493,7 +494,9 @@ export function PledgeForm() {
               {email && <Row label="Email">{email}</Row>}
               {membershipNo && <Row label="Membership">{membershipNo}</Row>}
               <Row label="Contact me">{contactConsent ? "Yes" : "No"}</Row>
-              <Row label="Show my name">{displayConsent ? "Yes" : "No"}</Row>
+              <Row label="Show in recent pledges">
+                {displayConsent ? "Yes" : "No"}
+              </Row>
             </dl>
 
             <p className="mt-5 rounded-lg bg-navy/5 px-4 py-3 text-sm leading-relaxed text-navy">
