@@ -47,17 +47,55 @@ export const SOCIAL_LINKS: readonly { label: string; href: string }[] = [
   },
 ];
 
-/**
- * The four key numbers. "Vision unveiled" is dated 2025, when the vision was
- * actually unveiled. The covenant launch in September 2026 is a separate
- * milestone and appears on the timeline, not here.
- */
-export const KEY_NUMBERS: readonly { value: string; label: string }[] = [
-  { value: "3,000-5,000", label: "Main auditorium seats" },
-  { value: "700", label: "Parking spaces" },
-  { value: "KES 550M", label: "Campaign target" },
-  { value: "2025", label: "Vision unveiled" },
+/** The three steps printed on the campaign flyer, in order. */
+export const PLEDGE_STEPS: readonly { step: string; label: string }[] = [
+  { step: "1", label: "Pray" },
+  { step: "2", label: "Pledge" },
+  { step: "3", label: "Redeem" },
 ];
+
+export type CommitmentTier = {
+  families: number;
+  /** Whole shillings. A guide figure for display, never a money total. */
+  pledgePerFamilyKes: number;
+  /**
+   * The rows the campaign material leans on, highlighted so a household has
+   * somewhere to place itself rather than reading nine equal options.
+   */
+  sweetSpot?: boolean;
+};
+
+/**
+ * The targeted commitment guide from the church's campaign material.
+ *
+ * Each row is one way the congregation reaches the target: this many families
+ * pledging this much each over three years. The per family figures are the
+ * church's published, rounded numbers, so a row multiplied out lands near the
+ * target rather than exactly on it. They are guide figures for a member reading
+ * a table, not amounts anything is calculated from.
+ *
+ * The target itself is not stated here. It is read from the database and passed
+ * in, per CLAUDE.md.
+ */
+export const COMMITMENT_TIERS: readonly CommitmentTier[] = [
+  { families: 55, pledgePerFamilyKes: 10_000_000 },
+  { families: 100, pledgePerFamilyKes: 5_500_000 },
+  { families: 150, pledgePerFamilyKes: 3_670_000 },
+  { families: 200, pledgePerFamilyKes: 2_700_000, sweetSpot: true },
+  { families: 250, pledgePerFamilyKes: 2_200_000, sweetSpot: true },
+  { families: 300, pledgePerFamilyKes: 1_800_000 },
+  { families: 350, pledgePerFamilyKes: 1_600_000 },
+  { families: 450, pledgePerFamilyKes: 1_300_000 },
+  { families: 500, pledgePerFamilyKes: 1_000_000 },
+];
+
+/** Headings for the commitment section. A colon stands in for the em dash. */
+export const COMMITMENT_COPY = {
+  heading: "Church Development Fund: targeted commitment",
+  subheading: "Over a 3-year period",
+  cta: "Find your family's place in the vision.",
+  ctaLink: "Make a pledge",
+} as const;
 
 export type Milestone = {
   when: string;
@@ -68,11 +106,10 @@ export type Milestone = {
 
 export const TIMELINE: readonly Milestone[] = [
   { when: "June 2025", what: "Vision unveiled" },
-  { when: "5 July 2025", what: "Church Development Fund launched" },
   { when: "2025", what: "Concept proposals and member consultation" },
   {
     when: "September 2026",
-    what: '"This is My Pledge" covenant launch',
+    what: "Launch of Church Development Fund",
     current: true,
   },
   { when: "Next", what: "Design finalisation and approvals" },
@@ -191,7 +228,7 @@ export const FAQ_CATEGORIES: readonly FaqCategory[] = [
       {
         question: "Who oversees the project?",
         answer:
-          "The Building Committee, working under the church board and in consultation with the Kenya-Lake Union Conference. Professional architects, engineers, and project managers will execute the work.",
+          "The Development Committee of Newlife Seventh-day Adventist Church, working with other departments and church offices. Professional architects, engineers, and project managers will execute the work.",
       },
     ],
   },
@@ -267,7 +304,7 @@ export const FAQ_CATEGORIES: readonly FaqCategory[] = [
 /** Governance and transparency copy, used on the home page and /vision. */
 export const ACCOUNTABILITY = {
   oversight:
-    "The Crystal Fountain Development Project is overseen by the Building Committee, working under the direction of the church board and in consultation with the Kenya-Lake Union Conference of Seventh-day Adventists. Professional architects, engineers, and project managers will be engaged to execute the work.",
+    "The Crystal Fountain Development Project is overseen by the Development Committee of Newlife Seventh-day Adventist Church working with other departments and church offices. Professional architects, engineers, and project managers will be engaged to execute the work.",
   updates:
     "All contributions are acknowledged and accounted for. Regular updates on funding, design, and construction progress will be shared openly with the congregation through the church website, bulletin, and official communication channels.",
 } as const;
