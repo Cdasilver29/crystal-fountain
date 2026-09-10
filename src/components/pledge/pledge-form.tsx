@@ -37,14 +37,26 @@ import { createPledgeInput } from "@/server/contracts/pledges";
  * row ran 10,000 to 1,000,000, which made 1,000,000 read as the ceiling; here
  * it is where the family tier starts. The individual tier is still one tap
  * away, and any figure at all can be typed underneath.
+ *
+ * The individual tier starts at 50,000 rather than at the smallest pledge the
+ * form takes. A suggestion is an anchor, so the lowest one on offer is the one
+ * a hesitant member settles on; somebody giving less than that types it in and
+ * is accepted, which is what the contract floor of KES 100 is for.
+ *
+ * 1,000,000 is deliberately in both tiers: it is the top of what one person
+ * gives and the floor of what a household commits over three years. That means
+ * a value alone cannot say which chip is pressed, so the selection carries its
+ * tier as well.
  */
 const FAMILY_AMOUNTS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000];
-const INDIVIDUAL_AMOUNTS = [10_000, 50_000, 100_000, 250_000, 500_000];
+const INDIVIDUAL_AMOUNTS = [50_000, 100_000, 250_000, 500_000, 1_000_000];
 
 /** Digits the amount field accepts, enough for the KES 1,000,000,000 ceiling. */
 const MAX_AMOUNT_DIGITS = 10;
 
 const STEP_LABELS = ["Amount", "Your details", "Review"] as const;
+
+type AmountTier = "family" | "individual";
 
 type Errors = Record<string, string>;
 
@@ -56,6 +68,12 @@ export function PledgeForm() {
   // came from. Reset on every move, never read for anything but the animation.
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [amountDigits, setAmountDigits] = useState("");
+  // Which chip is pressed, or null when the amount was typed. Two chips share
+  // the value 1,000,000, so the tier is part of the identity.
+  const [chosen, setChosen] = useState<{
+    tier: AmountTier;
+    amount: number;
+  } | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -67,6 +85,16 @@ export function PledgeForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  function chooseAmount(tier: AmountTier, amount: number) {
+    setAmountDigits(String(amount));
+    setChosen({ tier, amount });
+  }
+
+  function typeAmount(digits: string) {
+    setAmountDigits(digits);
+    setChosen(null);
+  }
 
   const amountKes = amountDigits === "" ? Number.NaN : Number(amountDigits);
 
@@ -231,8 +259,10 @@ export function PledgeForm() {
                     key={amount}
                     amount={amount}
                     tier="family"
-                    selected={amountDigits === String(amount)}
-                    onSelect={setAmountDigits}
+                    selected={
+                      chosen?.tier === "family" && chosen.amount === amount
+                    }
+                    onSelect={chooseAmount}
                     className={
                       index === FAMILY_AMOUNTS.length - 1
                         ? "col-span-2"
@@ -261,8 +291,10 @@ export function PledgeForm() {
                     key={amount}
                     amount={amount}
                     tier="individual"
-                    selected={amountDigits === String(amount)}
-                    onSelect={setAmountDigits}
+                    selected={
+                      chosen?.tier === "individual" && chosen.amount === amount
+                    }
+                    onSelect={chooseAmount}
                   />
                 ))}
               </div>
@@ -297,7 +329,7 @@ export function PledgeForm() {
                   aria-invalid={Boolean(errors.amountKes)}
                   value={groupDigits(amountDigits)}
                   onChange={(event) =>
-                    setAmountDigits(
+                    typeAmount(
                       event.target.value
                         .replace(/\D/g, "")
                         .slice(0, MAX_AMOUNT_DIGITS),
@@ -521,9 +553,9 @@ function AmountChip({
   className,
 }: {
   amount: number;
-  tier: "family" | "individual";
+  tier: AmountTier;
   selected: boolean;
-  onSelect: (digits: string) => void;
+  onSelect: (tier: AmountTier, amount: number) => void;
   className?: string;
 }) {
   const family = tier === "family";
@@ -532,7 +564,7 @@ function AmountChip({
     <button
       type="button"
       aria-pressed={selected}
-      onClick={() => onSelect(String(amount))}
+      onClick={() => onSelect(tier, amount)}
       className={cn(
         "flex items-baseline justify-center gap-1 border transition-colors",
         "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
