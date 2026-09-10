@@ -39,6 +39,17 @@ import { formatKES, formatKESCompact, formatMonthShort } from "@/lib/format";
  * pulled the Line, Bar and Scatter renderers into the public progress page and
  * put twelve kilobytes on it for a dashed line that page never draws. An
  * unfilled Area is the same stroke at no cost.
+ *
+ * Sharing this component is not free even so. /progress went from 233kB to
+ * 242kB when the chart moved out, because the page now has two client modules
+ * rather than one and Turbopack gives each its own chunk group with some
+ * recharts runtime in both. Re-exporting this through progress-charts so the
+ * page imports from a single module was tried and changes nothing: the client
+ * reference resolves to the module that defines the component either way.
+ *
+ * The nine kilobytes are worth one chart instead of two that drift apart, and
+ * the page that matters is unaffected. The home page never reaches either of
+ * these modules and is still 146kB, which is what verify-part-k enforces.
  */
 
 const NO_POINTS: ProjectedPoint[] = [];
