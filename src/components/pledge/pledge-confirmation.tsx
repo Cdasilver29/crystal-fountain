@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
 import { CopyButton } from "@/components/pledge/copy-button";
+import { SuccessMark } from "@/components/pledge/success-mark";
 import { ShareButton } from "@/components/pledge/share-button";
 import type { CampaignTotalsDto } from "@/lib/campaign";
 import { formatDate, formatKES } from "@/lib/format";
@@ -27,12 +28,19 @@ export function PledgeConfirmation({
   token,
   siteUrl,
   justCreated = false,
+  isAddition = false,
 }: {
   pledge: PublicPledgeView;
   totals: CampaignTotalsDto;
   token: string;
   siteUrl: string;
   justCreated?: boolean;
+  /**
+   * Whether the submission that led here added to a pledge that already
+   * existed. Only ever true alongside justCreated: arriving at this page from a
+   * QR code months later is not an addition, it is a visit.
+   */
+  isAddition?: boolean;
 }) {
   const pledgeUrl = `${siteUrl.replace(/\/$/, "")}/p/${token}`;
 
@@ -55,18 +63,70 @@ export function PledgeConfirmation({
             Crystal Fountain Development Project
           </Link>
 
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            {justCreated ? "Your pledge is recorded" : "Pledge acknowledgement"}
-          </h1>
+          {/*
+            Straight after submitting, the heading belongs beside the checkmark
+            below rather than up here, so the celebration is one block instead of
+            two halves with a colour change between them. Arriving from a QR code
+            months later is not a celebration, and that view keeps its plain
+            heading.
+          */}
+          {justCreated ? (
+            <p className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              Crystal Fountain
+            </p>
+          ) : (
+            <>
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Pledge acknowledgement
+              </h1>
 
-          {pledge.displayName && (
-            <p className="mt-1 text-white/70">Thank you, {pledge.displayName}.</p>
+              {pledge.displayName && (
+                <p className="mt-1 text-white/70">
+                  Thank you, {pledge.displayName}.
+                </p>
+              )}
+            </>
           )}
         </div>
       </header>
 
       <main className="px-4 py-8 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-2xl space-y-5">
+          {justCreated && (
+            <section className="rounded-2xl border border-black/5 bg-white p-5 text-center shadow-sm sm:p-7">
+              <SuccessMark />
+
+              {/*
+                CLAUDE.md fixes this wording: the success state says the pledge
+                is recorded. "Received" is the word the tracker uses for money
+                actually in the bank, and a page whose whole job is to stop
+                somebody believing they have just paid cannot be the one place
+                that blurs the two.
+              */}
+              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+                {isAddition
+                  ? "Thank you. Your pledge is updated."
+                  : "Thank you. Your pledge is recorded."}
+              </h1>
+
+              {isAddition ? (
+                <p className="mt-2 text-base text-neutral-700">
+                  Your pledge now stands at{" "}
+                  <span className="tabular font-semibold text-navy">
+                    {formatKES(pledge.amountMinor)}
+                  </span>{" "}
+                  in total, on the same reference you already had.
+                </p>
+              ) : (
+                pledge.displayName && (
+                  <p className="mt-2 text-base text-neutral-700">
+                    Thank you, {pledge.displayName}.
+                  </p>
+                )
+              )}
+            </section>
+          )}
+
           <section className="rounded-2xl border border-black/5 bg-white p-5 text-center shadow-sm sm:p-7">
             <h2 className="text-sm font-medium tracking-wide text-neutral-500">
               Your reference number
@@ -85,6 +145,7 @@ export function PledgeConfirmation({
               <ShareButton
                 url={pledgeUrl}
                 title={`My pledge to the Crystal Fountain Development Project, ${pledge.reference}`}
+                label="Share your pledge"
               />
             </div>
 
@@ -183,6 +244,30 @@ export function PledgeConfirmation({
             <div className="mt-3">
               <CampaignProgress totals={totals} />
             </div>
+          </section>
+
+          {/*
+            The way back to the form, carrying this pledge's own token.
+            Accumulation makes a second pledge an addition rather than a
+            duplicate, so there is no longer any reason to discourage somebody
+            from coming back, and the token is what lets the form greet them
+            with what they already have. It is the same unguessable token that
+            opens this page, so the link gives away nothing that whoever is
+            holding it cannot already see.
+          */}
+          <section className="rounded-2xl border border-denim/25 bg-denim/5 p-5 text-center sm:p-6">
+            <h2 className="font-semibold text-navy">Want to add more?</h2>
+            <p className="mt-1 text-sm leading-relaxed text-neutral-700">
+              A second pledge from the same phone number is added to this one.
+              You keep this reference and this QR code.
+            </p>
+            <Link
+              href={`/pledge?add=${token}`}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-denim px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-denim/90 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            >
+              Increase my pledge
+              <span aria-hidden>&rarr;</span>
+            </Link>
           </section>
 
           <p className="text-center text-sm text-neutral-600">

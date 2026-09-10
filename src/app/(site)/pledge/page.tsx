@@ -2,10 +2,48 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
-import { PledgeForm } from "@/components/pledge/pledge-form";
+import {
+  PledgeForm,
+  type ExistingPledge,
+} from "@/components/pledge/pledge-form";
+import { db } from "@/db";
 import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
+import { publicTokenInput } from "@/server/contracts/pledges";
+import * as pledges from "@/server/services/pledges";
+
+/**
+ * The pledge behind an "increase my pledge" link, or null.
+ *
+ * Only what the form needs to greet somebody: what they already pledged and the
+ * reference it sits on. The service's public view is the same one /p/<token>
+ * uses, so no phone number and no email address can come back through here.
+ *
+ * A malformed or unknown token is simply nobody, not an error. Somebody who
+ * mangles the link should still get a working form rather than a 404.
+ */
+async function existingPledgeFor(
+  token: string,
+): Promise<ExistingPledge | null> {
+  const parsed = publicTokenInput.safeParse({ publicToken: token });
+
+  if (!parsed.success) return null;
+
+  const pledge = await pledges.getByPublicToken(db, {
+    publicToken: parsed.data.publicToken,
+  });
+
+  // A cancelled or fulfilled pledge does not accumulate, so promising somebody
+  // their amount will be added to it would be a lie. See ACCUMULATING_STATUSES.
+  if (!pledge) return null;
+  if (pledge.status !== "pending" && pledge.status !== "verified") return null;
+
+  return {
+    reference: pledge.reference,
+    amountMinor: pledge.amountMinor.toString(),
+  };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +54,28 @@ export const metadata: Metadata = pageMetadata({
   path: "/pledge",
 });
 
-export default async function PledgePage() {
+export default async function PledgePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ add?: string }>;
+}) {
+  const query = await searchParams;
   const totals = await getCampaignTotals();
+
+  /*
+   * Somebody arriving from the "increase my pledge" link on their own
+   * confirmation page, identified by the same unguessable token that opens it.
+   *
+   * Deliberately keyed on the token rather than on a phone number. A form that
+   * looked a pledge up from a typed phone number would answer "does this person
+   * have a pledge, and for how much" to anyone who knew their number, and the
+   * congregation's numbers are not secret. The token is already the public
+   * identifier for this pledge, so this reveals nothing to whoever is holding
+   * the link that /p/<token> would not already show them.
+   */
+  const returning = query.add
+    ? await existingPledgeFor(query.add)
+    : null;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
@@ -47,7 +105,10 @@ export default async function PledgePage() {
           Cloudflare prints on its dashboard, and an empty value simply means
           the form renders no widget, which is what a local machine wants.
         */}
-        <PledgeForm turnstileSiteKey={env.TURNSTILE_SITE_KEY || null} />
+        <PledgeForm
+          turnstileSiteKey={env.TURNSTILE_SITE_KEY || null}
+          existing={returning}
+        />
 
         <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-neutral-600">
           A pledge is a promise to give, not a payment. You will receive a

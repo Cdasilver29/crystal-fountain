@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 import { CopyButton } from "@/components/pledge/copy-button";
-import { BANK, CONTACT, MPESA, MPESA_STEPS } from "@/content/campaign";
+import { BANK, CONTACT, MPESA, mpesaSteps } from "@/content/campaign";
 import { cn } from "@/lib/utils";
 
 /**
@@ -114,7 +114,7 @@ export function PaymentInstructions({
           <h3 className="font-semibold text-navy">Pay by M-Pesa</h3>
 
           <ol className="mt-4 space-y-2.5 text-sm text-neutral-700">
-            {MPESA_STEPS.map((step, index) => (
+            {mpesaSteps(reference).map((step, index) => (
               <li key={step} className="flex gap-3">
                 <span
                   aria-hidden
@@ -129,7 +129,11 @@ export function PaymentInstructions({
 
           <dl className="mt-5 space-y-2 border-t border-neutral-100 pt-4 text-sm">
             <Detail label="Business number" value={MPESA.paybill} copyable />
-            <Detail label="Account number" value={MPESA.account} copyable />
+            <Detail
+              label="Account number"
+              value={reference ?? MPESA.account}
+              copyable
+            />
           </dl>
         </section>
       </div>

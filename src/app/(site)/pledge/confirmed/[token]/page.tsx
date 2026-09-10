@@ -11,20 +11,38 @@ import * as pledges from "@/server/services/pledges";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Your pledge is recorded",
-  path: "/pledge",
-  // A pledge acknowledgement is not something to index, even behind an
-  // unguessable token.
-  noIndex: true,
-});
+/**
+ * The tab title follows the heading.
+ *
+ * An addition is not a new pledge, and a browser tab still reading "recorded"
+ * while the page says "updated" is the same confusion in miniature. The token
+ * is deliberately not read here: the title says nothing about which pledge this
+ * is, so there is nothing to look up.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ updated?: string }>;
+}): Promise<Metadata> {
+  const { updated } = await searchParams;
+
+  return pageMetadata({
+    title: updated === "1" ? "Your pledge is updated" : "Your pledge is recorded",
+    path: "/pledge",
+    // A pledge acknowledgement is not something to index, even behind an
+    // unguessable token.
+    noIndex: true,
+  });
+}
 
 export default async function PledgeConfirmedPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ updated?: string }>;
 }) {
-  const { token } = await params;
+  const [{ token }, query] = await Promise.all([params, searchParams]);
   const parsed = publicTokenInput.safeParse({ publicToken: token });
 
   if (!parsed.success) notFound();
@@ -43,6 +61,13 @@ export default async function PledgeConfirmedPage({
       token={parsed.data.publicToken}
       siteUrl={env.NEXT_PUBLIC_SITE_URL}
       justCreated
+      /*
+       * A flag and nothing more. The amount it changes the wording of is read
+       * from the database below, not carried in the URL, because CLAUDE.md
+       * keeps personal detail out of query strings and a pledge amount is
+       * exactly that.
+       */
+      isAddition={query.updated === "1"}
     />
   );
 }

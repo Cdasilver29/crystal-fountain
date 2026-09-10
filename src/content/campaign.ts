@@ -28,13 +28,29 @@ export const MPESA = {
   account: "Church Development Fund",
 } as const;
 
-export const MPESA_STEPS: readonly string[] = [
-  "Go to M-Pesa > Lipa na M-Pesa > Pay Bill",
-  `Business Number: ${MPESA.paybill}`,
-  `Account Number: ${MPESA.account}`,
-  "Enter Amount",
-  "Enter PIN and confirm",
-];
+/**
+ * What to type into M-Pesa, with the pledger's own reference in the account
+ * field when there is one.
+ *
+ * The account number is what the treasury matches a payment against, and a
+ * reference identifies one pledge where the fund name identifies only the fund.
+ * That is what the 12 character cap on the reference format exists for: it has
+ * to fit Daraja's AccountReference field.
+ *
+ * Somebody giving without having pledged has no reference, and they still need
+ * to be able to pay, so the fund name stays as the fallback.
+ */
+export function mpesaSteps(reference?: string): readonly string[] {
+  return [
+    "Go to M-Pesa > Lipa na M-Pesa > Pay Bill",
+    `Business Number: ${MPESA.paybill}`,
+    `Account Number: ${reference ?? MPESA.account}`,
+    "Enter Amount",
+    "Enter PIN and confirm",
+  ];
+}
+
+export const MPESA_STEPS: readonly string[] = mpesaSteps();
 
 export const BANK = {
   accountName: "Newlife SDA Church",

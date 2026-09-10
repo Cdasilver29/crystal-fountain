@@ -543,3 +543,59 @@
     opacity: 1;
   }
 }
+
+/*
+ * The confirmation checkmark.
+ *
+ * A ring that draws itself and then a tick that strokes in behind it, one and
+ * a half seconds end to end. Both are stroke-dashoffset animations on an inline
+ * SVG, so there is no image to load, no library, and nothing to run on the main
+ * thread: the compositor draws it. The tick is delayed by exactly the ring's
+ * duration rather than by a guess, so the two read as one gesture.
+ *
+ * Recording a pledge is the one moment in this whole flow worth marking. It is
+ * also the moment somebody is most likely to think they have just paid, which
+ * is why the line underneath it says what a pledge is.
+ */
+@keyframes success-ring {
+  from {
+    stroke-dashoffset: 166;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes success-tick {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-ring {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: success-ring 900ms ease-out forwards;
+}
+
+.success-tick {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: success-tick 600ms 900ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * Drawn rather than switched off. The mark is the confirmation itself, so
+   * removing it would remove the answer to the question the page exists to
+   * answer. It simply arrives already complete.
+   */
+  .success-ring,
+  .success-tick {
+    animation: none !important;
+    stroke-dashoffset: 0;
+  }
+}

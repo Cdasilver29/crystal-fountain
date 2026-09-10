@@ -138,9 +138,27 @@ export type PledgeFormProps = {
    * when there is no key to render it with.
    */
   turnstileSiteKey?: string | null;
+  /**
+   * The pledge this visitor is coming back to increase, when they arrived from
+   * the link on their own confirmation page. Null for everybody else.
+   *
+   * The amount crosses as a string because this is a server component handing
+   * data to a client one, and bigint has no place in what React serialises.
+   * It is still exact minor units.
+   */
+  existing?: ExistingPledge | null;
 };
 
-export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
+export type ExistingPledge = {
+  reference: string;
+  /** Minor units, as a string. */
+  amountMinor: string;
+};
+
+export function PledgeForm({
+  turnstileSiteKey = null,
+  existing = null,
+}: PledgeFormProps) {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
@@ -339,7 +357,11 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
         return;
       }
 
-      router.push(`/pledge/confirmed/${body.publicToken}`);
+      // A flag, not the amount. The confirmation reads the total back from the
+      // database, so nothing personal travels in the query string.
+      router.push(
+        `/pledge/confirmed/${body.publicToken}${body.isAddition ? "?updated=1" : ""}`,
+      );
     } catch {
       setErrors({
         form: "We could not reach the server. Check your connection and try again.",
@@ -352,6 +374,31 @@ export function PledgeForm({ turnstileSiteKey = null }: PledgeFormProps) {
 
   return (
     <div className="mx-auto w-full max-w-lg">
+      {/*
+        What somebody coming back already has.
+
+        Shown on every step rather than only the first, because the sentence
+        that matters is about the phone number, and the phone number is asked
+        for on the second one. Worded carefully: accumulation keys on the phone
+        number, not on the link, so promising the amount will be added without
+        saying what makes that true would mislead anybody who reaches this from
+        a relative's phone.
+      */}
+      {existing && (
+        <div className="mb-5 rounded-xl border border-denim/25 bg-denim/5 p-4">
+          <p className="text-sm leading-relaxed text-navy">
+            You have an existing pledge of{" "}
+            <span className="tabular font-semibold">
+              {formatKES(existing.amountMinor)}
+            </span>{" "}
+            on reference{" "}
+            <span className="tabular font-semibold">{existing.reference}</span>.
+            Enter the same phone number you used before and the amount you enter
+            will be added to it, keeping that reference and its QR code.
+          </p>
+        </div>
+      )}
+
       <StepIndicator step={step} />
 
       <div className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7 overflow-x-hidden">

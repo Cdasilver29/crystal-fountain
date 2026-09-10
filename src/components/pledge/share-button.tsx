@@ -11,7 +11,16 @@ import { Button } from "@/components/ui/button";
  * WhatsApp share sheet directly. Everywhere else it copies the link instead, so
  * the button always does something useful.
  */
-export function ShareButton({ url, title }: { url: string; title: string }) {
+export function ShareButton({
+  url,
+  title,
+  label = "Share",
+}: {
+  url: string;
+  title: string;
+  /** The button's own text. The confirmation says what is being shared. */
+  label?: string;
+}) {
   const [state, setState] = useState<"idle" | "copied">("idle");
 
   useEffect(() => {
@@ -46,7 +55,7 @@ export function ShareButton({ url, title }: { url: string; title: string }) {
       aria-live="polite"
       className="bg-denim text-white hover:bg-denim/90"
     >
-      {state === "copied" ? "Link copied" : "Share"}
+      {state === "copied" ? "Link copied" : label}
     </Button>
   );
 }
