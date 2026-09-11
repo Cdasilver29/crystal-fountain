@@ -85,6 +85,22 @@ const serverSchema = z.object({
         .int("must be a whole number of shillings.")
         .positive("must be greater than zero."),
     ),
+  /*
+   * Where crash reports go, or nothing.
+   *
+   * Optional, and an empty string is a legitimate value rather than a mistake:
+   * a laptop has no Sentry project and the SDK treats a missing DSN as "stay
+   * switched off", which is what local development wants. Unset on Vercel it
+   * means production reports nothing, which is a gap rather than a danger, so
+   * it is not required the way the Turnstile keys are.
+   *
+   * Declared here so the shape is validated in one place and a mistyped DSN
+   * fails loudly. The Sentry configs themselves read process.env directly: they
+   * run inside instrumentation, before a request exists, and touching this
+   * contract there would validate every other server key at a moment when Next
+   * does not reliably have them. See the note at the top of this file.
+   */
+  SENTRY_DSN: z.union([z.literal(""), z.url("must be a Sentry DSN url.")]).optional(),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -125,6 +141,7 @@ function getServerEnv(): ServerEnv {
       TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
       PLEDGE_AUTO_APPROVE_LIMIT_KES: process.env.PLEDGE_AUTO_APPROVE_LIMIT_KES,
+      SENTRY_DSN: process.env.SENTRY_DSN,
     });
     if (!parsed.success) fail(parsed.error);
     serverEnv = parsed.data;

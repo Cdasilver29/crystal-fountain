@@ -41,6 +41,7 @@
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",
     "@neondatabase/serverless": "1.1.0",
+    "@sentry/nextjs": "10.74.0",
     "better-auth": "1.7.3",
     "class-variance-authority": "0.7.1",
     "cn": "0.2.6",

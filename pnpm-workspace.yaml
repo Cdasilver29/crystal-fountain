@@ -1,4 +1,9 @@
 allowBuilds:
+  # Refused. Its install script downloads the sentry-cli binary, which exists to
+  # upload source maps at build time. This project does not upload source maps
+  # and does not install the Sentry build plugin, so the binary would be several
+  # megabytes fetched on every install to sit unused.
+  '@sentry/cli': false
   esbuild: true
   sharp: false
   unrs-resolver: false
