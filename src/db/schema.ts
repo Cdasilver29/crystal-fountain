@@ -286,13 +286,35 @@ export const pledgeIncrements = pgTable(
     // Neither column changes what the pledge does.
     category: text("category"),
     tier: text("tier"),
+    /*
+     * Why an administrator corrected the amount.
+     *
+     * Required on any increment that takes money away, and null on an ordinary
+     * submission, which needs no explanation beyond itself. A correction to a
+     * figure the congregation can see is the one kind of write where the number
+     * alone is not enough of a record.
+     */
+    reason: text("reason"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => [
     index("pledge_increments_pledge_idx").on(t.pledgeId, t.createdAt),
-    check("pledge_increments_amount_minor_check", sql`${t.amountMinor} > 0`),
+    // Zero is not a correction, it is a no-op with an audit row attached.
+    check("pledge_increments_amount_minor_check", sql`${t.amountMinor} <> 0`),
+    /*
+     * An increment may be negative, but only an administrator's, and only with
+     * a reason written down. A pledger's submission can never subtract: the
+     * form has no way to express it and a robot should not discover one.
+     */
+    check(
+      "pledge_increments_adjustment_check",
+      sql`${t.amountMinor} > 0
+          or (${t.channel} = 'admin'
+              and ${t.reason} is not null
+              and length(trim(${t.reason})) > 0)`,
+    ),
     check(
       "pledge_increments_channel_check",
       sql`${t.channel} in ('web','admin','event','sms','import')`,

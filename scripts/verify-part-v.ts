@@ -71,6 +71,18 @@ async function main() {
 
   await wipe();
 
+  /*
+   * How many accounts the database already holds.
+   *
+   * Read before this suite adds any, because the cap counts every active
+   * account and a real installation has at least the super administrator in it.
+   * Asserting an absolute number here would pass on an empty database and fail
+   * the moment somebody actually set the portal up.
+   */
+  const adminUsersService = await import("@/server/services/admin-users");
+  const baseline = (await adminUsersService.capacity(db)).active;
+  console.log(`(the database already holds ${baseline} active account(s))`);
+
   const signIn = async (email: string, password: string) => {
     const response = await fetch(`${BASE}/api/admin/login`, {
       method: "POST",
@@ -398,8 +410,8 @@ async function main() {
   check("the limit is five", room.limit === MAX_ADMIN_USERS);
   check(
     "a retired account does not hold its place",
-    room.active === 3,
-    `${room.active} active (viewer, treasurer, admin), the retired one excluded`,
+    room.active === baseline + 3,
+    `${room.active} active: ${baseline} already there plus viewer, treasurer and admin, with the retired one excluded`,
   );
 
   // Fill up to the cap, then try one more.

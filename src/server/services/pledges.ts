@@ -35,6 +35,7 @@ import {
   PRIVACY_VERSION,
   PUBLIC_TOKEN_LENGTH,
   type CreatePledgeInput,
+  type EditPledgeInput,
   type LookupPledgeInput,
   type PledgeChannel,
   type PledgeFrequency,
@@ -1200,4 +1201,438 @@ export async function lookup(
         : BigInt(row.installment_amount_minor),
     createdAt: new Date(row.created_at),
   };
+}
+
+/* ---------------------------------------------------------------------------
+ * The administrator's view of one pledge, and correcting it.
+ * ------------------------------------------------------------------------- */
+
+/** One allocation against this pledge, for the detail screen. */
+export type AdminPledgePayment = {
+  allocationId: string;
+  paymentId: string;
+  amountMinor: bigint;
+  method: string;
+  externalRef: string | null;
+  paidAt: Date;
+  reversedAt: Date | null;
+};
+
+/** One submission or correction that makes up the total. */
+export type AdminPledgeIncrement = {
+  id: string;
+  amountMinor: bigint;
+  channel: string;
+  category: string | null;
+  tier: string | null;
+  reason: string | null;
+  createdAt: Date;
+};
+
+/**
+ * Everything an administrator may see about one pledge.
+ *
+ * This is the one place a pledger's phone number and email address are returned
+ * whole, and it is behind the admin portal and the rights table. The public
+ * views next to it in this file return neither, whatever the caller asks for.
+ */
+export type AdminPledgeDetail = {
+  id: string;
+  reference: string;
+  publicToken: string;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  membershipNo: string | null;
+  amountMinor: bigint;
+  paidMinor: bigint;
+  outstandingMinor: bigint;
+  currency: string;
+  status: PledgeStatus;
+  intent: PledgeIntent;
+  installmentFrequency: PledgeFrequency | null;
+  installmentAmountMinor: bigint | null;
+  channel: string;
+  note: string | null;
+  displayConsent: boolean;
+  contactConsent: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  verifiedAt: Date | null;
+  increments: AdminPledgeIncrement[];
+  payments: AdminPledgePayment[];
+};
+
+type DetailRow = {
+  id: string;
+  reference: string;
+  public_token: string;
+  full_name: string;
+  phone_e164: string;
+  email: string | null;
+  membership_no: string | null;
+  amount_minor: string;
+  paid_minor: string;
+  outstanding_minor: string;
+  currency: string;
+  status: string;
+  intent: string;
+  installment_frequency: string | null;
+  installment_amount_minor: string | null;
+  channel: string;
+  note: string | null;
+  display_consent: boolean;
+  contact_consent: boolean;
+  created_at: string;
+  updated_at: string;
+  verified_at: string | null;
+};
+
+/** One pledge, with what it is made of and what has been paid against it. */
+export async function getForAdmin(
+  db: Db,
+  args: { pledgeId: string },
+): Promise<AdminPledgeDetail | null> {
+  const result = await db.execute(sql`
+    select p.id,
+           p.reference,
+           p.public_token,
+           g.full_name,
+           g.phone_e164,
+           g.email,
+           g.membership_no,
+           b.amount_minor,
+           b.paid_minor,
+           b.outstanding_minor,
+           p.currency,
+           p.status,
+           p.intent,
+           p.installment_frequency,
+           p.installment_amount_minor,
+           p.channel,
+           p.note,
+           g.display_consent,
+           g.contact_consent,
+           p.created_at,
+           p.updated_at,
+           p.verified_at
+    from pledges p
+    join pledgers g on g.id = p.pledger_id
+    join v_pledge_balances b on b.pledge_id = p.id
+    where p.id = ${args.pledgeId}::uuid
+    limit 1
+  `);
+
+  const row = (result.rows as DetailRow[])[0];
+
+  if (!row) return null;
+
+  const incrementRows = await db.execute(sql`
+    select id::text as id,
+           amount_minor,
+           channel,
+           category,
+           tier,
+           reason,
+           created_at
+    from pledge_increments
+    where pledge_id = ${args.pledgeId}::uuid
+    order by created_at, id
+  `);
+
+  const paymentRows = await db.execute(sql`
+    select a.id as allocation_id,
+           a.payment_id,
+           a.amount_minor,
+           pay.method,
+           pay.external_ref,
+           pay.paid_at,
+           a.reversed_at
+    from payment_allocations a
+    join payments pay on pay.id = a.payment_id
+    where a.pledge_id = ${args.pledgeId}::uuid
+    order by pay.paid_at desc
+  `);
+
+  return {
+    id: row.id,
+    reference: row.reference,
+    publicToken: row.public_token,
+    fullName: row.full_name,
+    phone: row.phone_e164,
+    email: row.email,
+    membershipNo: row.membership_no,
+    amountMinor: BigInt(row.amount_minor),
+    paidMinor: BigInt(row.paid_minor),
+    outstandingMinor: BigInt(row.outstanding_minor),
+    currency: row.currency,
+    status: row.status as PledgeStatus,
+    intent: row.intent as PledgeIntent,
+    installmentFrequency: row.installment_frequency as PledgeFrequency | null,
+    installmentAmountMinor:
+      row.installment_amount_minor === null
+        ? null
+        : BigInt(row.installment_amount_minor),
+    channel: row.channel,
+    note: row.note,
+    displayConsent: row.display_consent,
+    contactConsent: row.contact_consent,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
+    increments: (
+      incrementRows.rows as {
+        id: string;
+        amount_minor: string;
+        channel: string;
+        category: string | null;
+        tier: string | null;
+        reason: string | null;
+        created_at: string;
+      }[]
+    ).map((i) => ({
+      id: i.id,
+      amountMinor: BigInt(i.amount_minor),
+      channel: i.channel,
+      category: i.category,
+      tier: i.tier,
+      reason: i.reason,
+      createdAt: new Date(i.created_at),
+    })),
+    payments: (
+      paymentRows.rows as {
+        allocation_id: string;
+        payment_id: string;
+        amount_minor: string;
+        method: string;
+        external_ref: string | null;
+        paid_at: string;
+        reversed_at: string | null;
+      }[]
+    ).map((p) => ({
+      allocationId: p.allocation_id,
+      paymentId: p.payment_id,
+      amountMinor: BigInt(p.amount_minor),
+      method: p.method,
+      externalRef: p.external_ref,
+      paidAt: new Date(p.paid_at),
+      reversedAt: p.reversed_at ? new Date(p.reversed_at) : null,
+    })),
+  };
+}
+
+export type EditPledgeArgs = {
+  pledgeId: string;
+  input: EditPledgeInput;
+  adminId: string;
+  request?: RequestContext;
+};
+
+export type EditPledgeResult = {
+  pledgeId: string;
+  reference: string;
+  /** The fields that actually moved, for the caller's message. */
+  changed: string[];
+  amountMinor: bigint;
+  status: PledgeStatus;
+  /** Whether the public figure moved, so the caller knows to revalidate. */
+  affectsTotals: boolean;
+};
+
+/** The statuses that count toward the public figure. See v_campaign_totals. */
+const COUNTED_STATUSES: readonly string[] = ["verified", "fulfilled"];
+
+/**
+ * Corrects a pledge.
+ *
+ * The amount is the interesting one. CLAUDE.md says corrections are new rows
+ * and not edits, and migration 0005 turned that into a rule the database keeps:
+ * a pledge amount must equal the sum of its increments, checked at every
+ * commit. So a correction writes the difference as its own increment, carrying
+ * the reason and the administrator's channel, and the original submissions stay
+ * exactly as they were. Somebody reading the pledge a year later can still see
+ * that it was two pledges of a million and a correction of minus eight hundred
+ * thousand, rather than a single figure with a note attached.
+ *
+ * Everything happens in one transaction. A correction that wrote the increment
+ * and then failed to move the amount would leave the trigger refusing every
+ * later write to that pledge, which is a strange way to find out.
+ */
+export async function edit(
+  db: Db,
+  args: EditPledgeArgs,
+): Promise<EditPledgeResult> {
+  const { pledgeId, input, adminId, request } = args;
+
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select({
+        id: pledges.id,
+        reference: pledges.reference,
+        amountMinor: pledges.amountMinor,
+        status: pledges.status,
+        intent: pledges.intent,
+        installmentFrequency: pledges.installmentFrequency,
+        installmentAmountMinor: pledges.installmentAmountMinor,
+        note: pledges.note,
+        verifiedAt: pledges.verifiedAt,
+      })
+      .from(pledges)
+      .where(eq(pledges.id, pledgeId))
+      .for("update")
+      .limit(1);
+
+    if (!before) {
+      throw notFound("pledge_not_found", "That pledge does not exist.");
+    }
+
+    const now = new Date();
+    const changed: string[] = [];
+    const beforeJson: Record<string, unknown> = {};
+    const afterJson: Record<string, unknown> = {};
+
+    /* ----- the amount ----- */
+    const targetMinor =
+      input.amountKes === undefined ? before.amountMinor : kesToMinor(input.amountKes);
+    const delta = targetMinor - before.amountMinor;
+
+    if (delta !== 0n) {
+      await tx.insert(pledgeIncrements).values({
+        pledgeId,
+        amountMinor: delta,
+        // The channel is what the database check keys on: only an admin row may
+        // carry a negative amount, and only with a reason.
+        channel: "admin",
+        reason: input.reason ?? null,
+        createdAt: now,
+      });
+
+      changed.push("amount");
+      beforeJson.amountMinor = before.amountMinor.toString();
+      afterJson.amountMinor = targetMinor.toString();
+      afterJson.adjustmentMinor = delta.toString();
+      afterJson.reason = input.reason ?? null;
+    }
+
+    /* ----- the redemption plan ----- */
+    const frequency =
+      input.installmentFrequency === undefined
+        ? (before.installmentFrequency as PledgeFrequency | null)
+        : input.installmentFrequency === "one_off"
+          ? null
+          : input.installmentFrequency;
+
+    const intent: PledgeIntent = frequency === null ? "one_off" : "installment";
+
+    /*
+     * Recomputed whenever either half moves, because an instalment figure is
+     * the total divided down: correcting the amount without recomputing it
+     * would leave the pledger with a schedule that no longer adds up.
+     */
+    const installmentAmountMinor = instalmentMinor(
+      targetMinor,
+      frequency ?? "one_off",
+    );
+
+    if (
+      frequency !== before.installmentFrequency ||
+      intent !== before.intent
+    ) {
+      changed.push("plan");
+      beforeJson.installmentFrequency = before.installmentFrequency;
+      beforeJson.intent = before.intent;
+      afterJson.installmentFrequency = frequency;
+      afterJson.intent = intent;
+    }
+
+    if (installmentAmountMinor !== before.installmentAmountMinor) {
+      beforeJson.installmentAmountMinor =
+        before.installmentAmountMinor?.toString() ?? null;
+      afterJson.installmentAmountMinor =
+        installmentAmountMinor?.toString() ?? null;
+    }
+
+    /* ----- the status ----- */
+    const status = (input.status ?? before.status) as PledgeStatus;
+
+    if (status !== before.status) {
+      changed.push("status");
+      beforeJson.status = before.status;
+      afterJson.status = status;
+    }
+
+    /*
+     * verified_at follows the status rather than being set by hand. A pledge
+     * that counts has a date on it, and one that does not has none, so the two
+     * can never tell different stories.
+     */
+    const verifiedAt = COUNTED_STATUSES.includes(status)
+      ? (before.verifiedAt ?? now)
+      : null;
+
+    /* ----- the note ----- */
+    const note = input.note === undefined ? before.note : input.note;
+
+    if (note !== before.note) {
+      changed.push("note");
+      beforeJson.note = before.note;
+      afterJson.note = note;
+    }
+
+    if (changed.length === 0) {
+      return {
+        pledgeId,
+        reference: before.reference,
+        changed,
+        amountMinor: before.amountMinor,
+        status: before.status as PledgeStatus,
+        affectsTotals: false,
+      };
+    }
+
+    await tx
+      .update(pledges)
+      .set({
+        amountMinor: targetMinor,
+        intent,
+        installmentFrequency: frequency,
+        installmentAmountMinor,
+        status,
+        verifiedAt,
+        note,
+        updatedAt: now,
+      })
+      .where(eq(pledges.id, pledgeId));
+
+    await tx.insert(auditLog).values({
+      actorType: "admin",
+      actorId: adminId,
+      action: "pledge.edited",
+      entity: "pledge",
+      entityId: pledgeId,
+      before: beforeJson,
+      after: { ...afterJson, reference: before.reference, changed },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    /*
+     * Whether the public figure moved. A correction to a pledge nobody was
+     * counting changes nothing anyone can see, and revalidating for it would
+     * throw away a warm cache for no reason.
+     */
+    const countedBefore = COUNTED_STATUSES.includes(before.status);
+    const countedAfter = COUNTED_STATUSES.includes(status);
+    const affectsTotals =
+      countedBefore !== countedAfter || (countedAfter && delta !== 0n);
+
+    return {
+      pledgeId,
+      reference: before.reference,
+      changed,
+      amountMinor: targetMinor,
+      status,
+      affectsTotals,
+    };
+  });
 }

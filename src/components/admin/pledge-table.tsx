@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { formatDate, formatKES } from "@/lib/format";
@@ -127,9 +128,12 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
             className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm"
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="tabular font-semibold text-navy">
+              <Link
+                href={`/admin/pledges/${row.id}`}
+                className="tabular rounded font-semibold text-navy underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              >
                 {row.reference}
-              </span>
+              </Link>
               <StatusBadge status={row.status} />
             </div>
 
@@ -174,8 +178,13 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
           <tbody className="divide-y divide-neutral-100">
             {rows.map((row) => (
               <tr key={row.id}>
-                <td className="tabular px-4 py-3 font-medium text-navy">
-                  {row.reference}
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/admin/pledges/${row.id}`}
+                    className="tabular rounded font-medium text-navy underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                  >
+                    {row.reference}
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-neutral-800">{row.fullName}</td>
                 <td className="tabular px-4 py-3 text-right font-medium text-navy">

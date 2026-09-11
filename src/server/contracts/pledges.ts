@@ -311,3 +311,53 @@ export const lookupPledgeInput = z.object({
 });
 
 export type LookupPledgeInput = z.infer<typeof lookupPledgeInput>;
+
+/**
+ * An administrator correcting a pledge.
+ *
+ * Every field is optional: the form sends only what changed, and a request that
+ * changes nothing is accepted and does nothing rather than being an error.
+ *
+ * The reference, the public token, the name and the phone number are absent and
+ * cannot be sent. They are identity: the reference is printed on somebody's
+ * confirmation, the token is in their QR code, and the phone number is what
+ * accumulation keys on. Correcting a misspelled name is a job for the pledger
+ * record, not for this screen.
+ */
+export const editPledgeInput = z
+  .object({
+    amountKes: z
+      .number("Enter an amount in shillings.")
+      .int("Enter a whole number of shillings.")
+      .min(MIN_PLEDGE_KES, `The smallest pledge is KES ${MIN_PLEDGE_KES}.`)
+      .max(MAX_PLEDGE_KES, "That is larger than this form accepts.")
+      .optional(),
+
+    /*
+     * Why the amount changed. Required whenever it does, because a figure the
+     * congregation can see moving is the one write where the number alone is
+     * not enough of a record. The database agrees: an adjustment increment
+     * without a reason is refused by a check constraint.
+     */
+    reason: z.preprocess(
+      emptyToUndefined,
+      z.string().trim().min(4, "Say why the amount changed.").max(500).optional(),
+    ),
+
+    status: z.enum(PLEDGE_STATUSES).optional(),
+
+    installmentFrequency: z
+      .enum([...PLEDGE_FREQUENCIES, "one_off"] as const)
+      .optional(),
+
+    note: z.preprocess(
+      emptyToUndefined,
+      z.string().trim().max(1000, "That note is too long.").optional(),
+    ),
+  })
+  .refine(
+    (value) => value.amountKes === undefined || value.reason !== undefined,
+    { path: ["reason"], message: "Say why the amount changed." },
+  );
+
+export type EditPledgeInput = z.infer<typeof editPledgeInput>;
