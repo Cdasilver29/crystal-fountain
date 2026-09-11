@@ -8,7 +8,8 @@ import { PledgeFilters } from "@/components/admin/pledge-filters";
 import { PledgeTable } from "@/components/admin/pledge-table";
 import { CampaignProgress } from "@/components/campaign/campaign-progress";
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { getCurrentAdmin } from "@/lib/admin-context";
+import { can } from "@/lib/permissions";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
 import { formatNumber } from "@/lib/format";
 import { pledgeListFilters } from "@/server/contracts/admin";
@@ -85,7 +86,11 @@ export default async function AdminPledgesPage({
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
-          <AdminNav name={admin.name} role={admin.role} />
+          <AdminNav
+            name={admin.name}
+            role={admin.role}
+            isSuper={admin.isSuper}
+          />
 
           <p className="mt-6 text-sm text-white/70">
             Crystal Fountain Development Project
@@ -111,7 +116,7 @@ export default async function AdminPledgesPage({
               <PledgeFilters q={filters.q} status={filters.status} />
             </div>
 
-            {hasAtLeast(admin, "treasurer") && (
+            {can(admin, "exports.download") && (
               <ExportButton href="/api/admin/exports/pledges.csv" />
             )}
           </div>

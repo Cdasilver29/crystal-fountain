@@ -1,11 +1,10 @@
 import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
-import { getCurrentAdmin } from "@/lib/admin-context";
+import { requirePermission } from "@/lib/admin-guard";
 import { clientIp, problem, serviceProblem, userAgent } from "@/lib/api";
 import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { allocationPathParams } from "@/server/contracts/payments";
-import * as audit from "@/server/services/admin-audit";
 import * as payments from "@/server/services/payments";
 
 export const dynamic = "force-dynamic";
@@ -29,34 +28,23 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string; allocationId: string }> },
 ) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
-
   const { id, allocationId } = await params;
   const target = allocationPathParams.safeParse({
     paymentId: id,
     allocationId,
   });
 
-  if (admin.role !== "admin") {
-    await audit.recordForbidden(db, {
-      adminUserId: admin.id,
-      role: admin.role,
-      attempted: "payment.deallocate",
-      entity: "payment_allocation",
-      entityId: target.success ? target.data.allocationId : null,
-      ip: clientIp(request),
-      userAgent: userAgent(request),
-    });
-    return problem(
-      403,
-      "forbidden",
-      "Only an admin can remove an allocation. Ask one to make this correction.",
-    );
-  }
+  /*
+   * Reversing an allocation is the one payment action a treasurer cannot do.
+   * An allocation is the treasurer's own work, and the point of a reversal is
+   * that somebody other than its author signs it off.
+   */
+  const gate = await requirePermission(request, "payments.deallocate", {
+    entity: "payment_allocation",
+    entityId: target.success ? target.data.allocationId : null,
+  });
+  if (!gate.ok) return gate.response;
+  const admin = gate.admin;
 
   if (!target.success) {
     return problem(

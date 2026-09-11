@@ -7,7 +7,8 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { AuditFilters } from "@/components/admin/audit-filters";
 import { AuditTable } from "@/components/admin/audit-table";
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { getCurrentAdmin } from "@/lib/admin-context";
+import { can } from "@/lib/permissions";
 import { formatNumber } from "@/lib/format";
 import { auditListFilters } from "@/server/contracts/admin";
 import * as audit from "@/server/services/audit";
@@ -49,7 +50,7 @@ export default async function AdminAuditPage({
 
   if (!admin) redirect("/admin/login?next=/admin/audit");
 
-  if (!hasAtLeast(admin, "admin")) {
+  if (!can(admin, "audit.view")) {
     const heads = await headers();
     await adminAudit.recordForbidden(db, {
       adminUserId: admin.id,
@@ -96,7 +97,11 @@ export default async function AdminAuditPage({
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-6xl">
-          <AdminNav name={admin.name} role={admin.role} />
+          <AdminNav
+            name={admin.name}
+            role={admin.role}
+            isSuper={admin.isSuper}
+          />
 
           <p className="mt-6 text-sm text-white/70">
             Crystal Fountain Development Project

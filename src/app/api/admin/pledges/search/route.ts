@@ -1,6 +1,7 @@
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
-import { problem, serviceProblem, validationProblem } from "@/lib/api";
+import { requirePermission } from "@/lib/admin-guard";
+import { can } from "@/lib/permissions";
+import { serviceProblem, validationProblem } from "@/lib/api";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { pledgeSearchQuery } from "@/server/contracts/admin";
 import * as pledges from "@/server/services/pledges";
@@ -21,11 +22,11 @@ export const dynamic = "force-dynamic";
  * itself happens inside the service so no caller can forget to ask for it.
  */
 export async function GET(request: Request) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
+  const gate = await requirePermission(request, "pledges.view", {
+    entity: "pledge",
+  });
+  if (!gate.ok) return gate.response;
+  const admin = gate.admin;
 
   const { searchParams } = new URL(request.url);
   const parsed = pledgeSearchQuery.safeParse({ q: searchParams.get("q") ?? "" });
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
     const results = await pledges.search(db, {
       campaignSlug: CAMPAIGN_SLUG,
       q: parsed.data.q,
-      revealPhone: hasAtLeast(admin, "treasurer"),
+      revealPhone: can(admin, "pledges.viewPhone"),
     });
 
     return Response.json(

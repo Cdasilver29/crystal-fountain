@@ -50,6 +50,13 @@
       "when": 1789084534660,
       "tag": "0006_pledge_lookups",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789086919376,
+      "tag": "0007_super_admin",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,11 @@
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
-import { clientIp, problem, serviceProblem, userAgent } from "@/lib/api";
+import { requirePermission } from "@/lib/admin-guard";
+import {
+  clientIp,
+  serviceProblem,
+  userAgent,
+} from "@/lib/api";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
-import * as audit from "@/server/services/admin-audit";
 import * as exports from "@/server/services/exports";
 
 export const dynamic = "force-dynamic";
@@ -21,24 +24,11 @@ export const dynamic = "force-dynamic";
  * machine to find.
  */
 export async function GET(request: Request) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
-
-  if (!hasAtLeast(admin, "treasurer")) {
-    await audit.recordForbidden(db, {
-      adminUserId: admin.id,
-      role: admin.role,
-      attempted: "export.pledges",
-      entity: "pledges",
-      entityId: null,
-      ip: clientIp(request),
-      userAgent: userAgent(request),
-    });
-    return problem(403, "forbidden", "Your account cannot export pledges.");
-  }
+  const gate = await requirePermission(request, "exports.download", {
+    entity: "pledges",
+  });
+  if (!gate.ok) return gate.response;
+  const admin = gate.admin;
 
   try {
     await exports.assertCampaign(db, CAMPAIGN_SLUG);

@@ -26,6 +26,17 @@ export type CurrentAdmin = {
   role: AdminRole;
   /** Whether TOTP is enrolled and verified on this account. */
   twoFactorEnabled: boolean;
+  /**
+   * The first administrator, and the only one who can create another, change
+   * campaign settings or delete a pledge. Read from the row, never from the
+   * session, and the database allows only one.
+   */
+  isSuper: boolean;
+  /**
+   * Somebody else set this account's password and it has not been changed yet.
+   * Every admin page sends them to the change password screen while it is true.
+   */
+  mustChangePassword: boolean;
 };
 
 const ROLES: readonly AdminRole[] = ["viewer", "treasurer", "admin"];
@@ -64,6 +75,8 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
       email: adminUsers.email,
       role: adminUsers.role,
       isActive: adminUsers.isActive,
+      isSuper: adminUsers.isSuper,
+      forcePasswordChange: adminUsers.forcePasswordChange,
     })
     .from(adminUsers)
     .where(eq(adminUsers.authUserId, session.user.id))
@@ -79,12 +92,14 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
     email: row.email,
     role: row.role,
     twoFactorEnabled: session.user.twoFactorEnabled === true,
+    isSuper: row.isSuper,
+    mustChangePassword: row.forcePasswordChange,
   };
 }
 
-/** Role ranking, so a check reads as "at least this much". */
-const RANK: Record<AdminRole, number> = { viewer: 1, treasurer: 2, admin: 3 };
-
-export function hasAtLeast(admin: CurrentAdmin, role: AdminRole): boolean {
-  return RANK[admin.role] >= RANK[role];
-}
+/*
+ * Role ranking moved to src/lib/permissions.ts along with hasAtLeast, which
+ * every caller has replaced with can(). Asking "is this person at least a
+ * treasurer" spread the same policy across a dozen files; asking "may this
+ * person allocate a payment" keeps it in one.
+ */

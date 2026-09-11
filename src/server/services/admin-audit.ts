@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import type { Db } from "@/db";
 import { adminUsers, auditLog } from "@/db/schema";
@@ -194,7 +194,13 @@ export async function recentByAction(
       after: auditLog.after,
     })
     .from(auditLog)
-    .where(sql`${auditLog.action} = any(${actions})`)
+    /*
+     * inArray rather than = any(). The driver sends a JavaScript array as a
+     * single parameter, and postgres then tries to read the string
+     * "admin.forbidden" as an array literal and fails. inArray builds a real
+     * IN list, so one action works as well as five.
+     */
+    .where(inArray(auditLog.action, actions))
     .orderBy(sql`${auditLog.at} desc`)
     .limit(limit);
 }

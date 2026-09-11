@@ -123,6 +123,26 @@ export const adminUsers = pgTable(
     totpSecret: bytea("totp_secret"),
     isActive: boolean("is_active").notNull().default(true),
     /*
+     * The first administrator, created through /admin/setup.
+     *
+     * One of these exists and no more, which the partial unique index below
+     * enforces rather than leaving to application code. The super admin cannot
+     * be deactivated or deleted by anybody, is the only account that can create
+     * another admin, change campaign settings or delete a pledge, and is
+     * therefore the account the whole portal ultimately answers to.
+     */
+    isSuper: boolean("is_super").notNull().default(false),
+    /*
+     * Set when somebody else has reset this account's password.
+     *
+     * A temporary password is known to whoever generated it, so an account
+     * carrying one is not yet the owner's. While this is true every admin page
+     * sends them to the change password screen and nowhere else.
+     */
+    forcePasswordChange: boolean("force_password_change")
+      .notNull()
+      .default(false),
+    /*
      * The Better Auth user this admin signs in as, once they have one.
      *
      * Nullable on purpose, so an admin_users row can be created before its
@@ -144,6 +164,22 @@ export const adminUsers = pgTable(
     check(
       "admin_users_role_check",
       sql`${t.role} in ('viewer','treasurer','admin')`,
+    ),
+    /*
+     * Exactly one super admin, enforced here rather than in application code.
+     *
+     * A second one would be a second account able to create administrators,
+     * change the campaign target and delete pledges, and the whole point of the
+     * flag is that those powers sit with one named person. A partial unique
+     * index says so in the one place that cannot be bypassed.
+     */
+    uniqueIndex("admin_users_one_super_idx")
+      .on(t.isSuper)
+      .where(sql`is_super`),
+    /* A super admin is an admin. Any other combination is a mistake. */
+    check(
+      "admin_users_super_is_admin_check",
+      sql`not ${t.isSuper} or ${t.role} = 'admin'`,
     ),
   ],
 );

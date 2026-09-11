@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
 import { PaymentForm } from "@/components/admin/payment-form";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { getCurrentAdmin } from "@/lib/admin-context";
+import { can } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "Record a payment",
@@ -25,13 +26,17 @@ export default async function NewPaymentPage() {
   const admin = await getCurrentAdmin();
 
   if (!admin) redirect("/admin/login?next=/admin/payments/new");
-  if (!hasAtLeast(admin, "treasurer")) redirect("/admin/pledges");
+  if (!can(admin, "payments.record")) redirect("/admin/pledges");
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-2xl">
-          <AdminNav name={admin.name} role={admin.role} />
+          <AdminNav
+            name={admin.name}
+            role={admin.role}
+            isSuper={admin.isSuper}
+          />
 
           <h1 className="mt-6 text-2xl font-semibold tracking-tight text-white">
             Record a payment

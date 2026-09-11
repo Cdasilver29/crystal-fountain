@@ -6,7 +6,8 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { ExportButton } from "@/components/admin/export-button";
 import { PaymentTable } from "@/components/admin/payment-table";
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { getCurrentAdmin } from "@/lib/admin-context";
+import { can } from "@/lib/permissions";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { formatKES, formatNumber } from "@/lib/format";
 import * as payments from "@/server/services/payments";
@@ -61,7 +62,11 @@ export default async function AdminPaymentsPage({
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
-          <AdminNav name={admin.name} role={admin.role} />
+          <AdminNav
+            name={admin.name}
+            role={admin.role}
+            isSuper={admin.isSuper}
+          />
 
           <p className="mt-6 text-sm text-white/70">
             Crystal Fountain Development Project
@@ -72,7 +77,7 @@ export default async function AdminPaymentsPage({
               Payments
             </h1>
 
-            {hasAtLeast(admin, "treasurer") && (
+            {can(admin, "exports.download") && (
               <Link
                 href="/admin/payments/new"
                 className="inline-flex h-10 items-center justify-center rounded-lg bg-campfire px-5 text-sm font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
@@ -100,7 +105,7 @@ export default async function AdminPaymentsPage({
             </p>
 
             {/* The whole book, not this page of it. */}
-            {hasAtLeast(admin, "treasurer") && (
+            {can(admin, "payments.record") && (
               <ExportButton href="/api/admin/exports/payments.csv" />
             )}
           </div>

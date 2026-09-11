@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { getCurrentAdmin } from "@/lib/admin-context";
+import { requirePermission } from "@/lib/admin-guard";
 import { problem, serviceProblem } from "@/lib/api";
 import { paymentPathParams } from "@/server/contracts/payments";
 import * as payments from "@/server/services/payments";
@@ -25,11 +25,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
+  const gate = await requirePermission(request, "payments.view", {
+    entity: "payment",
+  });
+  if (!gate.ok) return gate.response;
 
   const { id } = await params;
   const target = paymentPathParams.safeParse({ paymentId: id });

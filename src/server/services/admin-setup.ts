@@ -98,6 +98,10 @@ export async function createFirstAdmin(
           email: input.email,
           fullName: input.fullName,
           role: "admin",
+          // The administrator who is here first is the super administrator.
+          // Nobody can grant this later: the partial unique index in migration
+          // 0007 allows exactly one row to carry it, and setup runs once.
+          isSuper: true,
           authUserId: user.id,
         })
         .returning({ id: adminUsers.id });
@@ -115,6 +119,7 @@ export async function createFirstAdmin(
           email: input.email,
           fullName: input.fullName,
           role: "admin",
+          isSuper: true,
           via: "first-run-setup",
         },
         ip: input.ip,

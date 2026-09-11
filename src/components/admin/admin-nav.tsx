@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import type { AdminRole } from "@/lib/admin-context";
+import { can, type AdminAction } from "@/lib/permissions";
 
 /**
  * The admin nav.
@@ -22,36 +23,37 @@ import type { AdminRole } from "@/lib/admin-context";
 type NavLink = {
   href: string;
   label: string;
-  /** The least role that may see this link. */
-  minRole: AdminRole;
+  /** The permission that opens this screen, from the one rights table. */
+  needs: AdminAction;
 };
 
-const RANK: Record<AdminRole, number> = { viewer: 1, treasurer: 2, admin: 3 };
-
 const LINKS: readonly NavLink[] = [
-  { href: "/admin/pledges", label: "Pledges", minRole: "viewer" },
+  { href: "/admin/pledges", label: "Pledges", needs: "pledges.view" },
   // The book itself, not the form. Every role may read it, and the button to
   // record one lives on the page, where only a treasurer sees it.
-  { href: "/admin/payments", label: "Payments", minRole: "viewer" },
+  { href: "/admin/payments", label: "Payments", needs: "payments.view" },
   // Counts and totals only, nothing to act on and nobody named, so a viewer
   // sees the same page a treasurer does.
-  { href: "/admin/analytics", label: "Analytics", minRole: "viewer" },
+  { href: "/admin/analytics", label: "Analytics", needs: "analytics.view" },
   // The one screen a treasurer cannot open. The journal records what the
   // treasurer did, and a record its subjects can read is a weaker one.
-  { href: "/admin/audit", label: "Audit log", minRole: "admin" },
+  { href: "/admin/audit", label: "Audit log", needs: "audit.view" },
 ];
 
 export function AdminNav({
   name,
   role,
+  isSuper = false,
 }: {
   name: string;
   role: AdminRole;
+  /** Shown beside the role, because it changes what the portal will allow. */
+  isSuper?: boolean;
 }) {
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
 
-  const visible = LINKS.filter((link) => RANK[role] >= RANK[link.minRole]);
+  const visible = LINKS.filter((link) => can({ role, isSuper }, link.needs));
 
   async function signOut() {
     setBusy(true);
@@ -89,7 +91,15 @@ export function AdminNav({
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-white/70">
           <span className="font-medium text-white">{name}</span>
-          <span className="text-white/50"> ({role})</span>
+          {/*
+            The super administrator is told so. It is the difference between a
+            button being missing because of a bug and being missing because
+            this account is not the one that holds that power.
+          */}
+          <span className="text-white/50">
+            {" "}
+            ({isSuper ? "super admin" : role})
+          </span>
         </p>
 
         <button

@@ -1,7 +1,7 @@
 import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { requirePermission } from "@/lib/admin-guard";
 import {
   clientIp,
   problem,
@@ -14,7 +14,6 @@ import {
   allocatePaymentInput,
   paymentPathParams,
 } from "@/server/contracts/payments";
-import * as audit from "@/server/services/admin-audit";
 import * as payments from "@/server/services/payments";
 
 export const dynamic = "force-dynamic";
@@ -39,29 +38,17 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
-
   const { id } = await params;
   const target = paymentPathParams.safeParse({ paymentId: id });
 
   // Roles are enforced here, on the server, not by hiding a button.
-  if (!hasAtLeast(admin, "treasurer")) {
-    await audit.recordForbidden(db, {
-      adminUserId: admin.id,
-      role: admin.role,
-      attempted: "payment.allocate",
-      entity: "payment",
-      // Only a real uuid can go in an entity_id column.
-      entityId: target.success ? target.data.paymentId : null,
-      ip: clientIp(request),
-      userAgent: userAgent(request),
-    });
-    return problem(403, "forbidden", "Your account cannot allocate payments.");
-  }
+  const gate = await requirePermission(request, "payments.allocate", {
+    entity: "payment",
+    // Only a real uuid can go in an entity_id column.
+    entityId: target.success ? target.data.paymentId : null,
+  });
+  if (!gate.ok) return gate.response;
+  const admin = gate.admin;
 
   if (!target.success) {
     return problem(404, "payment_not_found", "That payment does not exist.");

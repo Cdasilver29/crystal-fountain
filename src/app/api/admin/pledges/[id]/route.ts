@@ -2,11 +2,10 @@ import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
 import { clientIp, problem, serviceProblem, userAgent, validationProblem } from "@/lib/api";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { requirePermission } from "@/lib/admin-guard";
 import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { adminPledgeActionInput } from "@/server/contracts/admin";
 import { approvePledgeInput } from "@/server/contracts/pledges";
-import * as audit from "@/server/services/admin-audit";
 import * as pledges from "@/server/services/pledges";
 
 export const dynamic = "force-dynamic";
@@ -29,28 +28,16 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
-
   // Roles are enforced here, on the server, not by hiding a button. A viewer
   // can read the pledge list and nothing more.
-  if (!hasAtLeast(admin, "treasurer")) {
-    const { id: refusedId } = await params;
-    await audit.recordForbidden(db, {
-      adminUserId: admin.id,
-      role: admin.role,
-      attempted: "pledge.approve",
-      entity: "pledge",
-      // Only a real uuid can go in an entity_id column.
-      entityId: UUID.test(refusedId) ? refusedId : null,
-      ip: clientIp(request),
-      userAgent: userAgent(request),
-    });
-    return problem(403, "forbidden", "Your account cannot approve pledges.");
-  }
+  const { id: targetId } = await params;
+  const gate = await requirePermission(request, "pledges.approve", {
+    entity: "pledge",
+    // Only a real uuid can go in an entity_id column.
+    entityId: UUID.test(targetId) ? targetId : null,
+  });
+  if (!gate.ok) return gate.response;
+  const admin = gate.admin;
 
   const { id } = await params;
   const target = approvePledgeInput.safeParse({ pledgeId: id });

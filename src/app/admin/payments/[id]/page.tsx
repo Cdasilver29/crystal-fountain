@@ -12,7 +12,8 @@ import {
   UnallocatedSummary,
 } from "@/components/admin/payment-detail";
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { getCurrentAdmin } from "@/lib/admin-context";
+import { can } from "@/lib/permissions";
 import { formatDate, formatKES, formatPhoneForDisplay } from "@/lib/format";
 import { paymentPathParams } from "@/server/contracts/payments";
 import { percentOf } from "@/server/money";
@@ -71,7 +72,7 @@ export default async function PaymentDetailPage({
    * gets the panel with the allocate flow in it. Neither is a security
    * boundary, and both endpoints behind the panel check the role again.
    */
-  const canAllocate = hasAtLeast(admin, "treasurer");
+  const canAllocate = can(admin, "payments.allocate");
   const canRemove = admin.role === "admin";
   const somethingLeft = payment.unallocatedMinor > 0n;
 
@@ -87,7 +88,11 @@ export default async function PaymentDetailPage({
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
         <div className="mx-auto w-full max-w-4xl">
-          <AdminNav name={admin.name} role={admin.role} />
+          <AdminNav
+            name={admin.name}
+            role={admin.role}
+            isSuper={admin.isSuper}
+          />
 
           <Link
             href="/admin/payments"

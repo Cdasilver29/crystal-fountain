@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { getCurrentAdmin } from "@/lib/admin-context";
-import { problem, serviceProblem } from "@/lib/api";
+import { requirePermission } from "@/lib/admin-guard";
+import { serviceProblem } from "@/lib/api";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import * as analytics from "@/server/services/analytics";
 
@@ -32,12 +32,11 @@ const MAX_AGE_SECONDS = 300;
  * No aggregate here identifies a person, but the ageing buckets are a
  * collections report and the church has no reason to publish one.
  */
-export async function GET() {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
+export async function GET(request: Request) {
+  const gate = await requirePermission(request, "analytics.view", {
+    entity: "campaign",
+  });
+  if (!gate.ok) return gate.response;
 
   try {
     const [fulfilment, ageing, channels, weekly] = await Promise.all([

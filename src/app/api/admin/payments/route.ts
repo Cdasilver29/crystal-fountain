@@ -1,7 +1,7 @@
 import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
-import { getCurrentAdmin, hasAtLeast } from "@/lib/admin-context";
+import { requirePermission } from "@/lib/admin-guard";
 import {
   clientIp,
   problem,
@@ -11,7 +11,6 @@ import {
 } from "@/lib/api";
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { recordPaymentInput } from "@/server/contracts/payments";
-import * as audit from "@/server/services/admin-audit";
 import * as payments from "@/server/services/payments";
 
 export const dynamic = "force-dynamic";
@@ -27,24 +26,11 @@ export const dynamic = "force-dynamic";
  * think the entry had not worked.
  */
 export async function POST(request: Request) {
-  const admin = await getCurrentAdmin();
-
-  if (!admin) {
-    return problem(401, "unauthorized", "Sign in to continue.");
-  }
-
-  if (!hasAtLeast(admin, "treasurer")) {
-    await audit.recordForbidden(db, {
-      adminUserId: admin.id,
-      role: admin.role,
-      attempted: "payment.record",
-      entity: "payment",
-      entityId: null,
-      ip: clientIp(request),
-      userAgent: userAgent(request),
-    });
-    return problem(403, "forbidden", "Your account cannot record payments.");
-  }
+  const gate = await requirePermission(request, "payments.record", {
+    entity: "payment",
+  });
+  if (!gate.ok) return gate.response;
+  const admin = gate.admin;
 
   let body: unknown;
 
