@@ -3,6 +3,8 @@ import Image from "next/image";
 
 import { YouTubeEmbed } from "@/components/media/youtube-embed";
 import { PledgeCta } from "@/components/site/pledge-cta";
+import { RoadmapReveal } from "@/components/vision/roadmap-reveal";
+import { Roadmap, RoadmapSteps } from "@/components/vision/roadmap";
 import {
   ACCOUNTABILITY,
   BROCHURE_HEIGHT,
@@ -95,6 +97,20 @@ export default function VisionPage() {
           </section>
         );
       })}
+
+      {/*
+        The steps are passed in already rendered, so RoadmapReveal is a wrapper
+        around server output rather than the owner of it: the six cards and
+        their icons never reach the browser as JavaScript, and all the client
+        component contributes is the observer that starts the animation.
+      */}
+      <Roadmap
+        reveal={
+          <RoadmapReveal className="relative mt-10 sm:mt-12">
+            <RoadmapSteps />
+          </RoadmapReveal>
+        }
+      />
 
       <section className="bg-white px-4 py-12 sm:px-6 sm:py-16">
         <div className="mx-auto w-full max-w-5xl">

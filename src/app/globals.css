@@ -641,3 +641,80 @@
     animation: none !important;
   }
 }
+
+/*
+ * The road map on the vision page.
+ *
+ * Six cards entering in sequence and a line drawing itself down the middle of
+ * them, driven entirely from the data-roadmap attribute that RoadmapReveal
+ * puts on the wrapper. One IntersectionObserver on the page, no scroll handler,
+ * and the six cards stay server rendered.
+ *
+ * The resting state of every element here is its finished state: the cards are
+ * opaque and in place, the line is full height. The armed state below is what
+ * hides them, and it only ever applies to a visitor who has not asked for less
+ * movement and whose browser is running the observer that will clear it. That
+ * ordering is the whole reduced motion story: the rules are not overridden for
+ * those visitors, they are never applied.
+ */
+@keyframes roadmap-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+}
+
+@keyframes roadmap-line-draw {
+  from {
+    scale: 1 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-roadmap="armed"] .roadmap-step {
+    opacity: 0;
+  }
+
+  [data-roadmap="armed"] .roadmap-line {
+    scale: 1 0;
+  }
+
+  /*
+   * The line carries a horizontal translate from the medium breakpoint up,
+   * which is why it is grown with the standalone scale property rather than a
+   * transform: scaleY. A transform would be the same declaration the translate
+   * needs and would knock the line off the centre of the section for as long as
+   * the animation ran. Origin top, so it draws downwards, in the direction the
+   * eye is already travelling.
+   */
+  .roadmap-line {
+    transform-origin: top;
+  }
+
+  [data-roadmap="shown"] .roadmap-step {
+    /* Backwards fill, so a card waiting out its delay is still hidden rather
+       than appearing and then animating in again. */
+    animation: roadmap-step-in 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation-delay: calc(var(--step) * 110ms);
+  }
+
+  [data-roadmap="shown"] .roadmap-line {
+    animation: roadmap-line-draw 1100ms ease-out both;
+  }
+}
+
+/*
+ * The step the project is on. The same pulse the home page milestone uses, on
+ * its own class because that one dims itself under reduced motion, which is
+ * right for a 14px dot and wrong for the card that answers the question this
+ * section exists to answer.
+ */
+.roadmap-node-current {
+  animation: milestone-pulse 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roadmap-node-current {
+    animation: none !important;
+  }
+}
