@@ -13,6 +13,70 @@ const nextConfig: NextConfig = {
     // optimiser.
     remotePatterns: [{ protocol: "https", hostname: "i.ytimg.com" }],
   },
+
+  /**
+   * Response headers, on every route.
+   *
+   * These are cheap and they close things that are otherwise open by default.
+   * The framing rule is the one that matters most here: without it any site can
+   * put the admin portal in an invisible iframe over its own buttons, and a
+   * treasurer who is already signed in clicks approve or delete without ever
+   * seeing the screen they clicked on.
+   *
+   * Applied through the config rather than middleware so they cover every
+   * response, including static assets and the ones middleware never sees.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          /*
+           * Nothing on this site is meant to be embedded anywhere. DENY rather
+           * than SAMEORIGIN, because the app never frames itself: the launch
+           * video is the app framing YouTube, which this does not affect.
+           */
+          { key: "X-Frame-Options", value: "DENY" },
+
+          // A browser must take our word for a content type rather than
+          // sniffing one. Stops an uploaded or user named file being coaxed
+          // into running as script.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+
+          /*
+           * A pledge link carries a 22 character token that is the only thing
+           * standing between a stranger and somebody's pledge record, so the
+           * full URL must never travel to another origin in a Referer header.
+           * Same origin navigation keeps the path; anything leaving keeps only
+           * the origin, and an https to http downgrade sends nothing.
+           */
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+
+          /*
+           * One year, subdomains included. The public site is a subdomain of
+           * newlifesdanairobi.org and the main church site stays on WordPress,
+           * so includeSubDomains reaches beyond this app. That is the intent
+           * and it is worth saying out loud: every host on that domain has to
+           * be able to serve https before this ships.
+           *
+           * Ignored by browsers over plain http, so a localhost run is
+           * unaffected.
+           */
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+
+          // The form asks for a name, a number and an amount. It has no reason
+          // to reach a camera, a microphone or a location, so none is granted.
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
