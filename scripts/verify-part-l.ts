@@ -58,7 +58,7 @@ async function main() {
     PLEDGE_STEPS,
     TIMELINE,
     ACCOUNTABILITY,
-    FAQ_CATEGORIES,
+    faqCategories,
   } = await import("@/content/project");
   const { createPledgeInput, MAX_PLEDGE_KES, MIN_PLEDGE_KES } = await import(
     "@/server/contracts/pledges"
@@ -106,73 +106,106 @@ async function main() {
   check("KES 99 is still rejected", !accepts(99));
 
   // 2. The pledge form, as served
-  heading("2. /pledge shows both tiers");
+  heading("2. /pledge shows the category tabs and their tiers");
   const pledgeHtml = await get("/pledge");
 
-  const family = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000];
-  const individual = [50_000, 100_000, 250_000, 500_000, 1_000_000];
-  const grouped = (n: number) => n.toLocaleString("en-KE");
+  /*
+   * Rewritten for the tabbed form.
+   *
+   * This section used to describe two flat rows of chips labelled "Family
+   * commitment" and "Individual contribution", which the category tab rewrite
+   * replaced. The tier tables are now read from the form itself rather than
+   * retyped, so a chip cannot change without the check that describes it
+   * changing too; verify-part-q asserts the values, and this asserts that what
+   * the server actually renders matches them.
+   *
+   * Only the open tab is in the markup. The other tab's panel is not rendered
+   * until it is chosen, which is why nothing here looks for the individual
+   * chips.
+   */
+  const { CATEGORY_TIERS, CATEGORY_LABELS } = await import(
+    "@/components/pledge/pledge-form"
+  );
 
-  const missing = [...family, ...individual].filter(
+  const grouped = (n: number) => n.toLocaleString("en-KE");
+  const familyTiers = CATEGORY_TIERS.family;
+  const familyChips = familyTiers.flatMap((tier) => tier.amounts);
+
+  const missing = familyChips.filter(
     (amount) => !pledgeHtml.includes(grouped(amount)),
   );
   show(
-    family.map((amount, index) => ({
-      familyChip: grouped(amount),
-      individualChip: grouped(individual[index]),
+    familyTiers.map((tier) => ({
+      tier: tier.key,
+      label: tier.label,
+      chips: tier.amounts.map(grouped).join(" / "),
     })),
   );
 
-  check("all ten chips are on the page", missing.length === 0, missing.join(", "));
-  check('the family tier is labelled', pledgeHtml.includes("Family commitment"));
   check(
-    "the family tier carries the three year label",
-    pledgeHtml.includes("Family pledge over 3 years"),
+    "every chip on the open tab is on the page",
+    missing.length === 0,
+    missing.map(grouped).join(", "),
   );
   check(
-    "the individual tier is labelled",
-    pledgeHtml.includes("Individual contribution") &&
-      pledgeHtml.includes("Or choose an amount"),
+    "both tabs are offered",
+    pledgeHtml.includes(CATEGORY_LABELS.family) &&
+      pledgeHtml.includes(CATEGORY_LABELS.individual),
   );
   check(
-    "the custom field is labelled",
-    pledgeHtml.includes("Enter your own amount"),
+    "the family tab is the one open on arrival",
+    /aria-selected="true"[^>]*>[^<]*Family/.test(pledgeHtml) ||
+      pledgeHtml.indexOf(CATEGORY_LABELS.family) <
+        pledgeHtml.indexOf(CATEGORY_LABELS.individual),
+  );
+  for (const tier of familyTiers) {
+    check(`the ${tier.key} tier is labelled`, pledgeHtml.includes(tier.label));
+  }
+  check(
+    "the tiers run largest first, so the most ambitious is read first",
+    pledgeHtml.indexOf(familyTiers[0].label) <
+      pledgeHtml.indexOf(familyTiers[2].label),
   );
   check(
-    "the family tier is rendered before the individual tier",
-    pledgeHtml.indexOf("Family commitment") <
-      pledgeHtml.indexOf("Individual contribution"),
+    "the custom field is offered as its own card",
+    pledgeHtml.includes("Create your own pledge"),
   );
   check(
-    "the custom field is rendered below both tiers",
-    pledgeHtml.indexOf("Enter your own amount") >
-      pledgeHtml.indexOf("Or choose an amount"),
-  );
-  check("the old 1,000,000 ceiling chip is now the family floor", family[0] === 1_000_000);
-  check(
-    "the individual tier starts at 50,000 and no chip suggests less",
-    Math.min(...individual) === 50_000,
-  );
-  check(
-    "the individual tier tops out where the family tier begins",
-    Math.max(...individual) === family[0],
+    "and it sits below the tiers rather than above them",
+    pledgeHtml.indexOf("Create your own pledge") >
+      pledgeHtml.indexOf(familyTiers[2].label),
   );
   check(
     "a smaller amount is still accepted even though nothing suggests it",
     accepts(10_000) && accepts(500),
   );
 
-  // 1,000,000 is deliberately in both tiers, so the page carries two chips for
-  // it and neither may be pressed before anybody has chosen. Which one is lit
-  // after a tap is client state and is not visible here.
+  // Nothing is chosen before anybody has chosen. Which chip is lit after a tap
+  // is client state and is not visible here.
   const pressed = pledgeHtml.match(/aria-pressed="(true|false)"/g) ?? [];
   check(
-    "ten chips are rendered, none of them pressed on arrival",
-    pressed.length === 10 && pressed.every((a) => a.includes("false")),
-    `${pressed.length} chips`,
+    "every chip on the open tab is rendered unpressed",
+    pressed.length === familyChips.length &&
+      pressed.every((a) => a.includes("false")),
+    `${pressed.length} chips, expected ${familyChips.length}`,
   );
 
   // 2b. The hero
+  /*
+   * The FAQ is a function now, because two of its answers quote the paybill and
+   * the bank account and those can be changed from the settings screen. Called
+   * here with the values built into the repo, which is what an installation
+   * that has never touched that screen actually serves.
+   */
+  const { resolvePaymentDetails } = await import("@/lib/payment-details");
+  const defaults = resolvePaymentDetails(null);
+  const FAQ_CATEGORIES = faqCategories({
+    paybill: defaults.paybill,
+    accountName: defaults.accountName,
+    bankName: defaults.bankName,
+    bankAccount: defaults.bankAccount,
+  });
+
   heading("2b. the hero offers a way to the FAQ");
   const heroHtml = await get("/");
   const heroSection = heroHtml.slice(0, heroHtml.indexOf("</section>"));
@@ -365,46 +398,85 @@ async function main() {
   );
 
   // 7. The raised ceiling through the real route
-  heading("7. POST /api/pledges accepts a family sized pledge");
+  heading("7. a family sized pledge is recorded and stored exactly");
   const { db } = await import("@/db");
   const { sql } = await import("drizzle-orm");
 
-  const posted = await fetch(`${BASE}/api/pledges`, {
+  /*
+   * Through the service rather than the route.
+   *
+   * The public route now refuses everything in production unless Turnstile is
+   * configured, which is the point of that guard and is asserted just below.
+   * What this section is actually about is the raised ceiling: that a quarter
+   * of a billion shillings is accepted at all and is stored as exact minor
+   * units. That is a question about the contract and the service, and putting
+   * it behind a bot check would only test the bot check.
+   */
+  const pledgeService = await import("@/server/services/pledges");
+
+  const created = await pledgeService.create(db, {
+    input: {
+      fullName: "Content Verifier",
+      phone: TEST_PHONE_E164,
+      amountKes: 250_000_000,
+      intent: "one_off",
+      recordConsent: true,
+      contactConsent: false,
+      displayConsent: false,
+    },
+    campaignSlug: "crystal-fountain",
+  });
+
+  show([
+    {
+      reference: created.reference,
+      amountMinor: created.amountMinor,
+      status: created.status,
+    },
+  ]);
+
+  check(
+    "KES 250,000,000 is recorded, where the old ceiling would have refused it",
+    created.amountMinor === 25_000_000_000n,
+    `${created.amountMinor}`,
+  );
+  check(
+    "it is stored as exact minor units",
+    created.amountMinor === BigInt(250_000_000) * 100n,
+    `${created.amountMinor}`,
+  );
+  check(
+    "the reference is still within 12 characters",
+    created.reference.length <= 12,
+    created.reference,
+  );
+
+  /*
+   * And the guard itself, which is the reason the above cannot go through the
+   * route. A missing Turnstile key on a live deployment must stop pledging
+   * rather than quietly switch the bot check off on a form that takes money.
+   */
+  const withoutTurnstile = await fetch(`${BASE}/api/pledges`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       fullName: "Content Verifier",
-      phone: TEST_PHONE_E164.replace("+254", "0"),
-      amountKes: 250_000_000,
+      phone: "0799900198",
+      amountKes: 1_000,
       intent: "one_off",
       recordConsent: true,
       contactConsent: false,
       displayConsent: false,
     }),
   });
-  const created = await posted.json().catch(() => null);
-  show([
-    {
-      status: posted.status,
-      reference: created?.reference ?? null,
-      amountMinor: created?.amountMinor ?? null,
-    },
-  ]);
-
+  const refused = (await withoutTurnstile.json().catch(() => null)) as {
+    code?: string;
+  } | null;
   check(
-    "KES 250,000,000 is recorded, where the old ceiling would have refused it",
-    posted.status === 201,
-    `status ${posted.status}`,
-  );
-  check(
-    "it is stored as exact minor units",
-    created?.amountMinor === "25000000000",
-    String(created?.amountMinor),
-  );
-  check(
-    "the reference is still within 12 characters",
-    typeof created?.reference === "string" && created.reference.length <= 12,
-    created?.reference,
+    "and with no Turnstile keys configured, the live route refuses outright",
+    withoutTurnstile.status === 500 &&
+      refused?.code === "turnstile_misconfigured",
+    `${withoutTurnstile.status} ${refused?.code}`,
   );
 
   const tooBig = await fetch(`${BASE}/api/pledges`, {

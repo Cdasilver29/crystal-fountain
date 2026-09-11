@@ -430,7 +430,9 @@ async function main() {
   const attempted = (refused.rows as { attempted: string }[]).map((r) => r.attempted);
   check(
     "both refusals were recorded",
-    attempted.includes("export.pledges") && attempted.includes("export.payments"),
+    // One action covers both exports now, and both refusals are recorded
+    // against it. See ADMIN_ACTIONS in src/lib/permissions.ts.
+    attempted.filter((a) => a === "exports.download").length === 2,
     attempted.join(", "),
   );
 

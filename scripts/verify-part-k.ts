@@ -131,20 +131,48 @@ async function main() {
   check("the metrics section is there", prog.includes("The shape of the giving"));
   check("it ends with the call to action", prog.includes("Make a pledge"));
 
-  const summary = (await (await fetch(`${BASE}/api/campaign/summary`)).json()) as {
-    pledgedMinor: string;
-    receivedMinor: string;
-  };
   const kes = (minor: string) =>
     `KES ${(BigInt(minor) / 100n).toLocaleString("en-KE")}`;
+
+  /*
+   * Both read again together, and retried across the cache window.
+   *
+   * The page and the endpoint share a thirty second cache. Reading the page and
+   * then the endpoint can straddle the moment it turns over, so a single
+   * comparison can fail while both are behaving perfectly. The invariant worth
+   * asserting is that the two agree, not that they agree on the first attempt
+   * during a refresh, so this refetches both until they do or gives up.
+   */
+  const agree = async () => {
+    const [page, summaryRes] = await Promise.all([
+      fetch(`${BASE}/progress`).then((r) => r.text()),
+      fetch(`${BASE}/api/campaign/summary`).then((r) => r.json()),
+    ]);
+    const s = summaryRes as { pledgedMinor: string; receivedMinor: string };
+    return {
+      pledged: page.includes(kes(s.pledgedMinor)),
+      received: page.includes(kes(s.receivedMinor)),
+      summary: s,
+    };
+  };
+
+  let matched = await agree();
+  const deadline = Date.now() + 45_000;
+
+  while ((!matched.pledged || !matched.received) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    matched = await agree();
+  }
+
   check(
     "the pledged figure on the page matches the summary API",
-    prog.includes(kes(summary.pledgedMinor)),
-    kes(summary.pledgedMinor),
+    matched.pledged,
+    kes(matched.summary.pledgedMinor),
   );
   check(
     "the received figure matches too",
-    prog.includes(kes(summary.receivedMinor)),
+    matched.received,
+    kes(matched.summary.receivedMinor),
   );
 
   // 3. The nav

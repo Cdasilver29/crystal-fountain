@@ -237,7 +237,7 @@ async function main() {
     from audit_log
     where action = 'admin.forbidden'
       and actor_id = ${adminRow.id}
-      and after ->> 'attempted' = 'payment.deallocate'
+      and after ->> 'attempted' = 'payments.deallocate'
   `);
   show(forbiddenRows.rows as Record<string, unknown>[]);
   check(

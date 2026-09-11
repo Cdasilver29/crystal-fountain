@@ -129,7 +129,7 @@ async function main() {
     await db.execute(sql`
       select count(*)::int as n from audit_log
       where action = 'admin.forbidden'
-        and after->>'attempted' = 'audit.read'
+        and after->>'attempted' = 'audit.view'
         and at > now() - interval '5 minutes'
     `)
   ).rows as { n: number }[];

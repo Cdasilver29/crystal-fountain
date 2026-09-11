@@ -59,7 +59,7 @@ export default async function AdminAuditPage({
     await adminAudit.recordForbidden(db, {
       adminUserId: admin.id,
       role: admin.role,
-      attempted: "audit.read",
+      attempted: "audit.view",
       entity: "audit_log",
       entityId: null,
       ip: heads.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,

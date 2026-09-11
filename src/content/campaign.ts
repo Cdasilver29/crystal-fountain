@@ -69,6 +69,9 @@ export const CONTACT = {
   churchName: "Newlife SDA Church",
   address: "5th Ngong Avenue, Nairobi",
   email: "info@newlifesdanairobi.org",
+  // The development office, for anything about this project specifically. The
+  // address above is the church's general one and stays where it is used.
+  developmentEmail: "churchdevelopment@newlifesdanairobi.org",
   siteUrl: "https://newlifesdanairobi.org",
   siteLabel: "newlifesdanairobi.org",
 } as const;

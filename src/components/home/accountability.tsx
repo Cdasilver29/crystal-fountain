@@ -82,14 +82,27 @@ export function Accountability() {
               </div>
             </div>
 
+            {/*
+              Two addresses, because they reach different desks. Anything about
+              this project goes to the development office; anything about the
+              church goes to the church.
+            */}
             <p className="mt-6 text-sm leading-relaxed text-neutral-600">
-              For general enquiries: {CONTACT.churchName}, {CONTACT.address}.{" "}
+              About this project:{" "}
+              <a
+                href={`mailto:${CONTACT.developmentEmail}`}
+                className="rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              >
+                {CONTACT.developmentEmail}
+              </a>
+              . For general enquiries: {CONTACT.churchName}, {CONTACT.address},{" "}
               <a
                 href={`mailto:${CONTACT.email}`}
                 className="rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               >
                 {CONTACT.email}
               </a>
+              .
             </p>
           </div>
         </div>

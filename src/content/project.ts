@@ -205,101 +205,144 @@ export type FaqCategory = {
   items: readonly FaqItem[];
 };
 
-export const FAQ_CATEGORIES: readonly FaqCategory[] = [
-  {
-    id: "about",
-    label: "About the project",
-    items: [
-      {
-        question: "What is the Crystal Fountain Development Project?",
-        answer:
-          "A proposed multi-storey church complex for Newlife SDA Church, Nairobi. It includes a main auditorium seating 3,000 to 5,000, smaller auditoriums, basement parking for 700 vehicles, a library, a church history museum, offices, classrooms, and landscaped grounds.",
-      },
-      {
-        question: "Why does the church need a new building?",
-        answer:
-          "The current building can no longer comfortably accommodate the congregation. The new development serves today's members and future generations, and positions the church as a centre of influence in Nairobi.",
-      },
-      {
-        question: "How much will the project cost?",
-        answer:
-          "The estimated construction cost is KES 500 to 600 million. This is preliminary and will be refined as designs are finalised.",
-      },
-      {
-        question: "Who oversees the project?",
-        answer:
-          "The Development Committee of Newlife Seventh-day Adventist Church, working with other departments and church offices. Professional architects, engineers, and project managers will execute the work.",
-      },
-    ],
-  },
-  {
-    id: "pledging",
-    label: "Pledging",
-    items: [
-      {
-        question: "What is a pledge?",
-        answer:
-          "A pledge is your commitment to contribute a specific amount toward the project. It is a promise, not an immediate payment. You can fulfil your pledge over time.",
-      },
-      {
-        question: "How do I make a pledge?",
-        answer:
-          "Use the pledge form on this website. Enter the amount, your name and phone number, and submit. You will receive a unique reference number and QR code.",
-      },
-      {
-        question: "What happens after I pledge?",
-        answer:
-          "Your pledge is recorded and reviewed. Once confirmed, it counts toward the campaign total. You will see payment instructions on the confirmation page.",
-      },
-      {
-        question: "Can I change or cancel my pledge?",
-        answer:
-          "Contact the church development office. Pledges can be adjusted as circumstances require.",
-      },
-    ],
-  },
-  {
-    id: "giving",
-    label: "Giving",
-    items: [
-      {
-        question: "How do I pay toward my pledge?",
-        answer:
-          "Via M-Pesa Paybill 861200 (Account: Church Development Fund) or bank transfer to Standard Chartered Bank account 0102022990600. Quote your pledge reference when paying.",
-      },
-      {
-        question: "Can I give without making a pledge?",
-        answer:
-          "Yes. Use the same M-Pesa paybill or bank account. A pledge simply helps the project team plan and track progress.",
-      },
-      {
-        question: "Who do I contact for enquiries?",
-        answer: "Dr. Steve Mogere, Development Leader, 0722619788.",
-      },
-    ],
-  },
-  {
-    id: "construction",
-    label: "Construction",
-    items: [
-      {
-        question: "When will construction begin?",
-        answer:
-          "Subject to completion of design, approvals, and sufficient funding. The timeline will be communicated through official channels.",
-      },
-      {
-        question: "Will the church still operate during construction?",
-        answer:
-          "Yes. Construction will be phased so worship services and programs continue with minimal disruption.",
-      },
-      {
-        question: "How will members be kept informed?",
-        answer:
-          "Through the church website, bulletin, WhatsApp channels, and periodic town hall meetings.",
-      },
-    ],
-  },
-];
+/**
+ * Just enough of the payment details for the giving answers.
+ *
+ * Declared structurally rather than imported, so this content module stays free
+ * of anything that reaches a database. The page resolves the real values and
+ * passes them in.
+ */
+export type FaqPaymentDetails = {
+  paybill: string;
+  accountName: string;
+  bankName: string;
+  bankAccount: string;
+};
+
+/**
+ * The frequently asked questions.
+ *
+ * A function rather than a constant because two of the giving answers quote the
+ * paybill and the bank account, and those can now be changed from the admin
+ * settings screen without a deploy. Hard coding them here would mean a treasurer
+ * correcting the paybill in one place and leaving a page telling the
+ * congregation to send money to the old one, which is the exact failure the
+ * settings screen was built to avoid.
+ */
+export function faqCategories(
+  details: FaqPaymentDetails,
+): readonly FaqCategory[] {
+  return [
+    {
+      id: "about",
+      label: "About the project",
+      items: [
+        {
+          question: "What is the Crystal Fountain Development Project?",
+          answer:
+            "A proposed multi-use complex at 5th Ngong Avenue, Nairobi, for Newlife SDA Church. It comprises a church sanctuary, a shared basement car park, and a commercial Adventist ministry centre. The sanctuary is the priority.",
+        },
+        {
+          question: "Why does the church need a new building?",
+          answer:
+            "The current building can no longer comfortably accommodate the congregation, and its carrying capacity has been outstripped. The new development serves today's members and future generations, and positions the church as a centre of influence in Nairobi.",
+        },
+        {
+          question: "How much will the project cost?",
+          answer:
+            "The church sanctuary, which is the first priority, is estimated at between KES 500 and 600 million to build. This is preliminary and will be refined as the designs are finalised.",
+        },
+        {
+          question: "Who oversees the project?",
+          answer:
+            "The Development Committee of Newlife Seventh-day Adventist Church, working with other departments and church offices. Professional architects, engineers, and project managers will execute the work.",
+        },
+      ],
+    },
+    {
+      id: "pledging",
+      label: "Pledging",
+      items: [
+        {
+          question: "What is a pledge?",
+          answer:
+            "A pledge is your commitment to contribute a specific amount toward the project. It is a promise, not an immediate payment, and you can fulfil it over three years.",
+        },
+        {
+          question: "How do I make a pledge?",
+          answer:
+            "Use the pledge form on this website. Enter the amount, your name and phone number, and submit. You will receive a unique reference number and a QR code that opens your pledge again on any phone.",
+        },
+        {
+          /*
+           * This answer used to say every pledge was reviewed before it counted,
+           * which stopped being true when auto approval was added. Most pledges
+           * now count immediately and only larger ones wait, and a page telling
+           * somebody their pledge is under review while the total has already
+           * moved would be its own small confusion.
+           */
+          question: "What happens after I pledge?",
+          answer:
+            "Most pledges are confirmed straight away and count toward the campaign total immediately. A larger pledge is held for the treasurer to confirm first. Either way you get your reference number, a QR code, and payment instructions on the confirmation page.",
+        },
+        {
+          question: "Can I add to my pledge later?",
+          answer:
+            "Yes. Pledge again using the same phone number and the new amount is added to your existing pledge. You keep the same reference number and the same QR code.",
+        },
+        {
+          question: "Can I change or cancel my pledge?",
+          answer:
+            "Contact the church development office. Pledges can be adjusted as circumstances require.",
+        },
+      ],
+    },
+    {
+      id: "giving",
+      label: "Giving",
+      items: [
+        {
+          question: "How do I pay toward my pledge?",
+          answer: `By M-Pesa Pay Bill ${details.paybill}, using your pledge reference as the account number, or by bank transfer to ${details.bankName} account ${details.bankAccount} quoting the same reference. Your reference is what lets the treasury match your payment to your pledge.`,
+        },
+        {
+          question: "Can I give without making a pledge?",
+          answer: `Yes. Use the same Pay Bill or bank account, with "${details.accountName}" as the account number. A pledge simply helps the project team plan and track progress.`,
+        },
+        {
+          question: "How do I check what I have paid and what is outstanding?",
+          answer:
+            "Open the redeem page and enter your pledge reference together with the phone number you pledged with. Both are asked for so that nobody else can read your pledge from one of them.",
+        },
+        {
+          question: "Who do I contact for enquiries?",
+          answer: `Dr. Steve Mogere, Development Leader, 0722619788, or churchdevelopment@newlifesdanairobi.org.`,
+        },
+      ],
+    },
+    {
+      id: "construction",
+      label: "Construction",
+      items: [
+        {
+          question: "When will construction begin?",
+          answer:
+            "Subject to completion of design, approvals, and sufficient funding. The timeline will be communicated through official channels.",
+        },
+        {
+          question: "Will the church still operate during construction?",
+          answer:
+            "Yes. A phased construction method is being considered so that worship services and programmes continue with minimal disruption.",
+        },
+        {
+          question: "How will members be kept informed?",
+          answer:
+            "Through the church website, bulletin, WhatsApp channels, and periodic town hall meetings.",
+        },
+      ],
+    },
+  ];
+}
 
 /** Governance and transparency copy, used on the home page and /vision. */
 export const ACCOUNTABILITY = {

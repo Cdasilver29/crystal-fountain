@@ -45,15 +45,34 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "pledge.auto_approved": "green",
   "payment.recorded": "green",
   "payment.allocated": "green",
+  "pledge.admin_created": "green",
   "admin.created": "green",
+  "admin.reactivated": "green",
 
   // Amber: changed, or data leaving the building.
   "pledge.fulfilled": "amber",
+  "pledge.edited": "amber",
   "admin.export": "amber",
+  "admin.updated": "amber",
+  /*
+   * A password reset is amber and a self chosen one is grey, because the two
+   * are different events. Somebody resetting their own password is routine;
+   * somebody resetting another person's ends that person's sessions and hands
+   * them a password a third party has seen.
+   */
+  "admin.password_reset": "amber",
+  /*
+   * The target, the opening balance and the paybill all live behind this one
+   * action. None of them is destructive, and all of them change what the
+   * congregation sees or where their money goes.
+   */
+  "campaign.updated": "amber",
 
   // Red: destructive, reversed or refused.
   "pledge.voided": "red",
+  "pledge.deleted": "red",
   "pledge.unfulfilled": "red",
+  "admin.deactivated": "red",
   "payment.deallocated": "red",
   "admin.login_failed": "red",
   "admin.login_locked": "red",
@@ -63,6 +82,7 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "admin.login": "grey",
   "admin.logout": "grey",
   "admin.totp_enrolled": "grey",
+  "admin.password_changed": "grey",
   "guard.test": "grey",
 };
 

@@ -29,6 +29,29 @@ async function main() {
   const { db } = await import("@/db");
   const { sql } = await import("drizzle-orm");
 
+  /*
+   * Cleared before as well as after.
+   *
+   * This used to tidy up only at the end, which is fine until a run fails
+   * partway. The pledger row then survives, and because a second pledge from
+   * the same number now accumulates onto the first rather than making a new
+   * one, the next run saw ten thousand shillings where it expected five and
+   * blamed the route. A suite that cannot be run twice is a suite that reports
+   * its own history as a defect.
+   */
+  const wipe = async () => {
+    await db.execute(sql`
+      delete from pledges where pledger_id in (
+        select id from pledgers where phone_e164 = '+254799911111'
+      )
+    `);
+    await db.execute(
+      sql`delete from pledgers where phone_e164 = '+254799911111'`,
+    );
+  };
+
+  await wipe();
+
   // 1. Validation is enforced server side
   heading("1. POST /api/pledges rejects bad input");
   const bad = await fetch(`${BASE}/api/pledges`, {
@@ -60,29 +83,81 @@ async function main() {
   );
 
   // 2. A good pledge
-  heading("2. POST /api/pledges records a pledge");
-  const created = await fetch(`${BASE}/api/pledges`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
+  heading("2. a pledge is recorded, and the live route is guarded");
+
+  /*
+   * Created through the service, not the route.
+   *
+   * The public route refuses everything in production unless Turnstile is
+   * configured, which is asserted immediately below and is the whole point of
+   * that guard. What this section is about is the shape of what comes back: the
+   * reference format, the token length, money as minor unit strings, and a
+   * pledge landing as pending when nothing has vouched for it. Putting that
+   * behind a bot check would only test the bot check.
+   */
+  const pledgeService = await import("@/server/services/pledges");
+  const { normalizeKenyanPhone } = await import("@/server/contracts/phone");
+
+  const result = await pledgeService.create(db, {
+    input: {
       fullName: "Api Verification",
-      phone: TEST_PHONE,
+      // Normalised here because the service takes a parsed input and this is
+      // not going through the route that would have parsed it.
+      phone: normalizeKenyanPhone(TEST_PHONE)!,
       email: "api@example.test",
       amountKes: 50_000,
       intent: "one_off",
       recordConsent: true,
       contactConsent: true,
       displayConsent: true,
-    }),
+    },
+    campaignSlug: "crystal-fountain",
   });
-  const pledge = await created.json();
+
+  const pledge = {
+    reference: result.reference,
+    publicToken: result.publicToken,
+    amountMinor: result.amountMinor.toString(),
+    currency: result.currency,
+    status: result.status,
+  };
   console.table([pledge]);
-  check("status is 201", created.status === 201);
+
   check("reference matches CF26-NNNNNN", /^CF26-\d{6}$/.test(pledge.reference));
   check("public token is 22 characters", pledge.publicToken?.length === 22);
   check("amount is minor units as a string", pledge.amountMinor === "5000000");
   check("currency is explicit", pledge.currency === "KES");
-  check("new pledge is pending", pledge.status === "pending");
+  check(
+    "a pledge nothing has vouched for is pending",
+    pledge.status === "pending",
+  );
+
+  /*
+   * And the guard itself. A missing Turnstile key on a live deployment must
+   * stop pledging rather than quietly switch the bot check off on a form that
+   * takes money.
+   */
+  const guarded = await fetch(`${BASE}/api/pledges`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      fullName: "Api Verification",
+      phone: TEST_PHONE,
+      amountKes: 50_000,
+      intent: "one_off",
+      recordConsent: true,
+      contactConsent: false,
+      displayConsent: false,
+    }),
+  });
+  const guardedBody = (await guarded.json().catch(() => null)) as {
+    code?: string;
+  } | null;
+  check(
+    "with no Turnstile keys configured, the live route refuses outright",
+    guarded.status === 500 && guardedBody?.code === "turnstile_misconfigured",
+    `${guarded.status} ${guardedBody?.code}`,
+  );
 
   const token: string = pledge.publicToken;
 
@@ -198,12 +273,7 @@ async function main() {
 
   // 8. Clean up
   heading("8. cleanup");
-  await db.execute(sql`
-    delete from pledges where pledger_id in (
-      select id from pledgers where phone_e164 = '+254799911111'
-    )
-  `);
-  await db.execute(sql`delete from pledgers where phone_e164 = '+254799911111'`);
+  await wipe();
   console.log("  test pledge removed");
 
   heading("result");
