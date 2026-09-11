@@ -1,10 +1,11 @@
 "use client";
 
+import { Download } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { NAV_LINKS } from "@/content/project";
+import { FUND_SUMMARY, NAV_LINKS } from "@/content/project";
 
 /**
  * The phone navigation drawer.
@@ -146,6 +147,24 @@ export function MobileNav() {
                 </Link>
               ))}
             </nav>
+
+            {/*
+              Last in the drawer, under everything else. It is the only item
+              here that leaves the site rather than navigating it, and the
+              close on navigate effect above is driven by the pathname, which a
+              file in public/ never changes, so this one closes the drawer
+              itself on the way out.
+            */}
+            <a
+              href={FUND_SUMMARY.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="-mt-2 flex items-center gap-2.5 py-3.5 text-base text-white/80 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            >
+              <Download aria-hidden className="size-4 shrink-0" />
+              {FUND_SUMMARY.longLabel}
+            </a>
           </div>
         </div>
       )}
