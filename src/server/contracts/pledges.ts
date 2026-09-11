@@ -361,3 +361,56 @@ export const editPledgeInput = z
   );
 
 export type EditPledgeInput = z.infer<typeof editPledgeInput>;
+
+/**
+ * The treasurer recording a pledge somebody made on paper or over the phone.
+ *
+ * The same fields the public form collects, plus the channel it arrived by and
+ * a note. There is no status: an entry a treasurer is typing has already been
+ * through the only check approval exists to perform, which is a person deciding
+ * they believe it.
+ */
+export const adminCreatePledgeInput = z.object({
+  fullName: z.string().trim().min(2, "Enter their full name."),
+  phone: kenyanPhone,
+  email: z.preprocess(
+    emptyToUndefined,
+    z.email("Enter a valid email address.").optional(),
+  ),
+  membershipNo: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().max(32, "Membership number is too long.").optional(),
+  ),
+  amountKes: z
+    .number("Enter an amount in shillings.")
+    .int("Enter a whole number of shillings.")
+    .min(MIN_PLEDGE_KES, `The smallest pledge is KES ${MIN_PLEDGE_KES}.`)
+    .max(MAX_PLEDGE_KES, "That is larger than this form accepts."),
+  installmentFrequency: z.enum(PLEDGE_FREQUENCIES).optional(),
+  category: z.enum(PLEDGE_CATEGORIES).optional(),
+  tier: z.enum(PLEDGE_TIERS).optional(),
+  /*
+   * How it reached the treasurer. Not "web": that is reserved for a pledge
+   * somebody typed in themselves, and letting an admin entry claim it would
+   * make the channel analytics say things that are not true.
+   */
+  channel: z.enum(["admin", "event", "sms", "import"] as const).default("admin"),
+  note: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().max(1000, "That note is too long.").optional(),
+  ),
+  contactConsent: z.boolean().default(false),
+  displayConsent: z.boolean().default(false),
+});
+
+export type AdminCreatePledgeInput = z.infer<typeof adminCreatePledgeInput>;
+
+/** Removing a pledge. The reason is optional but it is what the journal keeps. */
+export const removePledgeInput = z.object({
+  reason: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().max(500).optional(),
+  ),
+});
+
+export type RemovePledgeInput = z.infer<typeof removePledgeInput>;

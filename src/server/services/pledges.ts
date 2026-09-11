@@ -1,10 +1,11 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { Db } from "@/db";
 import {
   auditLog,
   campaigns,
+  paymentAllocations,
   pledgeIncrements,
   pledgeLookups,
   pledgers,
@@ -34,6 +35,7 @@ import {
   instalmentMinor,
   PRIVACY_VERSION,
   PUBLIC_TOKEN_LENGTH,
+  type AdminCreatePledgeInput,
   type CreatePledgeInput,
   type EditPledgeInput,
   type LookupPledgeInput,
@@ -298,6 +300,7 @@ async function createOnce(
       from pledge_increments i
       join pledges p on p.id = i.pledge_id
       where p.pledger_id = ${pledger.id}::uuid
+        and p.deleted_at is null
         and i.created_at > now() - make_interval(secs => ${PLEDGE_RATE_WINDOW_SECONDS})
     `);
 
@@ -328,6 +331,7 @@ async function createOnce(
           eq(pledges.campaignId, campaign.id),
           eq(pledges.pledgerId, pledger.id),
           inArray(pledges.status, [...ACCUMULATING_STATUSES]),
+          isNull(pledges.deletedAt),
         ),
       )
       .for("update")
@@ -589,7 +593,7 @@ export async function approve(
     const [current] = await tx
       .select({ id: pledges.id, reference: pledges.reference, status: pledges.status })
       .from(pledges)
-      .where(eq(pledges.id, pledgeId))
+      .where(and(eq(pledges.id, pledgeId), isNull(pledges.deletedAt)))
       .for("update")
       .limit(1);
 
@@ -691,7 +695,9 @@ export async function getByPublicToken(
     })
     .from(pledges)
     .innerJoin(pledgers, eq(pledgers.id, pledges.pledgerId))
-    .where(eq(pledges.publicToken, args.publicToken))
+    .where(
+      and(eq(pledges.publicToken, args.publicToken), isNull(pledges.deletedAt)),
+    )
     .limit(1);
 
   if (!row) return null;
@@ -778,6 +784,7 @@ export async function listForAdmin(
     join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
     where c.slug = ${args.campaignSlug}
+      and p.deleted_at is null
       and (${status}::text is null or p.status = ${status}::pledge_status)
       and ${patterns ? matchesTerm(patterns) : sql`true`}
       and (
@@ -964,6 +971,7 @@ export async function search(
     join campaigns c on c.id = p.campaign_id
     join v_pledge_balances b on b.pledge_id = p.id
     where c.slug = ${args.campaignSlug}
+      and p.deleted_at is null
       and (
         p.reference like ${referencePrefix} escape '\\'
         or (${phoneSuffix}::text is not null
@@ -1049,6 +1057,7 @@ export async function recent(
     join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
     where c.slug = ${args.campaignSlug}
+      and p.deleted_at is null
       and p.status in ('verified', 'fulfilled')
       and g.display_consent = true
       and g.display_name is not null
@@ -1171,6 +1180,7 @@ export async function lookup(
     join campaigns c on c.id = p.campaign_id
     join v_pledge_balances b on b.pledge_id = p.id
     where c.slug = ${campaignSlug}
+      and p.deleted_at is null
       and p.reference = ${input.reference}
       and g.phone_e164 = ${input.phone}
     limit 1
@@ -1320,6 +1330,7 @@ export async function getForAdmin(
     join pledgers g on g.id = p.pledger_id
     join v_pledge_balances b on b.pledge_id = p.id
     where p.id = ${args.pledgeId}::uuid
+      and p.deleted_at is null
     limit 1
   `);
 
@@ -1478,7 +1489,7 @@ export async function edit(
         verifiedAt: pledges.verifiedAt,
       })
       .from(pledges)
-      .where(eq(pledges.id, pledgeId))
+      .where(and(eq(pledges.id, pledgeId), isNull(pledges.deletedAt)))
       .for("update")
       .limit(1);
 
@@ -1635,4 +1646,272 @@ export async function edit(
       affectsTotals,
     };
   });
+}
+
+/* ---------------------------------------------------------------------------
+ * Removing a pledge, and recording one on somebody's behalf.
+ * ------------------------------------------------------------------------- */
+
+export type RemovePledgeArgs = {
+  pledgeId: string;
+  reason?: string | null;
+  adminId: string;
+  request?: RequestContext;
+};
+
+export type RemovePledgeResult = {
+  pledgeId: string;
+  reference: string;
+  /** How many live allocations had to be reversed to let it go. */
+  allocationsReversed: number;
+  /** Whether the public figure moved, so the caller knows to revalidate. */
+  affectsTotals: boolean;
+};
+
+/**
+ * Removes a pledge from everything anybody can see, without destroying it.
+ *
+ * The row stays. It is a financial record, every audit entry about it points at
+ * it, and its increments and allocations hang off it, so deleting it outright
+ * would either break those references or quietly erase the evidence that the
+ * campaign ever counted this money. Setting deleted_at takes it out of the
+ * totals, the lists, the exports, the feed and the search, which is the whole
+ * of what deleting was meant to achieve.
+ *
+ * Any live allocation is reversed first, and each reversal is its own audit
+ * row. A payment matched to a pledge that has gone would otherwise be money the
+ * books show as spoken for by nothing, and the allocation guard would keep
+ * counting it against its payment for ever.
+ *
+ * The whole thing is one transaction, so a pledge is never half removed with
+ * its money still attached.
+ */
+export async function remove(
+  db: Db,
+  args: RemovePledgeArgs,
+): Promise<RemovePledgeResult> {
+  const { pledgeId, reason = null, adminId, request } = args;
+
+  return db.transaction(async (tx) => {
+    const [pledge] = await tx
+      .select({
+        id: pledges.id,
+        reference: pledges.reference,
+        amountMinor: pledges.amountMinor,
+        currency: pledges.currency,
+        status: pledges.status,
+        intent: pledges.intent,
+        installmentFrequency: pledges.installmentFrequency,
+        installmentAmountMinor: pledges.installmentAmountMinor,
+        channel: pledges.channel,
+        note: pledges.note,
+        campaignId: pledges.campaignId,
+        pledgerId: pledges.pledgerId,
+        publicToken: pledges.publicToken,
+        createdAt: pledges.createdAt,
+        verifiedAt: pledges.verifiedAt,
+      })
+      .from(pledges)
+      .where(and(eq(pledges.id, pledgeId), isNull(pledges.deletedAt)))
+      .for("update")
+      .limit(1);
+
+    if (!pledge) {
+      throw notFound("pledge_not_found", "That pledge does not exist.");
+    }
+
+    const now = new Date();
+
+    /*
+     * The allocations that are still standing. A reversed one is already
+     * invisible to every balance, so it needs nothing done to it.
+     */
+    const live = await tx
+      .select({
+        id: paymentAllocations.id,
+        paymentId: paymentAllocations.paymentId,
+        amountMinor: paymentAllocations.amountMinor,
+      })
+      .from(paymentAllocations)
+      .where(
+        and(
+          eq(paymentAllocations.pledgeId, pledgeId),
+          isNull(paymentAllocations.reversedAt),
+        ),
+      );
+
+    for (const allocation of live) {
+      await tx
+        .update(paymentAllocations)
+        .set({ reversedAt: now, reversedBy: adminId })
+        .where(eq(paymentAllocations.id, allocation.id));
+
+      // One row each, not one row for the batch. A reversal is a money event
+      // and each is answerable for on its own.
+      await tx.insert(auditLog).values({
+        actorType: "admin",
+        actorId: adminId,
+        action: "payment.deallocated",
+        entity: "payment_allocation",
+        entityId: allocation.id,
+        before: {
+          pledgeId,
+          reference: pledge.reference,
+          amountMinor: allocation.amountMinor.toString(),
+          paymentId: allocation.paymentId,
+        },
+        after: {
+          reversedAt: now.toISOString(),
+          because: "pledge.deleted",
+        },
+        ip: request?.ip ?? null,
+        userAgent: request?.userAgent ?? null,
+      });
+    }
+
+    await tx
+      .update(pledges)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(eq(pledges.id, pledgeId));
+
+    /*
+     * The whole pledge goes in the before column, because after this it is not
+     * readable from any list or any view, and a journal entry that says only
+     * "a pledge was removed" would be a record of nothing.
+     */
+    await tx.insert(auditLog).values({
+      actorType: "admin",
+      actorId: adminId,
+      action: "pledge.deleted",
+      entity: "pledge",
+      entityId: pledgeId,
+      before: {
+        reference: pledge.reference,
+        publicToken: pledge.publicToken,
+        amountMinor: pledge.amountMinor.toString(),
+        currency: pledge.currency,
+        status: pledge.status,
+        intent: pledge.intent,
+        installmentFrequency: pledge.installmentFrequency,
+        installmentAmountMinor:
+          pledge.installmentAmountMinor?.toString() ?? null,
+        channel: pledge.channel,
+        note: pledge.note,
+        campaignId: pledge.campaignId,
+        pledgerId: pledge.pledgerId,
+        createdAt: pledge.createdAt.toISOString(),
+        verifiedAt: pledge.verifiedAt?.toISOString() ?? null,
+      },
+      after: {
+        deletedAt: now.toISOString(),
+        reason,
+        allocationsReversed: live.length,
+      },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    return {
+      pledgeId,
+      reference: pledge.reference,
+      allocationsReversed: live.length,
+      // A pending pledge counted toward nothing, so removing it changes nothing
+      // the congregation can see.
+      affectsTotals:
+        COUNTED_STATUSES.includes(pledge.status) || live.length > 0,
+    };
+  });
+}
+
+export type AdminCreatePledgeArgs = {
+  input: AdminCreatePledgeInput;
+  campaignSlug: string;
+  adminId: string;
+  request?: RequestContext;
+};
+
+/**
+ * Records a pledge somebody made on paper or over the phone.
+ *
+ * Verified on the spot. A pledge the treasurer is typing in has already been
+ * through the only check approval exists to perform, which is a person deciding
+ * they believe it, so asking them to approve their own entry afterwards would
+ * be a step that means nothing.
+ *
+ * Everything else is the public path. It goes through create(), so it
+ * accumulates onto an existing pledge from the same number, writes its
+ * increment, keeps the reference and the QR code, and lands inside the same
+ * transaction and the same invariants. The alternative, a second creation path
+ * beside the first, is how two code paths start disagreeing about what a pledge
+ * is.
+ */
+export async function createByAdmin(
+  db: Db,
+  args: AdminCreatePledgeArgs,
+): Promise<CreatePledgeResult> {
+  const { input, campaignSlug, adminId, request } = args;
+
+  const result = await create(db, {
+    input: {
+      fullName: input.fullName,
+      phone: input.phone,
+      email: input.email,
+      membershipNo: input.membershipNo,
+      amountKes: input.amountKes,
+      intent: input.installmentFrequency ? "installment" : "one_off",
+      installmentFrequency: input.installmentFrequency,
+      category: input.category,
+      tier: input.tier,
+      /*
+       * The consents are what the pledger told the treasurer, not something the
+       * treasurer decides. Recording is implied by their having made the pledge
+       * at all; the other two are asked and ticked.
+       */
+      recordConsent: true,
+      contactConsent: input.contactConsent,
+      displayConsent: input.displayConsent,
+    },
+    campaignSlug,
+    channel: input.channel,
+    request,
+  });
+
+  /*
+   * Approved in a second step rather than inside create(), because create()
+   * decides status from the bot check and the auto approve limit and neither
+   * applies to a person typing at a keyboard. approve() refuses anything that
+   * is not pending, so an addition to an already verified pledge simply stays
+   * verified.
+   */
+  if (result.status === "pending") {
+    await approve(db, { pledgeId: result.pledgeId, adminId, request });
+  }
+
+  await db.insert(auditLog).values({
+    actorType: "admin",
+    actorId: adminId,
+    action: "pledge.admin_created",
+    entity: "pledge",
+    entityId: result.pledgeId,
+    after: {
+      reference: result.reference,
+      amountMinor: result.amountMinor.toString(),
+      addedMinor: result.addedMinor.toString(),
+      isAddition: result.isAddition,
+      channel: input.channel,
+      note: input.note ?? null,
+      verifiedOnEntry: true,
+    },
+    ip: request?.ip ?? null,
+    userAgent: request?.userAgent ?? null,
+  });
+
+  if (input.note) {
+    await db
+      .update(pledges)
+      .set({ note: input.note })
+      .where(eq(pledges.id, result.pledgeId));
+  }
+
+  return { ...result, status: "verified" };
 }

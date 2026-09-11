@@ -361,7 +361,7 @@ export async function allocate(
         status: pledges.status,
       })
       .from(pledges)
-      .where(eq(pledges.id, input.pledgeId))
+      .where(and(eq(pledges.id, input.pledgeId), isNull(pledges.deletedAt)))
       .for("update")
       .limit(1);
 
@@ -1197,6 +1197,7 @@ export async function suggestMatches(
     join pledgers g on g.id = pl.pledger_id
     join v_pledge_balances b on b.pledge_id = pl.id
     where pl.campaign_id = ${payment.campaign_id}
+      and pl.deleted_at is null
       and b.outstanding_minor > 0
       and pl.status in ('pending', 'verified')
       and (

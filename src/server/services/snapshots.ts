@@ -131,6 +131,7 @@ async function writeRange(
       from pledges p
       where p.campaign_id = c.id
         and p.status in ('verified', 'fulfilled')
+        and p.deleted_at is null
         and (p.created_at at time zone 'Africa/Nairobi')::date <= d.stat_date::date
     ) cum on true
     left join lateral (
@@ -145,6 +146,7 @@ async function writeRange(
       from pledges p
       where p.campaign_id = c.id
         and p.status in ('verified', 'fulfilled')
+        and p.deleted_at is null
         and (p.created_at at time zone 'Africa/Nairobi')::date = d.stat_date::date
     ) fresh on true
     where c.id = ${id}
@@ -209,7 +211,8 @@ async function firstActiveDate(
              c.starts_on,
              (select min((created_at at time zone 'Africa/Nairobi')::date)
               from pledges where campaign_id = c.id
-                and status in ('verified', 'fulfilled')),
+                and status in ('verified', 'fulfilled')
+                and deleted_at is null),
              (select min((paid_at at time zone 'Africa/Nairobi')::date)
               from payments where campaign_id = c.id and status = 'received')
            ) as from_date

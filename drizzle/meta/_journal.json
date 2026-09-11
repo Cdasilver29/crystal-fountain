@@ -64,6 +64,13 @@
       "when": 1789105060573,
       "tag": "0008_pledge_adjustments",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789106856123,
+      "tag": "0009_pledge_soft_delete",
+      "breakpoints": true
     }
   ]
 }

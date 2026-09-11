@@ -120,6 +120,15 @@ export default async function AdminPledgesPage({
               <PledgeFilters q={filters.q} status={filters.status} />
             </div>
 
+            {can(admin, "pledges.create") && (
+              <Link
+                href="/admin/pledges/new"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-campfire px-4 text-sm font-medium text-white transition-colors hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              >
+                Record a pledge
+              </Link>
+            )}
+
             {can(admin, "exports.download") && (
               <ExportButton href="/api/admin/exports/pledges.csv" />
             )}

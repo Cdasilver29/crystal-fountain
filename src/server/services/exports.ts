@@ -109,6 +109,7 @@ export async function pledges(
     join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
     where c.slug = ${args.campaignSlug}
+      and p.deleted_at is null
     order by p.created_at, p.id
   `);
 

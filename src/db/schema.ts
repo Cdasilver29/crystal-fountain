@@ -219,6 +219,16 @@ export const pledges = pgTable(
     note: text("note"),
     verifiedAt: timestamp("verified_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /*
+     * When an administrator removed this pledge.
+     *
+     * The row never goes. It is a financial record, it is referenced by every
+     * audit entry about it, and its increments and any payment allocations hang
+     * off it. Setting this takes it out of every total, every list and every
+     * export, which is the whole of what deleting was meant to achieve, while
+     * leaving the evidence that it once existed.
+     */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -254,7 +264,7 @@ export const pledges = pgTable(
      */
     uniqueIndex("pledges_one_live_per_pledger_idx")
       .on(t.campaignId, t.pledgerId)
-      .where(sql`status in ('pending','verified')`),
+      .where(sql`status in ('pending','verified') and deleted_at is null`),
   ],
 );
 

@@ -96,12 +96,14 @@ export async function fulfilment(
       (select coalesce(sum(p.amount_minor), 0)
        from pledges p
        where p.campaign_id = ${id}
-         and p.status in ${APPROVED_STATUSES}) as promised,
+         and p.status in ${APPROVED_STATUSES}
+         and p.deleted_at is null) as promised,
       (select coalesce(sum(a.amount_minor), 0)
        from payment_allocations a
        join pledges p on p.id = a.pledge_id
        where p.campaign_id = ${id}
          and p.status in ${APPROVED_STATUSES}
+         and p.deleted_at is null
          and a.reversed_at is null) as allocated
   `);
 
@@ -268,6 +270,7 @@ export async function channelMix(
     from pledges p
     where p.campaign_id = ${id}
       and p.status in ${LIVE_STATUSES}
+      and p.deleted_at is null
     group by 1
   `);
 

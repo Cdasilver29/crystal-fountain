@@ -34,7 +34,8 @@
     "db:verify:redeem": "tsx scripts/verify-part-t.ts",
     "db:verify:rights": "tsx scripts/verify-part-u.ts",
     "db:verify:users": "tsx scripts/verify-part-v.ts",
-    "db:verify:pledge-edit": "tsx scripts/verify-part-w.ts"
+    "db:verify:pledge-edit": "tsx scripts/verify-part-w.ts",
+    "db:verify:pledge-delete": "tsx scripts/verify-part-x.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",

@@ -147,6 +147,7 @@ export async function keyMetrics(
     from pledges p
     where p.campaign_id = ${id}
       and p.status in ('verified', 'fulfilled')
+      and p.deleted_at is null
   `);
   const shape = shapeResult.rows[0] as {
     median: string | null;

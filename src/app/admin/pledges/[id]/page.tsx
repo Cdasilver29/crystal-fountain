@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { PledgeDelete } from "@/components/admin/pledge-delete";
 import { PledgeEdit } from "@/components/admin/pledge-edit";
 import { db } from "@/db";
 import { getCurrentAdmin } from "@/lib/admin-context";
@@ -273,6 +274,18 @@ export default async function AdminPledgeDetailPage({
               </ul>
             )}
           </section>
+          {/*
+            Last on the page, away from everything else, and only for the one
+            account that may use it. Removing a pledge takes money off the
+            figure the congregation is watching.
+          */}
+          {can(admin, "pledges.delete") && (
+            <PledgeDelete
+              pledgeId={pledge.id}
+              reference={pledge.reference}
+              paidMinorIsZero={pledge.paidMinor === 0n}
+            />
+          )}
         </div>
       </main>
     </div>
