@@ -53,18 +53,23 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 
           /*
-           * One year, subdomains included. The public site is a subdomain of
-           * newlifesdanairobi.org and the main church site stays on WordPress,
-           * so includeSubDomains reaches beyond this app. That is the intent
-           * and it is worth saying out loud: every host on that domain has to
-           * be able to serve https before this ships.
+           * One year, this host only.
+           *
+           * Deliberately without includeSubDomains. This site is one subdomain
+           * of newlifesdanairobi.org, the main church site stays on WordPress,
+           * and there are other hosts on that domain this project does not own
+           * or deploy. includeSubDomains would force https on all of them from
+           * here, and any one with a certificate problem would become
+           * unreachable rather than degraded, with no way to undo it from the
+           * affected host: browsers cache the directive for the full max-age.
+           * Pinning a pledge form must not be able to take a sister site down.
            *
            * Ignored by browsers over plain http, so a localhost run is
            * unaffected.
            */
           {
             key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
+            value: "max-age=31536000",
           },
 
           // The form asks for a name, a number and an amount. It has no reason
