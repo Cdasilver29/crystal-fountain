@@ -1,9 +1,9 @@
-import { Download } from "lucide-react";
+import { FileText } from "lucide-react";
 import Link from "next/link";
 
 import { LiveTracker } from "@/components/campaign/live-tracker";
 import { CAMPAIGN, SCRIPTURE } from "@/content/campaign";
-import { FUND_SUMMARY } from "@/content/project";
+import { CD_FUND } from "@/content/cd-fund";
 import type { CampaignTotalsDto } from "@/lib/campaign";
 
 /**
@@ -164,25 +164,24 @@ export function Hero({
         </div>
 
         {/*
-          The summary document, set under the row rather than in it. A third
-          button the size of the other two pushed the group past the width of
-          the copy above it on a laptop and made the hero read as a toolbar, so
-          this is a link with an icon: reachable, clearly a download, and not
-          competing with the one warm button on the page.
+          The fund policy, set under the row rather than in it. A third button
+          the size of the other two pushed the group past the width of the copy
+          above it on a laptop and made the hero read as a toolbar, so this is a
+          link with an icon: reachable, and not competing with the one warm
+          button on the page.
 
-          It is a plain anchor, not a Link. The target is a file in public/,
-          which the router has nothing to prefetch and no route to push.
+          It used to serve the printed summary straight out of public/. That PDF
+          is now offered from the page this points at, so the hero hands a
+          reader the whole policy rather than a download.
         */}
         <div className="mt-5 flex justify-center">
-          <a
-            href={FUND_SUMMARY.href}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href={CD_FUND.href}
             className="inline-flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-white/80 underline-offset-4 transition-colors hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none sm:text-base"
           >
-            <Download aria-hidden className="size-4 shrink-0" />
-            {FUND_SUMMARY.shortLabel}
-          </a>
+            <FileText aria-hidden className="size-4 shrink-0" />
+            {CD_FUND.label}
+          </Link>
         </div>
 
         <blockquote className="mx-auto mt-10 max-w-xl">

@@ -357,16 +357,18 @@ export const UPDATES_PLACEHOLDER =
   "Updates on the Crystal Fountain Development Project will be posted here as the project progresses. Check back regularly or follow the church's official channels for the latest news.";
 
 /**
- * The printed fund summary, offered as a download from the hero and the phone
- * menu. A static file in public/, not an optimised asset, because the point is
- * that a member can save it and pass it on.
+ * The printed fund summary, offered as a download from /cd-fund. A static file
+ * in public/, not an optimised asset, because the point is that a member can
+ * save it and pass it on.
+ *
+ * The hero and the phone menu used to link straight here. They now point at
+ * /cd-fund, which carries the whole policy and offers this document at the
+ * foot of it, so the PDF is one tap further away and nobody meets the campaign
+ * with a download.
  */
 export const FUND_SUMMARY = {
   href: "/documents/newlife-cd-fund-summary.pdf",
-  /** The hero, where the surrounding copy already says what the project is. */
-  shortLabel: "Download summary",
-  /** The phone menu, where the link stands on its own. */
-  longLabel: "Download fund summary",
+  label: "Download PDF summary",
 } as const;
 
 /**

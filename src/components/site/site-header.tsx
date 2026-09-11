@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { MobileNav } from "@/components/site/mobile-nav";
 import { SdaSymbol } from "@/components/site/sda-symbol";
 import { CONTACT } from "@/content/campaign";
+import { CD_FUND } from "@/content/cd-fund";
 import { NAV_LINKS } from "@/content/project";
 
 /**
@@ -82,6 +83,19 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+
+          {/*
+            The fund policy, last of the nav links rather than an entry in
+            NAV_LINKS, because that list is also the phone drawer, where this
+            link is set apart at the foot of the menu rather than listed in
+            among the campaign pages.
+          */}
+          <Link
+            href={CD_FUND.href}
+            className="rounded px-2.5 py-1.5 text-sm text-white/80 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          >
+            {CD_FUND.label}
+          </Link>
 
           {/*
             Two calls to action, weighted the same. Somebody who has already

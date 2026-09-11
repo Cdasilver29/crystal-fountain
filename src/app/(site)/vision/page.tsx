@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
 import { YouTubeEmbed } from "@/components/media/youtube-embed";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { RoadmapReveal } from "@/components/vision/roadmap-reveal";
 import { Roadmap, RoadmapSteps } from "@/components/vision/roadmap";
+import { CD_FUND } from "@/content/cd-fund";
 import {
   ACCOUNTABILITY,
   BROCHURE_HEIGHT,
@@ -124,6 +126,21 @@ export default function VisionPage() {
 
           <p className="mt-4 max-w-3xl text-base leading-relaxed text-neutral-700">
             {ACCOUNTABILITY.updates}
+          </p>
+
+          {/*
+            The rules the money itself is held under, as opposed to the
+            committees described above. Set after the accountability copy
+            because that is the question it answers.
+          */}
+          <p className="mt-6 text-base leading-relaxed text-neutral-700">
+            <Link
+              href={CD_FUND.href}
+              className="rounded font-medium text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            >
+              {CD_FUND.label}
+            </Link>
+            : how the fund is governed, invested, and controlled.
           </p>
         </div>
       </section>
