@@ -24,7 +24,17 @@ import type { CampaignTotalsDto } from "@/lib/campaign";
  * and it is why this one image is not a next/image. Two Image elements toggled
  * by a class would both be fetched, and this is the largest request on the page
  * for somebody opening a WhatsApp link on a phone. The files are converted and
- * sized ahead of time instead, two widths per crop.
+ * sized ahead of time instead: two widths per crop, in avif, webp and jpeg.
+ *
+ * The encoder settings are deliberately aggressive, because of the overlay
+ * below. Four fifths of every pixel on screen is flat navy and only one fifth
+ * is the photograph, which flattens the picture's contrast and takes any
+ * compression artefact down with it. The qualities were chosen by compositing
+ * each candidate under that overlay and measuring the difference in the result
+ * rather than in the file, which is how a 720px crop that a phone downloads
+ * went from 104 kB to 29 kB with nothing visible to show for it. If the overlay
+ * is ever lightened, the images need re-encoding at a higher quality, because
+ * the headroom they are trading on is the overlay itself.
  *
  * It covers the section rather than fitting inside it. The section is a full
  * 100svh and no photograph is that shape, so a band of the picture is what
@@ -47,16 +57,47 @@ export function Hero({
       id="hero"
       className="relative isolate -mt-16 flex min-h-[100svh] flex-col overflow-hidden bg-navy px-4 pt-16 pb-24 sm:px-6"
     >
+      {/*
+        Order matters and is not alphabetical. A browser takes the first source
+        whose media and type it can satisfy, so the widescreen crop has to come
+        before the square one and, within each crop, the formats have to run
+        newest first. Putting the jpeg first would mean nobody ever sees the
+        avif.
+      */}
       <picture>
         <source
           media="(min-width: 768px)"
+          type="image/avif"
+          srcSet="/images/gallery/hero-desktop-1100.avif 1100w, /images/gallery/hero-desktop.avif 1672w"
+          sizes="100vw"
+        />
+        <source
+          media="(min-width: 768px)"
+          type="image/webp"
+          srcSet="/images/gallery/hero-desktop-1100.webp 1100w, /images/gallery/hero-desktop.webp 1672w"
+          sizes="100vw"
+        />
+        <source
+          media="(min-width: 768px)"
           srcSet="/images/gallery/hero-desktop-1100.jpg 1100w, /images/gallery/hero-desktop.jpg 1672w"
+          sizes="100vw"
+        />
+
+        <source
+          type="image/avif"
+          srcSet="/images/gallery/hero-mobile-720.avif 720w, /images/gallery/hero-mobile.avif 1254w"
+          sizes="100vw"
+        />
+        <source
+          type="image/webp"
+          srcSet="/images/gallery/hero-mobile-720.webp 720w, /images/gallery/hero-mobile.webp 1254w"
           sizes="100vw"
         />
         <source
           srcSet="/images/gallery/hero-mobile-720.jpg 720w, /images/gallery/hero-mobile.jpg 1254w"
           sizes="100vw"
         />
+
         <img
           src="/images/gallery/hero-desktop.jpg"
           alt=""
