@@ -355,3 +355,69 @@ export const ACCOUNTABILITY = {
 /** Placeholder for /updates until there is real news to post. */
 export const UPDATES_PLACEHOLDER =
   "Updates on the Crystal Fountain Development Project will be posted here as the project progresses. Check back regularly or follow the church's official channels for the latest news.";
+
+/**
+ * The printed fund summary, offered as a download from the hero and the phone
+ * menu. A static file in public/, not an optimised asset, because the point is
+ * that a member can save it and pass it on.
+ */
+export const FUND_SUMMARY = {
+  href: "/documents/newlife-cd-fund-summary.pdf",
+  /** The hero, where the surrounding copy already says what the project is. */
+  shortLabel: "Download summary",
+  /** The phone menu, where the link stands on its own. */
+  longLabel: "Download fund summary",
+} as const;
+
+/**
+ * The six step road map printed on the project flyer, and the scan of the
+ * flyer itself for anyone who wants the source.
+ *
+ * `current` is the step the project is on. Everything before it is complete and
+ * everything after it is upcoming, so the status of all six is derived from
+ * this one number rather than restated per step and left to drift.
+ *
+ * `icon` is a key, not a component. This file is plain data with no imports,
+ * and the component that renders the road map maps these to lucide icons.
+ */
+export type RoadmapIcon =
+  | "vision"
+  | "planning"
+  | "design"
+  | "fundraising"
+  | "construction"
+  | "dedication";
+
+export const ROADMAP = {
+  heading: "Road map to the new sanctuary",
+  /** The step the project is on, one based, as printed on the flyer. */
+  current: 2,
+  /** Read from the flyer, which dates the current step to September 2026. */
+  asOf: "September 2026",
+  original: {
+    href: "/images/roadmap.jpeg",
+    label: "View original roadmap",
+  },
+  steps: [
+    { ordinal: "Step one", title: "Vision and model", icon: "vision" },
+    { ordinal: "Step two", title: "Planning", icon: "planning" },
+    {
+      ordinal: "Step three",
+      title: "Concept drawing and detailed design",
+      icon: "design",
+    },
+    { ordinal: "Step four", title: "Fundraising", icon: "fundraising" },
+    { ordinal: "Step five", title: "Construction", icon: "construction" },
+    {
+      ordinal: "Step six",
+      title: "Dedication, operation and maintenance",
+      icon: "dedication",
+    },
+  ],
+} as const satisfies {
+  heading: string;
+  current: number;
+  asOf: string;
+  original: { href: string; label: string };
+  steps: readonly { ordinal: string; title: string; icon: RoadmapIcon }[];
+};
