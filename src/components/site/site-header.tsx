@@ -83,9 +83,24 @@ export function SiteHeader() {
             </Link>
           ))}
 
+          {/*
+            Two calls to action, weighted the same. Somebody who has already
+            pledged is here to pay, and making them hunt for that in a footer
+            while a bright orange button asks them to pledge again is how a
+            campaign ends up with promises it never collects. Campfire for the
+            promise, denim for the payment, so the two are told apart by colour
+            rather than by size.
+          */}
+          <Link
+            href="/redeem"
+            className="ml-1 rounded-lg bg-denim px-3 py-1.5 text-sm font-medium text-white hover:bg-denim/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+          >
+            Redeem your pledge
+          </Link>
+
           <Link
             href="/pledge"
-            className="ml-1 rounded-lg bg-campfire px-3 py-1.5 text-sm font-medium text-white hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="rounded-lg bg-campfire px-3 py-1.5 text-sm font-medium text-white hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Make a pledge
           </Link>

@@ -43,6 +43,13 @@
       "when": 1789071139102,
       "tag": "0005_pledge_accumulation",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789084534660,
+      "tag": "0006_pledge_lookups",
+      "breakpoints": true
     }
   ]
 }

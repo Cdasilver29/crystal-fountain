@@ -272,3 +272,42 @@ export const approvePledgeInput = z.object({
 });
 
 export type ApprovePledgeInput = z.infer<typeof approvePledgeInput>;
+
+/**
+ * The human reference, as somebody types it back to us.
+ *
+ * Upper cased and stripped of spaces before it is matched, because a member
+ * reading it off a phone screen types "cf26 000124" as often as not. The shape
+ * is fixed by next_pledge_reference() in migration 0000.
+ */
+export const PLEDGE_REFERENCE_PATTERN = /^CF26-\d{6}$/;
+
+const pledgeReference = z
+  .string()
+  .trim()
+  .min(1, "Enter your pledge reference.")
+  .transform((value) => value.toUpperCase().replace(/\s+/g, ""))
+  // A missing dash is the commonest way to mistype this, so it is repaired
+  // rather than rejected.
+  .transform((value) => value.replace(/^CF26(\d{6})$/, "CF26-$1"))
+  .refine(
+    (value) => PLEDGE_REFERENCE_PATTERN.test(value),
+    "A pledge reference looks like CF26-000124.",
+  );
+
+/**
+ * Looking a pledge up on /redeem.
+ *
+ * Both fields, always. A reference on its own is a sequential counter that can
+ * be walked from CF26-000001, and a phone number on its own is something every
+ * member of a congregation has for every other, so either alone would turn this
+ * page into a way of reading other people's giving records. Requiring the pair
+ * means walking references gets nothing without the matching number, and
+ * knowing somebody's number gets nothing without their reference.
+ */
+export const lookupPledgeInput = z.object({
+  reference: pledgeReference,
+  phone: kenyanPhone,
+});
+
+export type LookupPledgeInput = z.infer<typeof lookupPledgeInput>;

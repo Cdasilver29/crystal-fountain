@@ -112,12 +112,27 @@ export function MobileNav() {
               </button>
             </div>
 
-            <Link
-              href="/pledge"
-              className="flex h-12 items-center justify-center rounded-xl bg-campfire text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
-            >
-              Make a pledge
-            </Link>
+            {/*
+              Both calls to action, the same size, told apart by colour. On a
+              phone this drawer is the whole navigation, so leaving the paying
+              route out of it would leave it out altogether for most of the
+              congregation.
+            */}
+            <div className="flex flex-col gap-2.5">
+              <Link
+                href="/pledge"
+                className="flex h-12 items-center justify-center rounded-xl bg-campfire text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+              >
+                Make a pledge
+              </Link>
+
+              <Link
+                href="/redeem"
+                className="flex h-12 items-center justify-center rounded-xl bg-denim text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+              >
+                Redeem your pledge
+              </Link>
+            </div>
 
             <nav aria-label="Menu" className="flex flex-col">
               {NAV_LINKS.map((link) => (

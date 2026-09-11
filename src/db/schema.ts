@@ -559,3 +559,28 @@ export const adminLoginAttempts = pgTable(
   },
   (t) => [index("admin_login_attempts_email_at_idx").on(t.email, t.at)],
 );
+
+/*
+ * Every attempt to look a pledge up on /redeem.
+ *
+ * The rate limit is counted from here rather than from memory, so it holds
+ * across every serverless instance and survives a redeploy, which an in process
+ * counter would not. Both successes and failures are recorded: a limiter that
+ * only counted failures would let somebody who has found one real pledge walk
+ * the rest at full speed.
+ *
+ * The IP is nullable because clientIp() returns null for anything that is not
+ * plausibly an address, and a request with no usable address still has to be
+ * counted somewhere rather than silently exempted. See the service.
+ */
+export const pledgeLookups = pgTable(
+  "pledge_lookups",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    ip: inet("ip"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    /** Whether the reference and phone pair actually matched a pledge. */
+    found: boolean("found").notNull(),
+  },
+  (t) => [index("pledge_lookups_ip_at_idx").on(t.ip, t.at)],
+);

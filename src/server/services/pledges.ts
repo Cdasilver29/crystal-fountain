@@ -6,6 +6,7 @@ import {
   auditLog,
   campaigns,
   pledgeIncrements,
+  pledgeLookups,
   pledgers,
   pledges,
 } from "@/db/schema";
@@ -34,6 +35,7 @@ import {
   PRIVACY_VERSION,
   PUBLIC_TOKEN_LENGTH,
   type CreatePledgeInput,
+  type LookupPledgeInput,
   type PledgeChannel,
   type PledgeFrequency,
   type PledgeIntent,
@@ -1060,4 +1062,142 @@ export async function recent(
     amountMinor: BigInt(row.amount_minor),
     createdAt: new Date(row.created_at),
   }));
+}
+
+/* ---------------------------------------------------------------------------
+ * Looking a pledge up on /redeem.
+ * ------------------------------------------------------------------------- */
+
+/** How many lookups one address may attempt in the window. */
+export const LOOKUP_RATE_LIMIT = 10;
+
+/** The window that limit is counted over. */
+export const LOOKUP_RATE_WINDOW_SECONDS = 60;
+
+/**
+ * What a pledger is shown about their own pledge.
+ *
+ * First name only, and no phone number or email address anywhere in the shape,
+ * so there is nothing for a caller to leak by accident. The public token is
+ * included so the page can offer the permanent link and the QR code, which is
+ * the thing somebody looking their pledge up has usually lost.
+ */
+export type PledgeRedemptionView = {
+  reference: string;
+  publicToken: string;
+  firstName: string;
+  amountMinor: bigint;
+  paidMinor: bigint;
+  outstandingMinor: bigint;
+  status: PledgeStatus;
+  intent: PledgeIntent;
+  installmentFrequency: PledgeFrequency | null;
+  installmentAmountMinor: bigint | null;
+  createdAt: Date;
+};
+
+type LookupRow = {
+  reference: string;
+  public_token: string;
+  full_name: string;
+  amount_minor: string;
+  paid_minor: string;
+  outstanding_minor: string;
+  status: string;
+  intent: string;
+  installment_frequency: string | null;
+  installment_amount_minor: string | null;
+  created_at: string;
+};
+
+export type LookupPledgeArgs = {
+  input: LookupPledgeInput;
+  campaignSlug: string;
+  request?: RequestContext;
+};
+
+/**
+ * Finds one pledge from a reference and a phone number that both match it.
+ *
+ * Both, always. The reference is a sequential counter that can be walked from
+ * CF26-000001, and in a congregation everybody has everybody's phone number, so
+ * either on its own would make this a way of reading other people's giving
+ * records. Requiring the pair means walking references gets nothing without the
+ * matching number, and knowing somebody's number gets nothing without their
+ * reference. See lookupPledgeInput, which refuses to build a query from one.
+ *
+ * Returns null for every kind of miss, and the caller says the same thing for
+ * all of them. Distinguishing "no such reference" from "that is not the right
+ * number for it" would hand back exactly the fact the pair is there to protect.
+ *
+ * Every attempt is recorded, hit or miss, before the answer is given.
+ */
+export async function lookup(
+  db: Db,
+  args: LookupPledgeArgs,
+): Promise<PledgeRedemptionView | null> {
+  const { input, campaignSlug, request } = args;
+  const ip = request?.ip ?? null;
+
+  const recent = await db.execute(sql`
+    select count(*)::int as attempts
+    from pledge_lookups
+    where at > now() - make_interval(secs => ${LOOKUP_RATE_WINDOW_SECONDS})
+      and ip is not distinct from ${ip}::inet
+  `);
+
+  if ((recent.rows[0] as { attempts: number }).attempts >= LOOKUP_RATE_LIMIT) {
+    throw tooManyRequests(
+      "lookup_rate_limited",
+      "Too many lookups from this connection. Please wait a minute and try again.",
+    );
+  }
+
+  const result = await db.execute(sql`
+    select p.reference,
+           p.public_token,
+           g.full_name,
+           b.amount_minor,
+           b.paid_minor,
+           b.outstanding_minor,
+           p.status,
+           p.intent,
+           p.installment_frequency,
+           p.installment_amount_minor,
+           p.created_at
+    from pledges p
+    join pledgers g on g.id = p.pledger_id
+    join campaigns c on c.id = p.campaign_id
+    join v_pledge_balances b on b.pledge_id = p.id
+    where c.slug = ${campaignSlug}
+      and p.reference = ${input.reference}
+      and g.phone_e164 = ${input.phone}
+    limit 1
+  `);
+
+  const row = (result.rows as LookupRow[])[0];
+
+  await db.insert(pledgeLookups).values({ ip, found: Boolean(row) });
+
+  if (!row) return null;
+
+  return {
+    reference: row.reference,
+    publicToken: row.public_token,
+    // Only the first word ever leaves this function. The column holds the whole
+    // name because the treasurer needs it, and cutting it down here rather than
+    // in the caller means a full name has no route to this page at all.
+    firstName: row.full_name.trim().split(/\s+/)[0],
+    amountMinor: BigInt(row.amount_minor),
+    paidMinor: BigInt(row.paid_minor),
+    outstandingMinor: BigInt(row.outstanding_minor),
+    status: row.status as PledgeStatus,
+    intent: row.intent as PledgeIntent,
+    installmentFrequency: row.installment_frequency as PledgeFrequency | null,
+    installmentAmountMinor:
+      row.installment_amount_minor === null
+        ? null
+        : BigInt(row.installment_amount_minor),
+    createdAt: new Date(row.created_at),
+  };
 }
