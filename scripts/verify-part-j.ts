@@ -140,15 +140,24 @@ async function main() {
 
   const [baselineShape] = (
     await db.execute(sql`
-      select coalesce(sum(p.amount_minor), 0) as total, count(*) as n
+      select coalesce(sum(p.amount_minor), 0) as total, count(*) as n,
+             coalesce(
+               array_agg(p.amount_minor order by p.amount_minor),
+               '{}'::bigint[]
+             ) as amounts
       from pledges p
       where p.campaign_id = ${campaignId}
         and p.status in ('verified', 'fulfilled')
         and p.deleted_at is null
     `)
-  ).rows as { total: string; n: string }[];
+  ).rows as { total: string; n: string; amounts: string[] }[];
   const baselinePledged = BigInt(baselineShape.total);
   const baselinePledges = Number(baselineShape.n);
+  /*
+   * The amounts themselves, not just their total, because a median cannot be
+   * rebuilt from a sum and a count the way an average can.
+   */
+  const baselineAmounts = baselineShape.amounts.map(BigInt);
 
   // The same 28 day window metrics.keyMetrics uses for the four week run rate.
   const [baselineWindow] = (
@@ -379,12 +388,28 @@ async function main() {
     m.averagePledgeMinor !== null &&
       m.averagePledgeMinor < m.pledgedMinor / BigInt(m.pledgeCount),
   );
+  /*
+   * Built from the live pledges plus this suite's four, for the same reason
+   * the average above it is: the campaign holds baseline pledges of its own,
+   * and with those in the set the middle of it stopped being one of the four
+   * seeded here. percentile_disc(0.5) takes the first amount whose share
+   * reaches half, which is the one at ceil(n / 2) of a sorted list, so an
+   * interpolating median still fails this wherever the two middle amounts
+   * differ.
+   */
+  const sortedAmounts = [
+    ...baselineAmounts,
+    1_000_000n,
+    2_000_000n,
+    3_000_000n,
+    4_000_000n,
+  ].sort((a, b) => Number(a - b));
+  const expectedMedian =
+    sortedAmounts[Math.ceil(sortedAmounts.length / 2) - 1];
   check(
     "the median is a real pledge amount, not an interpolation",
-    [1_000_000n, 2_000_000n, 3_000_000n, 4_000_000n].includes(
-      m.medianPledgeMinor ?? 0n,
-    ),
-    String(m.medianPledgeMinor),
+    m.medianPledgeMinor === expectedMedian,
+    `${m.medianPledgeMinor}, expected ${expectedMedian} of ${sortedAmounts.length} pledges`,
   );
   check(
     "the 12 week rate covers the pledging in that window",
