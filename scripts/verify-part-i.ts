@@ -304,10 +304,18 @@ async function main() {
     riskyRow?.[7] === "",
   );
 
+  /*
+   * Counted the way the export counts, which excludes soft deleted pledges
+   * (services/exports.ts). Without that filter this check failed the moment a
+   * treasurer removed a pledge, reporting a short file when the file was right
+   * to leave the row out.
+   */
   const [{ n: pledgeCount }] = (
     await db.execute(sql`
       select count(*)::int as n from pledges p
-      join campaigns c on c.id = p.campaign_id where c.slug = ${CAMPAIGN_SLUG}
+      join campaigns c on c.id = p.campaign_id
+      where c.slug = ${CAMPAIGN_SLUG}
+        and p.deleted_at is null
     `)
   ).rows as { n: number }[];
   check(
