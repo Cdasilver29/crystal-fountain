@@ -59,12 +59,56 @@ export const campaigns = pgTable(
       .default(sql`0`),
     startsOn: date("starts_on").notNull(),
     targetDate: date("target_date"),
+    /*
+     * Whether the campaign is open to the public.
+     *
+     * False closes the pledge form: the public endpoint refuses a new pledge
+     * and the page says so. The figures stay visible either way, because they
+     * are already public knowledge and making them vanish mid campaign would
+     * alarm a congregation watching them.
+     */
     isPublic: boolean("is_public").notNull().default(false),
+    /*
+     * The ceiling for approving a pledge without a person looking at it, in
+     * minor units, or null to fall back to PLEDGE_AUTO_APPROVE_LIMIT_KES.
+     *
+     * Here as well as in the environment because the treasurer needs to move it
+     * on a Sabbath morning without a deploy. The environment variable stays the
+     * default a fresh installation starts from.
+     */
+    autoApproveLimitMinor: minor("auto_approve_limit_minor"),
+    /*
+     * Where the money is sent.
+     *
+     * In the database rather than the repo because these change without a code
+     * release, and a wrong number here misdirects real money, so each change is
+     * an audited write by one named person rather than a commit nobody reviews.
+     * Nullable throughout: an installation that has not filled them in falls
+     * back to the values in src/content/campaign.ts.
+     */
+    mpesaPaybill: text("mpesa_paybill"),
+    mpesaAccountName: text("mpesa_account_name"),
+    bankName: text("bank_name"),
+    bankBranch: text("bank_branch"),
+    bankAccountName: text("bank_account_name"),
+    bankAccount: text("bank_account"),
+    bankSwift: text("bank_swift"),
+    bankBranchCode: text("bank_branch_code"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [check("campaigns_target_minor_check", sql`${t.targetMinor} > 0`)],
+  (t) => [
+    check("campaigns_target_minor_check", sql`${t.targetMinor} > 0`),
+    check(
+      "campaigns_opening_balance_check",
+      sql`${t.openingBalanceMinor} >= 0`,
+    ),
+    check(
+      "campaigns_auto_approve_limit_check",
+      sql`${t.autoApproveLimitMinor} is null or ${t.autoApproveLimitMinor} > 0`,
+    ),
+  ],
 );
 
 // the person

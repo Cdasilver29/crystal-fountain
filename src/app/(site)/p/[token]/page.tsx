@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
+import { paymentDetails } from "@/lib/payment-details";
 import { publicTokenInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
@@ -32,9 +33,10 @@ export default async function PublicPledgePage({
 
   if (!parsed.success) notFound();
 
-  const [pledge, totals] = await Promise.all([
+  const [pledge, totals, details] = await Promise.all([
     pledges.getByPublicToken(db, { publicToken: parsed.data.publicToken }),
     getCampaignTotals(),
+    paymentDetails(),
   ]);
 
   if (!pledge) notFound();
@@ -45,6 +47,7 @@ export default async function PublicPledgePage({
       totals={totals}
       token={parsed.data.publicToken}
       siteUrl={env.NEXT_PUBLIC_SITE_URL}
+      details={details}
     />
   );
 }

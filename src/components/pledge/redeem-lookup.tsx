@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CONTACT } from "@/content/campaign";
 import { formatDate, formatKES } from "@/lib/format";
+import type { ResolvedPaymentDetails } from "@/lib/payment-details";
 import { redemptionSummary } from "@/lib/redemption";
 import { lookupPledgeInput, REDEMPTION_PLANS } from "@/server/contracts/pledges";
 
@@ -52,7 +53,12 @@ const STATUS_LABELS: Record<string, string> = {
   void: "Closed",
 };
 
-export function RedeemLookup() {
+export function RedeemLookup({
+  details,
+}: {
+  /** Where money is sent, read from the campaign row by the page above. */
+  details: ResolvedPaymentDetails;
+}) {
   const [reference, setReference] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -275,7 +281,7 @@ export function RedeemLookup() {
           giving without a pledge needs.
         */}
         <div className="mt-6">
-          <PaymentInstructions reference={found?.reference} />
+          <PaymentInstructions details={details} reference={found?.reference} />
         </div>
       </section>
     </div>

@@ -11,6 +11,7 @@ import {
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { env } from "@/env";
 import { createPledgeInput } from "@/server/contracts/pledges";
+import * as campaign from "@/server/services/campaign";
 import * as pledges from "@/server/services/pledges";
 import { turnstileBypassAllowed } from "@/server/services/turnstile";
 
@@ -34,6 +35,30 @@ export const dynamic = "force-dynamic";
  * without an environment and stays portable if the API is split out later.
  */
 export async function POST(request: Request) {
+  /*
+   * The settings, read per request rather than from the environment alone.
+   *
+   * is_public closes the form, and the auto approve limit is something the
+   * treasurer can move on a Sabbath morning without a deploy. The environment
+   * variable stays the default a fresh installation starts from, and the
+   * database wins when it has an opinion.
+   */
+  const settings = await campaign
+    .getSettings(db, { campaignSlug: CAMPAIGN_SLUG })
+    .catch(() => null);
+
+  if (settings && !settings.isPublic) {
+    return problem(
+      403,
+      "pledging_closed",
+      "Pledging is not open at the moment. Please try again later, or speak to the treasurer.",
+    );
+  }
+
+  const limitKes = settings?.autoApproveLimitMinor
+    ? Number(settings.autoApproveLimitMinor / 100n)
+    : env.PLEDGE_AUTO_APPROVE_LIMIT_KES;
+
   let body: unknown;
 
   try {
@@ -61,7 +86,7 @@ export async function POST(request: Request) {
           secretKey: env.TURNSTILE_SECRET_KEY,
         },
         bypassAllowed: turnstileBypassAllowed(process.env.NODE_ENV),
-        autoApproveLimitKes: env.PLEDGE_AUTO_APPROVE_LIMIT_KES,
+        autoApproveLimitKes: limitKes,
       },
     });
 

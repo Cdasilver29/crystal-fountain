@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { RedeemLookup } from "@/components/pledge/redeem-lookup";
 import { pageMetadata } from "@/lib/metadata";
+import { paymentDetails } from "@/lib/payment-details";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,9 @@ export const metadata: Metadata = pageMetadata({
  * arriving here has already pledged and the distinction is exactly the one they
  * are here to act on.
  */
-export default function RedeemPage() {
+export default async function RedeemPage() {
+  const details = await paymentDetails();
+
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 pt-8 pb-10 sm:px-6">
@@ -50,7 +53,7 @@ export default function RedeemPage() {
 
       <main className="px-4 py-10 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-3xl">
-          <RedeemLookup />
+          <RedeemLookup details={details} />
 
           <p className="mt-10 text-center text-sm leading-relaxed text-neutral-600">
             The church treasurer&rsquo;s official receipt is the only valid

@@ -7,6 +7,7 @@ import { SuccessMark } from "@/components/pledge/success-mark";
 import { ShareButton } from "@/components/pledge/share-button";
 import type { CampaignTotalsDto } from "@/lib/campaign";
 import { formatDate, formatKES } from "@/lib/format";
+import type { ResolvedPaymentDetails } from "@/lib/payment-details";
 import { redemptionSummary } from "@/lib/redemption";
 import { REDEMPTION_PLANS } from "@/server/contracts/pledges";
 import type { PublicPledgeView } from "@/server/services/pledges";
@@ -29,6 +30,7 @@ export function PledgeConfirmation({
   siteUrl,
   justCreated = false,
   isAddition = false,
+  details,
 }: {
   pledge: PublicPledgeView;
   totals: CampaignTotalsDto;
@@ -41,6 +43,8 @@ export function PledgeConfirmation({
    * QR code months later is not an addition, it is a visit.
    */
   isAddition?: boolean;
+  /** Where money is sent, read from the campaign row by the page above. */
+  details: ResolvedPaymentDetails;
 }) {
   const pledgeUrl = `${siteUrl.replace(/\/$/, "")}/p/${token}`;
 
@@ -211,7 +215,7 @@ export function PledgeConfirmation({
             <h2 className="mb-4 text-lg font-semibold tracking-tight text-navy">
               How to pay your pledge
             </h2>
-            <PaymentInstructions reference={pledge.reference} />
+            <PaymentInstructions details={details} reference={pledge.reference} />
           </section>
 
           <section className="rounded-2xl border border-campfire/20 bg-campfire/5 p-5 sm:p-7">

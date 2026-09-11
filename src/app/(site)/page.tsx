@@ -18,6 +18,7 @@ import {
   getRecentPledges,
 } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
+import { paymentDetails } from "@/lib/payment-details";
 import * as snapshots from "@/server/services/snapshots";
 
 export const dynamic = "force-dynamic";
@@ -35,10 +36,11 @@ export default async function HomePage() {
   // as an element. Drawing it in the client component would ship the drawing
   // code to a browser for a picture that never changes after first paint, and
   // this is the page most people arrive on.
-  const [totals, recent, recentPledges] = await Promise.all([
+  const [totals, recent, recentPledges, details] = await Promise.all([
     getCampaignTotals(),
     snapshots.series(db, { campaignSlug: CAMPAIGN_SLUG, days: 30 }),
     getRecentPledges(),
+    paymentDetails(),
   ]);
 
   return (
@@ -77,7 +79,7 @@ export default async function HomePage() {
           </p>
 
           <div className="mt-8">
-            <PaymentInstructions showContact={false} />
+            <PaymentInstructions details={details} showContact={false} />
           </div>
         </div>
       </section>

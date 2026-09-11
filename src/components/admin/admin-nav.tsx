@@ -39,6 +39,10 @@ const LINKS: readonly NavLink[] = [
   // treasurer did, and a record its subjects can read is a weaker one.
   { href: "/admin/audit", label: "Audit log", needs: "audit.view" },
   { href: "/admin/users", label: "Users", needs: "users.manage" },
+  // The super administrator only. Changing the target moves what the
+  // congregation is measured against, and changing the paybill moves where
+  // their money goes.
+  { href: "/admin/settings", label: "Settings", needs: "settings.edit" },
 ];
 
 export function AdminNav({

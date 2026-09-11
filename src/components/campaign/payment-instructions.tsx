@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 import { CopyButton } from "@/components/pledge/copy-button";
-import { BANK, CONTACT, MPESA, mpesaSteps } from "@/content/campaign";
+import { CONTACT } from "@/content/campaign";
+import type { ResolvedPaymentDetails } from "@/lib/payment-details";
 import { cn } from "@/lib/utils";
 
 /**
@@ -32,10 +33,16 @@ const TABS: readonly { id: TabId; label: string }[] = [
 ];
 
 export function PaymentInstructions({
+  details,
   reference,
   showContact = true,
   className,
 }: {
+  /**
+   * Where the money goes, resolved on the server from the campaign row with
+   * the values in src/content/campaign.ts as the fallback.
+   */
+  details: ResolvedPaymentDetails;
   /** The pledger's CF26 reference, shown as the bank transfer reference. */
   reference?: string;
   /**
@@ -48,6 +55,21 @@ export function PaymentInstructions({
   className?: string;
 }) {
   const [active, setActive] = useState<TabId>("mpesa");
+
+  /*
+   * What to type into M-Pesa, with the pledger's own reference in the account
+   * field when there is one. The account number is what the treasury matches a
+   * payment against, and a reference identifies one pledge where the fund name
+   * identifies only the fund. Somebody giving without having pledged has no
+   * reference, so the fund name stays as the fallback.
+   */
+  const steps = [
+    "Go to M-Pesa > Lipa na M-Pesa > Pay Bill",
+    `Business Number: ${details.paybill}`,
+    `Account Number: ${reference ?? details.accountName}`,
+    "Enter Amount",
+    "Enter PIN and confirm",
+  ];
   const baseId = useId();
 
   const tabId = (id: TabId) => `${baseId}-tab-${id}`;
@@ -114,7 +136,7 @@ export function PaymentInstructions({
           <h3 className="font-semibold text-navy">Pay by M-Pesa</h3>
 
           <ol className="mt-4 space-y-2.5 text-sm text-neutral-700">
-            {mpesaSteps(reference).map((step, index) => (
+            {steps.map((step, index) => (
               <li key={step} className="flex gap-3">
                 <span
                   aria-hidden
@@ -128,10 +150,10 @@ export function PaymentInstructions({
           </ol>
 
           <dl className="mt-5 space-y-2 border-t border-neutral-100 pt-4 text-sm">
-            <Detail label="Business number" value={MPESA.paybill} copyable />
+            <Detail label="Business number" value={details.paybill} copyable />
             <Detail
               label="Account number"
-              value={reference ?? MPESA.account}
+              value={reference ?? details.accountName}
               copyable
             />
           </dl>
@@ -150,12 +172,12 @@ export function PaymentInstructions({
           <h3 className="font-semibold text-navy">Pay by bank transfer</h3>
 
           <dl className="mt-4 space-y-2 text-sm">
-            <Detail label="Account name" value={BANK.accountName} />
-            <Detail label="Bank" value={BANK.bank} />
-            <Detail label="Branch" value={BANK.branch} />
-            <Detail label="Account number" value={BANK.accountNumber} copyable />
-            <Detail label="Swift code" value={BANK.swift} copyable />
-            <Detail label="Branch code" value={BANK.branchCode} />
+            <Detail label="Account name" value={details.bankAccountName} />
+            <Detail label="Bank" value={details.bankName} />
+            <Detail label="Branch" value={details.bankBranch} />
+            <Detail label="Account number" value={details.bankAccount} copyable />
+            <Detail label="Swift code" value={details.bankSwift} copyable />
+            <Detail label="Branch code" value={details.bankBranchCode} />
             {reference && <Detail label="Reference" value={reference} copyable />}
           </dl>
 
