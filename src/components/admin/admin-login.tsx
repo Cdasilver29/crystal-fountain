@@ -160,6 +160,19 @@ export function AdminLogin({ next }: { next: string }) {
           />
           <Problem message={error} />
           <Submit busy={busy} label="Sign in" busyLabel="Signing in" />
+
+          {/*
+            There is no self-service reset, and this says so plainly rather
+            than offering a link that goes nowhere. A page that emails a reset
+            link needs an email provider, and one that shows the link on screen
+            would hand any passer by an account: type an address, read the
+            link, take the account. The super administrator resets passwords
+            from the portal instead.
+          */}
+          <p className="mt-4 text-center text-sm text-neutral-600">
+            Forgot your password? Ask the super administrator to reset it for
+            you from the administrators screen.
+          </p>
         </form>
       )}
 

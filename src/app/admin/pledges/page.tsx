@@ -38,6 +38,10 @@ export default async function AdminPledgesPage({
 
   if (!admin) redirect("/admin/login?next=/admin/pledges");
 
+  // A temporary password is still somebody else's. Nothing opens until it
+  // has been changed.
+  if (admin.mustChangePassword) redirect("/admin/change-password");
+
   const params = await searchParams;
 
   // Every field tolerates rubbish and falls back, because these values come

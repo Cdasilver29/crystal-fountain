@@ -50,6 +50,10 @@ export default async function PaymentDetailPage({
 
   if (!admin) redirect(`/admin/login?next=/admin/payments/${id}`);
 
+  // A temporary password is still somebody else's. Nothing opens until it
+  // has been changed.
+  if (admin.mustChangePassword) redirect("/admin/change-password");
+
   // A malformed id is a 404, not a 500 from the uuid cast in the query.
   const target = paymentPathParams.safeParse({ paymentId: id });
   if (!target.success) notFound();

@@ -42,6 +42,10 @@ export default async function AdminPaymentsPage({
 
   if (!admin) redirect("/admin/login?next=/admin/payments");
 
+  // A temporary password is still somebody else's. Nothing opens until it
+  // has been changed.
+  if (admin.mustChangePassword) redirect("/admin/change-password");
+
   const { cursor } = await searchParams;
 
   const page = await payments.listForAdmin(db, {

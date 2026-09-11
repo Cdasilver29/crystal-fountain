@@ -26,6 +26,10 @@ export default async function NewPaymentPage() {
   const admin = await getCurrentAdmin();
 
   if (!admin) redirect("/admin/login?next=/admin/payments/new");
+
+  // A temporary password is still somebody else's. Nothing opens until it
+  // has been changed.
+  if (admin.mustChangePassword) redirect("/admin/change-password");
   if (!can(admin, "payments.record")) redirect("/admin/pledges");
 
   return (

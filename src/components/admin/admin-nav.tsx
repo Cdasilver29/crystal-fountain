@@ -38,6 +38,7 @@ const LINKS: readonly NavLink[] = [
   // The one screen a treasurer cannot open. The journal records what the
   // treasurer did, and a record its subjects can read is a weaker one.
   { href: "/admin/audit", label: "Audit log", needs: "audit.view" },
+  { href: "/admin/users", label: "Users", needs: "users.manage" },
 ];
 
 export function AdminNav({

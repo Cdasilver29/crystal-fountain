@@ -1,4 +1,7 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "@/db";
+import { adminUsers, authSessions } from "@/db/schema";
 import { clientIp, problem, userAgent, validationProblem } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { adminLoginInput } from "@/server/contracts/auth";
@@ -86,6 +89,45 @@ export async function POST(request: Request) {
   }
 
   await attempts.clearFailures(db, { email });
+
+  /*
+   * A retired account is refused here, at the door.
+   *
+   * getCurrentAdmin already fails closed on is_active, so a deactivated person
+   * could never actually use the portal, but without this they still got a
+   * session cookie and a login that looked like it worked. Deactivating
+   * somebody should stop them at the point they try, not leave them wandering
+   * a portal that silently refuses every screen.
+   *
+   * Checked after the password rather than before it on purpose. Refusing
+   * before would answer "is this address a deactivated administrator" to
+   * anybody who typed one, and the specific message below is only shown to
+   * somebody who has already proved they know the password.
+   */
+  const [row] = await db
+    .select({ isActive: adminUsers.isActive, authUserId: adminUsers.authUserId })
+    .from(adminUsers)
+    .where(eq(adminUsers.email, email))
+    .limit(1);
+
+  if (row && !row.isActive) {
+    // Better Auth may already have opened a session. The cookie is in the
+    // response being discarded and never reaches the browser, but the row
+    // would outlive this request, so it goes too.
+    if (row.authUserId) {
+      await db
+        .delete(authSessions)
+        .where(eq(authSessions.userId, row.authUserId));
+    }
+
+    await audit.recordLoginFailed(db, { email, ip, userAgent: agent });
+
+    return problem(
+      403,
+      "account_deactivated",
+      "That account has been deactivated. Ask an administrator to restore it.",
+    );
+  }
 
   // Forwarded whole. The body carries twoFactorRedirect when the account has
   // TOTP enrolled, which is how the form knows to show the code step.

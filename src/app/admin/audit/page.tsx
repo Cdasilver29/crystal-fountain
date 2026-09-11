@@ -50,6 +50,10 @@ export default async function AdminAuditPage({
 
   if (!admin) redirect("/admin/login?next=/admin/audit");
 
+  // A temporary password is still somebody else's. Nothing opens until it
+  // has been changed.
+  if (admin.mustChangePassword) redirect("/admin/change-password");
+
   if (!can(admin, "audit.view")) {
     const heads = await headers();
     await adminAudit.recordForbidden(db, {

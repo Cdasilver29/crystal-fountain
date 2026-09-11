@@ -122,6 +122,10 @@ export default async function AdminAnalyticsPage() {
 
   if (!admin) redirect("/admin/login?next=/admin/analytics");
 
+  // A temporary password is still somebody else's. Nothing opens until it
+  // has been changed.
+  if (admin.mustChangePassword) redirect("/admin/change-password");
+
   const [totals, key, series, fulfilment, ageing, channels, weekly] =
     await Promise.all([
       getTotals(db, { campaignSlug: CAMPAIGN_SLUG }),
