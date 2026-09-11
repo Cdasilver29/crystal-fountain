@@ -100,6 +100,36 @@ export default async function PledgePage({
 
       <main className="px-4 py-8 pb-16 sm:px-6">
         {/*
+          The form is a client component driven entirely by fetch, and the
+          Turnstile widget in front of it needs a script of its own, so with
+          JavaScript switched off there is nothing here that can be submitted.
+          Without this block the page still renders inputs and buttons and
+          simply does nothing when they are used, which reads as a broken site
+          rather than a browser setting. Anybody in that position gets the two
+          ways to pledge that do not need a browser at all.
+        */}
+        <noscript>
+          <div className="mx-auto mb-6 max-w-lg rounded-2xl border border-campfire/30 bg-campfire/5 px-4 py-4 text-sm leading-relaxed text-neutral-800">
+            This pledge form requires JavaScript to work. Please enable
+            JavaScript in your browser, or contact the church office at{" "}
+            <a
+              href="mailto:churchdevelopment@newlifesdanairobi.org"
+              className="font-medium underline underline-offset-4"
+            >
+              churchdevelopment@newlifesdanairobi.org
+            </a>{" "}
+            or Dr. Steve Mogere at{" "}
+            <a
+              href="tel:+254722619788"
+              className="font-medium underline underline-offset-4"
+            >
+              0722619788
+            </a>{" "}
+            to record your pledge.
+          </div>
+        </noscript>
+
+        {/*
           The site key is not secret and is meant to be rendered. Reading it
           here rather than from a NEXT_PUBLIC_ variable keeps the name the one
           Cloudflare prints on its dashboard, and an empty value simply means
