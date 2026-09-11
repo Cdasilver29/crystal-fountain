@@ -87,6 +87,86 @@ async function main() {
   ).rows as { id: string; opening_balance_minor: string }[];
   const opening = BigInt(openingRaw);
 
+  /**
+   * One day's snapshot row, or undefined when that day has none.
+   *
+   * Declared before the baseline is taken because the baseline needs it too.
+   */
+  const rowOn = async (date: string) => {
+    const r = await db.execute(sql`
+      select pledged_minor, received_minor, pledge_count, pledger_count,
+             new_pledges, new_pledged_minor
+      from campaign_daily_stats
+      where campaign_id = ${campaignId} and stat_date = ${date}::date
+    `);
+    return r.rows[0] as
+      | {
+          pledged_minor: string;
+          received_minor: string;
+          pledge_count: string;
+          pledger_count: string;
+          new_pledges: string;
+          new_pledged_minor: string;
+        }
+      | undefined;
+  };
+
+  /*
+   * The campaign as it already stands, before this suite seeds anything.
+   *
+   * Every figure below is asserted as a delta from this. The earlier version
+   * compared against absolutes built out of the opening balance, on the
+   * assumption that the only pledges in the campaign were the four this suite
+   * makes. That held on a database nobody had used and nowhere else: a single
+   * real pledge older than five days puts a figure into every historical
+   * snapshot these checks read, and the suite then fails for ever without
+   * anything being wrong with the product.
+   *
+   * Backfilled first so the day rows exist to be read. backfill rewrites each
+   * day from pledge history rather than appending, so running it twice is the
+   * same as running it once.
+   */
+  await snapshots.backfill(db, { campaignSlug: CAMPAIGN_SLUG });
+
+  const DAYS = [61, 60, 31, 30, 5] as const;
+  const baselineDays = new Map<number, Awaited<ReturnType<typeof rowOn>>>();
+  for (const d of DAYS) baselineDays.set(d, await rowOn(daysAgo(d)));
+
+  /** A day's baseline figure, treating a missing row as zero. */
+  const was = (d: number, field: "pledged_minor" | "new_pledged_minor") =>
+    BigInt(baselineDays.get(d)?.[field] ?? "0");
+  const wasCount = (d: number, field: "new_pledges" | "pledger_count") =>
+    Number(baselineDays.get(d)?.[field] ?? 0);
+
+  const [baselineShape] = (
+    await db.execute(sql`
+      select coalesce(sum(p.amount_minor), 0) as total, count(*) as n
+      from pledges p
+      where p.campaign_id = ${campaignId}
+        and p.status in ('verified', 'fulfilled')
+        and p.deleted_at is null
+    `)
+  ).rows as { total: string; n: string }[];
+  const baselinePledged = BigInt(baselineShape.total);
+  const baselinePledges = Number(baselineShape.n);
+
+  // The same 28 day window metrics.keyMetrics uses for the four week run rate.
+  const [baselineWindow] = (
+    await db.execute(sql`
+      select coalesce(sum(new_pledged_minor), 0) as total
+      from campaign_daily_stats
+      where campaign_id = ${campaignId}
+        and stat_date > current_date - 28
+    `)
+  ).rows as { total: string }[];
+  const baselineWindow28 = BigInt(baselineWindow.total);
+
+  console.log(
+    `\nbaseline: ${baselinePledges} live pledge(s) totalling ${baselinePledged} minor, ` +
+      `${baselineWindow28} minor in the trailing 28 days.\n` +
+      "every figure below is a delta from this.",
+  );
+
   // 1. Pledges on three known days
   heading("1. pledges backdated to three known days");
   const make = async (phone: string, amountKes: number, createdDaysAgo: number) => {
@@ -132,25 +212,6 @@ async function main() {
   check("it starts no later than the oldest pledge", (result.from ?? "") <= daysAgo(60));
   check("it ends today", result.to === snapshots.today());
 
-  const rowOn = async (date: string) => {
-    const r = await db.execute(sql`
-      select pledged_minor, received_minor, pledge_count, pledger_count,
-             new_pledges, new_pledged_minor
-      from campaign_daily_stats
-      where campaign_id = ${campaignId} and stat_date = ${date}::date
-    `);
-    return r.rows[0] as
-      | {
-          pledged_minor: string;
-          received_minor: string;
-          pledge_count: string;
-          pledger_count: string;
-          new_pledges: string;
-          new_pledged_minor: string;
-        }
-      | undefined;
-  };
-
   // 3. The cumulative figures step on the right days
   heading("3. the series steps where the pledges landed");
   const before = await rowOn(daysAgo(61));
@@ -169,31 +230,41 @@ async function main() {
 
   check(
     "the day the first pledge landed carries it",
-    BigInt(on60?.pledged_minor ?? "0") === opening + 1_000_000n,
+    BigInt(on60?.pledged_minor ?? "0") - was(60, "pledged_minor") === 1_000_000n,
   );
   check(
     "and reports it as new that day",
-    BigInt(on60?.new_pledged_minor ?? "0") === 1_000_000n,
+    BigInt(on60?.new_pledged_minor ?? "0") - was(60, "new_pledged_minor") ===
+      1_000_000n,
   );
   check(
     "a quiet day holds the running total and reports nothing new",
-    BigInt(on31?.pledged_minor ?? "0") === opening + 1_000_000n &&
-      BigInt(on31?.new_pledged_minor ?? "-1") === 0n,
+    BigInt(on31?.pledged_minor ?? "0") - was(31, "pledged_minor") ===
+      1_000_000n &&
+      BigInt(on31?.new_pledged_minor ?? "-1") -
+        was(31, "new_pledged_minor") ===
+        0n,
   );
   check(
     "two pledges on one day are both counted",
-    BigInt(on30?.new_pledged_minor ?? "0") === 5_000_000n &&
-      Number(on30?.new_pledges ?? 0) === 2,
+    BigInt(on30?.new_pledged_minor ?? "0") - was(30, "new_pledged_minor") ===
+      5_000_000n &&
+      Number(on30?.new_pledges ?? 0) - wasCount(30, "new_pledges") === 2,
   );
   check(
     "the cumulative figure carries all three by then",
-    BigInt(on30?.pledged_minor ?? "0") === opening + 6_000_000n,
+    BigInt(on30?.pledged_minor ?? "0") - was(30, "pledged_minor") ===
+      6_000_000n,
   );
   check(
     "and all four by the most recent one",
-    BigInt(on5?.pledged_minor ?? "0") === opening + 10_000_000n,
+    BigInt(on5?.pledged_minor ?? "0") - was(5, "pledged_minor") ===
+      10_000_000n,
   );
-  check("pledger_count is distinct people", Number(on5?.pledger_count ?? 0) === 4);
+  check(
+    "pledger_count is distinct people",
+    Number(on5?.pledger_count ?? 0) - wasCount(5, "pledger_count") === 4,
+  );
 
   // 4. Today's row must agree with the view the rest of the site reads
   heading("4. today's row against v_campaign_totals");
@@ -284,16 +355,24 @@ async function main() {
   ]);
 
   /*
-   * Asserted against the four known pledges, not against the formula the
+   * Asserted against the pledges that exist, not against the formula the
    * service uses. The earlier version of this check compared the result to
    * pledgedMinor / pledgeCount, which is what the code did, so it passed while
    * the opening balance was being shared out among the pledges and the average
    * read KES 275,000 instead of KES 25,000.
+   *
+   * The expected figure is built from the baseline plus this suite's own four
+   * pledges rather than hardcoded at KES 25,000, so it stays right on a
+   * campaign that already holds pledges of its own. The check below it is what
+   * actually guards the opening balance bug.
    */
+  const seededPledged = 1_000_000n + 2_000_000n + 3_000_000n + 4_000_000n;
+  const expectedAverage =
+    (baselinePledged + seededPledged) / BigInt(baselinePledges + 4);
   check(
-    "the average is the mean of the four pledges, not of the campaign total",
-    m.averagePledgeMinor === 2_500_000n,
-    `${m.averagePledgeMinor} for 10k, 20k, 30k and 40k`,
+    "the average is the mean of the pledges, not of the campaign total",
+    m.averagePledgeMinor === expectedAverage,
+    `${m.averagePledgeMinor}, expected ${expectedAverage} from ${baselinePledges + 4} pledges`,
   );
   check(
     "and it ignores the opening balance entirely",
@@ -311,10 +390,18 @@ async function main() {
     "the 12 week rate covers the pledging in that window",
     m.runRate12WeekMinor !== null && m.runRate12WeekMinor > 0n,
   );
+  /*
+   * Of this suite's four pledges only the five day old one falls inside the 28
+   * day window, so the window's own total is whatever it already held plus
+   * that one. Divided by four, the way the service does it, after the addition
+   * rather than before, because integer division twice would lose shillings
+   * that the single division does not.
+   */
+  const expectedRate4w = (baselineWindow28 + 4_000_000n) / 4n;
   check(
     "the 4 week window sees only the recent pledge",
-    m.runRate4WeekMinor === 4_000_000n / 4n,
-    String(m.runRate4WeekMinor),
+    m.runRate4WeekMinor === expectedRate4w,
+    `${m.runRate4WeekMinor}, expected ${expectedRate4w}`,
   );
   check(
     "the estimate divides what is left by the rate",

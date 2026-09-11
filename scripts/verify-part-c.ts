@@ -153,9 +153,31 @@ async function main() {
   const guardedBody = (await guarded.json().catch(() => null)) as {
     code?: string;
   } | null;
+
+  /*
+   * Which refusal is the right one depends on how the server is configured, so
+   * the environment decides which to expect. Both are the same answer to the
+   * pledger, and either way the pledge does not get recorded.
+   *
+   * With keys set, the submission above carries no Turnstile token, Cloudflare
+   * is asked and says no, and that is turnstile_failed. With no keys at all on
+   * a production build there is nothing to ask, and refusing outright with
+   * turnstile_misconfigured is the point: a variable missing from a deploy must
+   * not quietly switch the bot check off on a form that takes money.
+   *
+   * This used to assert the second case unconditionally, so it failed on every
+   * correctly configured environment, which is every environment that matters.
+   */
+  const turnstileConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY?.trim());
+
   check(
-    "with no Turnstile keys configured, the live route refuses outright",
-    guarded.status === 500 && guardedBody?.code === "turnstile_misconfigured",
+    turnstileConfigured
+      ? "with Turnstile keys configured, a submission with no token is refused"
+      : "with no Turnstile keys configured, the live route refuses outright",
+    turnstileConfigured
+      ? guarded.status === 422 && guardedBody?.code === "turnstile_failed"
+      : guarded.status === 500 &&
+          guardedBody?.code === "turnstile_misconfigured",
     `${guarded.status} ${guardedBody?.code}`,
   );
 

@@ -47,6 +47,51 @@ async function main() {
     console.log(`${ok ? "pass" : "FAIL"}  ${label}`);
   };
 
+  /*
+   * Sweep first, then read the baseline.
+   *
+   * In that order on purpose. A run that died before its cleanup leaves a test
+   * pledge behind, and reading the baseline first would fold that stale row
+   * into it and then remove it at the end, so the closing check would report a
+   * shortfall that is entirely this suite's own mess.
+   */
+  const sweep = async () => {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`
+        delete from pledge_increments where pledge_id in (
+          select p.id from pledges p join pledgers g on g.id = p.pledger_id
+          where g.phone_e164 like ${"+2547999%"}
+        )
+      `);
+      await tx.execute(sql`
+        delete from pledges where pledger_id in (
+          select id from pledgers where phone_e164 like ${"+2547999%"}
+        )
+      `);
+      await tx.execute(
+        sql`delete from pledgers where phone_e164 like ${"+2547999%"}`,
+      );
+    });
+  };
+  await sweep();
+
+  /*
+   * What the campaign already holds, before this suite adds anything.
+   *
+   * Every total below is asserted as a delta from this figure rather than
+   * against an absolute one. The campaign is not empty in any environment worth
+   * testing: it carries opening_balance_minor from money collected before the
+   * platform existed, and from launch day it carries real pledges too. A suite
+   * that asserted "the total equals the opening balance" passed only on a
+   * database nobody had used yet, and started failing the moment one pledge
+   * existed.
+   */
+  const baseline = await campaign.getTotals(db, { campaignSlug: CAMPAIGN_SLUG });
+  console.log(
+    `\nbaseline: pledged ${baseline.pledgedMinor} minor across ` +
+      `${baseline.pledgeCount} pledge(s). every total below is a delta from this.`,
+  );
+
   // 1. Phone normalisation
   heading("1. phone normalisation, every form of one number");
   const forms = [
@@ -132,25 +177,21 @@ async function main() {
 
   // 5. Totals before approval
   //
-  // The floor is not zero. opening_balance_minor is real money collected before
-  // the platform existed, and v_campaign_totals adds it to both pledged and
-  // received, so an empty pledges table still reports that figure. These checks
-  // compare against the opening balance rather than against zero.
+  // A pending pledge is invisible to the public figure, so the total must not
+  // have moved off the baseline at all, whatever the baseline happened to be.
   heading("5. campaign.getTotals before approval");
-  const campaignRow = await db.execute(sql`
-    select opening_balance_minor from campaigns where slug = ${CAMPAIGN_SLUG}
-  `);
-  const openingBalanceMinor = BigInt(
-    (campaignRow.rows[0] as { opening_balance_minor: string })
-      .opening_balance_minor,
-  );
-  console.log(`opening balance: ${openingBalanceMinor} minor units`);
-
   const before = await campaign.getTotals(db, { campaignSlug: CAMPAIGN_SLUG });
   show([{ ...before }]);
+  console.log(
+    `delta from baseline: ${before.pledgedMinor - baseline.pledgedMinor} minor`,
+  );
   check(
-    "a pending pledge adds nothing to the opening balance",
-    before.pledgedMinor === openingBalanceMinor,
+    "a pending pledge adds nothing to the total",
+    before.pledgedMinor === baseline.pledgedMinor,
+  );
+  check(
+    "a pending pledge is not counted",
+    before.pledgeCount === baseline.pledgeCount,
   );
 
   // 6. Public view leaks nothing
@@ -268,9 +309,16 @@ async function main() {
   await db.execute(sql`delete from pledgers where phone_e164 like ${"+2547999%"}`);
   const final = await campaign.getTotals(db, { campaignSlug: CAMPAIGN_SLUG });
   show([{ ...final }]);
+  console.log(
+    `delta from baseline: ${final.pledgedMinor - baseline.pledgedMinor} minor`,
+  );
   check(
-    "totals are back to the opening balance after cleanup",
-    final.pledgedMinor === openingBalanceMinor,
+    "totals are back to the baseline after cleanup",
+    final.pledgedMinor === baseline.pledgedMinor,
+  );
+  check(
+    "the pledge count is back to the baseline after cleanup",
+    final.pledgeCount === baseline.pledgeCount,
   );
 
   heading("result");

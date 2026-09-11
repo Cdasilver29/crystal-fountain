@@ -472,10 +472,22 @@ async function main() {
   const refused = (await withoutTurnstile.json().catch(() => null)) as {
     code?: string;
   } | null;
+  /*
+   * The environment decides which refusal is correct. See the same check in
+   * verify-part-c.ts: with keys set this submission has no token and Cloudflare
+   * rejects it, and with no keys on a production build the route refuses
+   * outright rather than letting the bot check lapse.
+   */
+  const turnstileConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY?.trim());
+
   check(
-    "and with no Turnstile keys configured, the live route refuses outright",
-    withoutTurnstile.status === 500 &&
-      refused?.code === "turnstile_misconfigured",
+    turnstileConfigured
+      ? "and with Turnstile keys configured, a submission with no token is refused"
+      : "and with no Turnstile keys configured, the live route refuses outright",
+    turnstileConfigured
+      ? withoutTurnstile.status === 422 && refused?.code === "turnstile_failed"
+      : withoutTurnstile.status === 500 &&
+          refused?.code === "turnstile_misconfigured",
     `${withoutTurnstile.status} ${refused?.code}`,
   );
 
