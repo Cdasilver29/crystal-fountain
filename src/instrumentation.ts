@@ -9,16 +9,18 @@
  * the bundler; without it they are ordinary modules nothing imports, so the
  * import below is what actually switches Sentry on.
  *
- * The import is dynamic and inside the runtime check so the Node SDK is never
- * pulled into the edge bundle, or the other way round.
+ * Node only. There is no edge config, so nothing Sentry is loaded into the
+ * middleware bundle: instrumenting it cost 68 kB on a bundle that runs on every
+ * single request, to watch a cookie presence check that has no meaningful way
+ * to fail. If the middleware ever starts making decisions worth reporting on,
+ * add a sentry.edge.config.ts and a branch here for NEXT_RUNTIME "edge".
+ *
+ * The import stays dynamic and inside the runtime check so the Node SDK is
+ * never pulled into a bundle that cannot use it.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("../sentry.server.config");
-  }
-
-  if (process.env.NEXT_RUNTIME === "edge") {
-    await import("../sentry.edge.config");
   }
 }
 

@@ -12,10 +12,10 @@ import { beforeSend } from "@/lib/sentry-scrub";
  * `import "../sentry.client.config";`, which Next loads by name on the client.
  * That one line costs about 72 kB of JavaScript on every page, because it pulls
  * the browser SDK into the shared bundle, and the session it was written in had
- * a budget of 15 kB. The server and edge halves are live and carry no such
- * cost, so crashes in route handlers, server components, the cron job and the
- * middleware are reported today. What is missing is errors thrown in somebody's
- * browser.
+ * a budget of 15 kB. The server half is live and carries no such cost, so
+ * crashes in route handlers, server components and the cron job are reported
+ * today. What is missing is errors thrown in somebody's browser, and anything
+ * in the middleware, which is deliberately not instrumented.
  *
  * The scrubbing below is identical to the other two configs and is already
  * tested, so turning this on is a one line change and not a piece of work.

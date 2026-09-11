@@ -3,9 +3,12 @@ import type { ErrorEvent } from "@sentry/nextjs";
 /**
  * What Sentry is allowed to be told.
  *
- * One module, imported by the client, server and edge configs, so all three
- * runtimes scrub identically. A rule that held on the server and not on the
- * edge would be worse than no rule, because it would look configured.
+ * One module, so every runtime that reports scrubs identically. A rule that
+ * held in one place and not another would be worse than no rule, because it
+ * would look configured.
+ *
+ * Today that means the server config, and the client config whenever it is
+ * switched on. There is no edge config: the middleware is not instrumented.
  *
  * This exists because of the privacy rules in CLAUDE.md. The congregation's
  * phone numbers are the identity key for every pledge and the numbers are not
