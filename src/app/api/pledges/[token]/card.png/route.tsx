@@ -37,6 +37,31 @@ const CAMPFIRE = "#e36520";
 const BAR_WIDTH = 1100;
 const BAR_HEIGHT = 20;
 
+/**
+ * How long a drawn card may be served before it is drawn again.
+ *
+ * Deliberately not immutable, unlike the qr.svg route beside this one. That
+ * image is immutable because it is a token rendered as squares and a token
+ * never changes. This one is not: a pledge grows when somebody adds to it, and
+ * the campaign percentage moves every time any pledge is approved. Marking it
+ * immutable for a year would pin the first render into the CDN, so a pledger
+ * who doubled their pledge would go on sharing the old figure, and two members
+ * sharing months apart would send the same stale card into two groups.
+ *
+ * Five minutes fresh, then an hour in which a stale copy is served while a new
+ * one is drawn behind it. The window matters because drawing a card is a wasm
+ * render rather than a query, so a forwarded link arriving in a large group
+ * should not redraw it once per reader.
+ *
+ * This governs our own CDN and nothing else. WhatsApp and the rest keep their
+ * own copy of a preview image for as long as they choose, so a card already
+ * sitting in a conversation will not change. That is the right behaviour: it
+ * is a snapshot of what somebody shared on the day they shared it. What this
+ * fixes is the next person to share getting a current one.
+ */
+const CARD_MAX_AGE_SECONDS = 300;
+const CARD_STALE_SECONDS = 3600;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> },
@@ -213,7 +238,7 @@ export async function GET(
         width: 1200,
         height: 630,
         headers: {
-          "cache-control": "public, immutable, max-age=31536000",
+          "cache-control": `public, max-age=${CARD_MAX_AGE_SECONDS}, stale-while-revalidate=${CARD_STALE_SECONDS}`,
         },
       },
     );
