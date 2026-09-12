@@ -123,26 +123,39 @@ export const TIMELINE: readonly Milestone[] = [
 export const BROCHURE_WIDTH = 1688;
 export const BROCHURE_HEIGHT = 2000;
 
+/*
+ * The alt text says what each page actually contains, not which page it is.
+ *
+ * These five are the only images on the site carrying information that appears
+ * nowhere else in the markup: every figure on them is baked into a JPEG, so a
+ * reader on a screen reader who is given "brochure, page 3" has been told the
+ * file exists and nothing else. The text below is a summary rather than a
+ * transcription, which is the most a single attribute can usefully carry.
+ *
+ * It is also read aloud twice more: the gallery uses it for the "Open ...
+ * larger" button label and the lightbox uses it as the dialog name, so each
+ * one is written to still make sense in those sentences.
+ */
 export const BROCHURE_PAGES: readonly { src: string; alt: string }[] = [
   {
     src: "/images/brochure/trifold-page-2.jpg",
-    alt: "Crystal Fountain Development Project brochure, page 1",
+    alt: "Crystal Fountain Development Project brochure, page 1: a letter inviting members to join the project and give feedback on the development vision, the use of the whole church property, and the funding of the sanctuary, the ministry facilities and the enterprise building",
   },
   {
     src: "/images/brochure/trifold-page-3.jpg",
-    alt: "Crystal Fountain Development Project brochure, page 2",
+    alt: "Crystal Fountain Development Project brochure, page 2, the current development proposal: a development fund starting at KES 10 million, multipurpose use of the property including a centre of influence, a finance model mixing fundraising and equity, a design model finalised by October 2025, and construction beginning in 2026",
   },
   {
     src: "/images/brochure/trifold-page-4.jpg",
-    alt: "Crystal Fountain Development Project brochure, page 3",
+    alt: "Crystal Fountain Development Project brochure, page 3, the current sanctuary proposal: a main auditorium seating 3,000 to 5,000, three smaller auditoriums seating 150 to 400, three basement parking levels for up to 700 vehicles, ground level green space with a library, church history museum, offices and classrooms, and construction estimated between KES 500 and 600 million",
   },
   {
     src: "/images/brochure/trifold-page-5.jpg",
-    alt: "Crystal Fountain Development Project brochure, page 4",
+    alt: "Crystal Fountain Development Project brochure, page 4, mixed use development of the church property: a prime site with a plot ratio of about 300, and three funding options, fundraising, debt financing and equity partnership, of which the development team proposes a mix of fundraising and equity",
   },
   {
     src: "/images/brochure/trifold-page-6.jpg",
-    alt: "Crystal Fountain Development Project brochure, page 5",
+    alt: "Crystal Fountain Development Project brochure, page 5, the road map to the new sanctuary in six steps: vision and model, planning, concept drawing and detailed design, fundraising, construction, and dedication, operation and maintenance",
   },
 ];
 
