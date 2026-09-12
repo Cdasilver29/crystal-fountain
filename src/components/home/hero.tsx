@@ -100,9 +100,20 @@ export function Hero({
           sizes="100vw"
         />
 
+        {/*
+          Eager and high priority, both said explicitly.
+
+          This is the largest thing above the fold and the one image on the site
+          that must not wait. loading="eager" is the default for an img, but an
+          img inside a picture with six sources is exactly the kind of markup a
+          later edit turns lazy by habit, and writing the default down is
+          cheaper than finding out from a field report that the hero paints
+          grey for a second on a Nairobi 3G connection.
+        */}
         <img
           src="/images/gallery/hero-desktop.jpg"
           alt=""
+          loading="eager"
           fetchPriority="high"
           decoding="async"
           className="absolute inset-0 size-full object-cover object-center"

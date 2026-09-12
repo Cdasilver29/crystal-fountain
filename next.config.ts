@@ -80,6 +80,66 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+
+      /*
+       * Static assets, cached hard.
+       *
+       * Everything under /_next/static is already content hashed by the build
+       * and Vercel serves it immutable without being asked, so it is not
+       * listed here: restating it would only create a second place to get it
+       * wrong. These two are the ones nothing else covers.
+       *
+       * public/ is served verbatim at the path it is written at, with no hash
+       * in the name, so the default for it is cautious and every hero crop,
+       * brochure page and logo is revalidated on a repeat visit. Nothing in
+       * there is edited in place. When a picture changes it is exported under
+       * a new name and the markup is changed to match, which is what makes a
+       * year of immutable safe rather than reckless, and it is the difference
+       * between a member opening the site for the second time and paying for
+       * the photograph twice.
+       *
+       * Google's font files come through /_next/static already. This rule is
+       * for anything self hosted later out of public/fonts, so a font added
+       * there is cached correctly on the day it is added rather than whenever
+       * somebody next reads this file.
+       */
+      {
+        source: "/images/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/fonts/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+
+      /*
+       * The fund policy PDF and the source document beside it.
+       *
+       * A day, and revalidated after it rather than immutable. These are
+       * documents a committee can reissue under the same filename, and a
+       * congregation reading last quarter's policy because a phone will not
+       * ask for it again for a year is a worse outcome than a daily
+       * conditional request that almost always comes back 304.
+       */
+      {
+        source: "/documents/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, must-revalidate",
+          },
+        ],
+      },
     ];
   },
 };
