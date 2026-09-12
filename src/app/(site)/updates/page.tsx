@@ -5,7 +5,7 @@ import { SOCIAL_LINKS, UPDATES_PLACEHOLDER } from "@/content/project";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Project updates",
+  title: "Updates",
   description:
     "Updates on funding, design, and construction progress for the Crystal Fountain Development Project.",
   path: "/updates",

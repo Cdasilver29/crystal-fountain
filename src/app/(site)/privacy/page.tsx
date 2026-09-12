@@ -7,7 +7,7 @@ import { PRIVACY_VERSION } from "@/server/contracts/pledges";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Privacy",
+  title: "Privacy notice",
   description:
     "How Newlife SDA Church collects, uses and stores the information you give when you record a pledge.",
   path: "/privacy",

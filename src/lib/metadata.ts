@@ -19,7 +19,17 @@ export function pageMetadata({
   path,
   noIndex = false,
 }: {
-  title: string;
+  /*
+   * The page specific half of the tab title. The campaign name is appended by
+   * the template in the root layout, so it is not written here.
+   *
+   * Two pages need a whole title of their own instead, because the campaign
+   * name is not the right thing after the bar for them: the home page ends in
+   * the church and its city, and the CD-Fund page belongs to the church rather
+   * than to this campaign. Both pass an absolute title, which Next honours
+   * over the template.
+   */
+  title: string | { absolute: string };
   description?: string;
   /** Path with a leading slash, for example "/pledge". */
   path: string;

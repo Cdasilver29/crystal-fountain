@@ -20,7 +20,7 @@ import {
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "The vision",
+  title: "Our vision",
   description:
     "What the Crystal Fountain Development Project is building: the sanctuary, the facilities, the commercial tower, and the site.",
   path: "/vision",

@@ -7,8 +7,13 @@ import { CD_FUND_PAGE } from "@/content/cd-fund";
 import { FUND_SUMMARY } from "@/content/project";
 import { pageMetadata } from "@/lib/metadata";
 
+/*
+ * The fund belongs to the church rather than to this campaign, so the title
+ * ends in the church. The heading on the page keeps the "(CD-Fund)" the policy
+ * document uses; a tab and a search result do not need the abbreviation too.
+ */
 export const metadata: Metadata = pageMetadata({
-  title: CD_FUND_PAGE.title,
+  title: { absolute: "Church Development Fund | Newlife SDA Church" },
   description:
     "The Newlife SDA Church Development Fund: what it may be spent on, where its money comes from, how it is invested, who governs it, and the controls that protect it.",
   path: "/cd-fund",

@@ -19,7 +19,7 @@ import { paymentDetails } from "@/lib/payment-details";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Frequently asked questions",
+  title: "FAQ",
   description:
     "Answers about the Crystal Fountain Development Project: what is being built, what it costs, how it is funded, and what a pledge is.",
   path: "/faq",

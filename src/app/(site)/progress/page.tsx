@@ -19,6 +19,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMetadata({
   title: "Campaign progress",
+  description:
+    "Live progress toward the KES 550M target for the Crystal Fountain Development Project: what has been pledged, what has been received, and how many have given.",
   path: "/progress",
 });
 

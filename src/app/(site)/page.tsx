@@ -11,7 +11,7 @@ import { RecentPledges } from "@/components/home/recent-pledges";
 import { TargetedCommitment } from "@/components/home/targeted-commitment";
 import { VisionSection } from "@/components/home/vision-section";
 import { JsonLd } from "@/components/seo/json-ld";
-import { CAMPAIGN } from "@/content/campaign";
+import { CAMPAIGN, CONTACT } from "@/content/campaign";
 import { db } from "@/db";
 import {
   CAMPAIGN_SLUG,
@@ -25,8 +25,15 @@ import * as snapshots from "@/server/services/snapshots";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * The one title on the site that does not end in the campaign name, because it
+ * starts with it. What a stranger searching for this needs after the bar is
+ * the church and the city, which is what tells them this is their church.
+ */
 export const metadata: Metadata = pageMetadata({
-  title: CAMPAIGN.name,
+  title: { absolute: `${CAMPAIGN.name} | ${CONTACT.churchName} Nairobi` },
+  description:
+    "Make your pledge toward a new sanctuary for Newlife SDA Church. KES 550M target.",
   path: "/",
 });
 

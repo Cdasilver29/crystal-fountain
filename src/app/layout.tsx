@@ -25,9 +25,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: CAMPAIGN.name,
-    // Every page title carries the campaign name, since most arrivals come from
-    // a WhatsApp link and the tab may be the only context a visitor has.
-    template: `%s | ${CAMPAIGN.shortName}`,
+    /*
+     * Every page title carries the campaign name, since most arrivals come
+     * from a WhatsApp link and the tab may be the only context a visitor has.
+     *
+     * The full name rather than the short one. "Crystal Fountain" alone means
+     * nothing to somebody who has not been in the building, and a search
+     * result is read by people who have not.
+     */
+    template: `%s | ${CAMPAIGN.name}`,
   },
   description: OG.description,
   /*
