@@ -1,3 +1,7 @@
+import * as Sentry from "@sentry/nextjs";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import { ImageResponse } from "next/og";
 
 import { db } from "@/db";
@@ -62,6 +66,59 @@ const BAR_HEIGHT = 20;
 const CARD_MAX_AGE_SECONDS = 300;
 const CARD_STALE_SECONDS = 3600;
 
+/** The typeface the rest of the site is set in. See the README beside them. */
+const FONT_DIR = join(process.cwd(), "src", "assets", "fonts");
+
+type CardFonts = NonNullable<
+  ConstructorParameters<typeof ImageResponse>[1]
+>["fonts"];
+
+/**
+ * The two faces, read once per instance rather than once per card.
+ *
+ * Memoised on the promise rather than on the result, so several cards drawn at
+ * the same moment on a cold instance wait on one read instead of racing to
+ * start their own.
+ *
+ * Satori chooses a face from this list by weight and does not interpolate, so
+ * bold has to be its own file. Without the 700 entry `fontWeight: 700` below
+ * would quietly render as regular, which is exactly what this route did before
+ * these fonts existed.
+ */
+let fonts: Promise<CardFonts> | null = null;
+
+function cardFonts(): Promise<CardFonts> {
+  fonts ??= Promise.all([
+    readFile(join(FONT_DIR, "Geist-Regular.ttf")),
+    readFile(join(FONT_DIR, "Geist-Bold.ttf")),
+  ])
+    .then(([regular, bold]): CardFonts => [
+      // Copied into their own ArrayBuffers. A Buffer from readFile is a view
+      // onto a shared pool, and handing Satori the pool rather than the font
+      // is a class of bug that only shows up under load.
+      { name: "Geist", data: Uint8Array.from(regular).buffer, weight: 400, style: "normal" },
+      { name: "Geist", data: Uint8Array.from(bold).buffer, weight: 700, style: "normal" },
+    ])
+    .catch((error) => {
+      /*
+       * The files are included in the function bundle by
+       * outputFileTracingIncludes in next.config.ts. If that ever stops being
+       * true, a card in the wrong typeface is a far better outcome than every
+       * WhatsApp preview on the site failing, so this falls back to the font
+       * next/og bundles and says so rather than throwing.
+       */
+      Sentry.captureException(error, {
+        tags: { area: "pledge_card_fonts" },
+      });
+      // Reset, so a transient read failure is retried rather than cached for
+      // the life of the instance.
+      fonts = null;
+      return undefined;
+    });
+
+  return fonts;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> },
@@ -82,9 +139,10 @@ export async function GET(
      * is no stampede to protect against, and the card should show the figure
      * that was true when it was drawn.
      */
-    const [pledge, totals] = await Promise.all([
+    const [pledge, totals, typeface] = await Promise.all([
       pledges.getByPublicToken(db, { publicToken: parsed.data.publicToken }),
       getTotals(db, { campaignSlug: CAMPAIGN_SLUG }),
+      cardFonts(),
     ]);
 
     if (!pledge) {
@@ -114,6 +172,9 @@ export async function GET(
             justifyContent: "space-between",
             backgroundColor: NAVY,
             padding: "50px",
+            // Inherited by everything below. Ignored harmlessly if the faces
+            // failed to load, since Satori falls back to its own font.
+            fontFamily: "Geist",
           }}
         >
           {/* Top row: the church on the left, the campaign on the right. */}
@@ -124,6 +185,7 @@ export async function GET(
               justifyContent: "space-between",
               alignItems: "center",
               fontSize: "26px",
+              fontWeight: 400,
               color: "#ffffff",
             }}
           >
@@ -173,6 +235,7 @@ export async function GET(
               style={{
                 display: "flex",
                 fontSize: "34px",
+                fontWeight: 400,
                 color: "#ffffff",
                 marginTop: "22px",
               }}
@@ -223,6 +286,7 @@ export async function GET(
                 width: "100%",
                 justifyContent: "flex-end",
                 fontSize: "26px",
+                fontWeight: 400,
                 color: "#ffffff",
                 marginTop: "14px",
               }}
@@ -237,6 +301,7 @@ export async function GET(
       {
         width: 1200,
         height: 630,
+        fonts: typeface,
         headers: {
           "cache-control": `public, max-age=${CARD_MAX_AGE_SECONDS}, stale-while-revalidate=${CARD_STALE_SECONDS}`,
         },
