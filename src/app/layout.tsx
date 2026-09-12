@@ -65,6 +65,21 @@ export const metadata: Metadata = {
     description: OG.description,
     images: [OG.image],
   },
+  /*
+   * Google Search Console, proving this host belongs to the church.
+   *
+   * Next writes the meta tag from the token alone, so only the token goes
+   * here. The value handed over was a meta element pasted inside its own
+   * content attribute, which is what the Search Console copy button produces
+   * when the markup is copied twice; passing that through would have written
+   * an escaped tag into the content and Google would not have matched it.
+   *
+   * Not a secret. It is a public claim of ownership and it is meant to be read
+   * by anyone who views the source.
+   */
+  verification: {
+    google: "Uzlv-ytJxKot55gq0z_RwfvwdPoeH-MW7kvSihmqoE4",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
