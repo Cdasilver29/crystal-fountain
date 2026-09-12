@@ -21,11 +21,14 @@ export const dynamic = "force-dynamic";
  * is, so there is nothing to look up.
  */
 export async function generateMetadata({
+  params,
   searchParams,
 }: {
+  params: Promise<{ token: string }>;
   searchParams: Promise<{ updated?: string }>;
 }): Promise<Metadata> {
-  const { updated } = await searchParams;
+  const [{ token }, { updated }] = await Promise.all([params, searchParams]);
+  const parsed = publicTokenInput.safeParse({ publicToken: token });
 
   return pageMetadata({
     title: updated === "1" ? "Your pledge is updated" : "Your pledge is recorded",
@@ -33,6 +36,17 @@ export async function generateMetadata({
     // A pledge acknowledgement is not something to index, even behind an
     // unguessable token.
     noIndex: true,
+    // The same card as /p/<token>. This page and that one are the same pledge,
+    // so somebody sharing straight from the confirmation and somebody sharing
+    // the QR destination later put the identical image in the group.
+    image: parsed.success
+      ? {
+          path: `/api/pledges/${parsed.data.publicToken}/card.png`,
+          width: 1200,
+          height: 630,
+          alt: "Crystal Fountain Development Project pledge card, showing the pledge reference and the campaign's progress toward its goal",
+        }
+      : undefined,
   });
 }
 

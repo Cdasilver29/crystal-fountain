@@ -12,11 +12,40 @@ import * as pledges from "@/server/services/pledges";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Pledge acknowledgement",
-  path: "/",
-  noIndex: true,
-});
+/**
+ * The card WhatsApp draws for this particular pledge.
+ *
+ * Static metadata before, because nothing on the page's title depended on which
+ * pledge it was. The og:image does, so this reads the token. It is only the
+ * token: no lookup happens here, because the image route does its own and a
+ * page that is about to fetch the pledge anyway should not fetch it twice.
+ *
+ * Still noIndex. An unguessable token is not a reason to invite a crawler, and
+ * og tags are read by link scrapers regardless of robots directives, which is
+ * exactly the audience this is for.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+  const { token } = await params;
+  const parsed = publicTokenInput.safeParse({ publicToken: token });
+
+  return pageMetadata({
+    title: "Pledge acknowledgement",
+    path: "/",
+    noIndex: true,
+    image: parsed.success
+      ? {
+          path: `/api/pledges/${parsed.data.publicToken}/card.png`,
+          width: 1200,
+          height: 630,
+          alt: "Crystal Fountain Development Project pledge card, showing the pledge reference and the campaign's progress toward its goal",
+        }
+      : undefined,
+  });
+}
 
 /**
  * The QR destination. Same component as the confirmation page, because a member

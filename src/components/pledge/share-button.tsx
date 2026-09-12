@@ -10,14 +10,24 @@ import { Button } from "@/components/ui/button";
  * Uses the Web Share API where it exists, which on an Android phone opens the
  * WhatsApp share sheet directly. Everywhere else it copies the link instead, so
  * the button always does something useful.
+ *
+ * The url carries the card: WhatsApp fetches the og:image from /p/<token> and
+ * draws it into the conversation, so the picture is not attached here and there
+ * is nothing to upload. The text is what somebody reads underneath it.
  */
 export function ShareButton({
   url,
   title,
+  text,
   label = "Share",
 }: {
   url: string;
   title: string;
+  /**
+   * The message body. Optional, because the two callers that share a pledge
+   * pass one and anything else sharing a plain link does not need one.
+   */
+  text?: string;
   /** The button's own text. The confirmation says what is being shared. */
   label?: string;
 }) {
@@ -32,7 +42,7 @@ export function ShareButton({
   async function share() {
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share({ title, text, url });
         return;
       } catch {
         // The sheet was dismissed, or sharing is not permitted here. Fall

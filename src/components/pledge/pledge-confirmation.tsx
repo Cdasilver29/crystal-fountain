@@ -62,6 +62,16 @@ export function PledgeConfirmation({
   const redeemLabel = `${origin}/redeem`.replace(/^https?:\/\//, "");
 
   /*
+   * What goes in the message under the card.
+   *
+   * The amount and the reference are the pledger's own and they are choosing to
+   * send them. The name is not here and neither is anything else: this text is
+   * pasted into a group, and the card above it carries the same two facts and
+   * no more. The invitation at the end is the point of sharing at all.
+   */
+  const shareText = `I have pledged ${formatKES(pledge.amountMinor)} toward the Crystal Fountain Development Project. Reference: ${pledge.reference}. Make yours at ${origin}/pledge`;
+
+  /*
    * The redemption plan, rebuilt from the columns rather than from a stored
    * sentence, so a pledge that later accumulates shows the plan for what it now
    * owes rather than for what it owed when the sentence was written.
@@ -161,7 +171,8 @@ export function PledgeConfirmation({
               <CopyButton value={pledge.reference} />
               <ShareButton
                 url={pledgeUrl}
-                title={`My pledge to the Crystal Fountain Development Project, ${pledge.reference}`}
+                title="This is My Pledge"
+                text={shareText}
                 label="Share your pledge"
               />
             </div>

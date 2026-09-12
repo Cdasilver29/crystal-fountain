@@ -18,6 +18,7 @@ export function pageMetadata({
   description = OG.description,
   path,
   noIndex = false,
+  image,
 }: {
   /*
    * The page specific half of the tab title. The campaign name is appended by
@@ -34,8 +35,26 @@ export function pageMetadata({
   /** Path with a leading slash, for example "/pledge". */
   path: string;
   noIndex?: boolean;
+  /**
+   * A card of this page's own, instead of the campaign flyer.
+   *
+   * Only the two pledge pages pass one. Everywhere else the flyer is the right
+   * image and this stays undefined, so the default is unchanged. The path is
+   * made absolute here the same way the flyer is: a link scraper is a machine
+   * on somebody else's network and a relative og:image resolves to nothing for
+   * it.
+   */
+  image?: { path: string; width: number; height: number; alt: string };
 }): Metadata {
   const url = `${SITE_URL}${path}`;
+
+  const card = image ?? {
+    path: OG.image,
+    width: 1600,
+    height: 1600,
+    alt: OG.imageAlt,
+  };
+  const cardUrl = `${SITE_URL}${card.path}`;
 
   return {
     title,
@@ -50,10 +69,10 @@ export function pageMetadata({
       url,
       images: [
         {
-          url: `${SITE_URL}${OG.image}`,
-          width: 1600,
-          height: 1600,
-          alt: OG.imageAlt,
+          url: cardUrl,
+          width: card.width,
+          height: card.height,
+          alt: card.alt,
         },
       ],
     },
@@ -61,7 +80,7 @@ export function pageMetadata({
       card: "summary_large_image",
       title: OG.title,
       description,
-      images: [`${SITE_URL}${OG.image}`],
+      images: [cardUrl],
     },
   };
 }
