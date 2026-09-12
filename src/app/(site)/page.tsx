@@ -10,6 +10,7 @@ import { JourneyTimeline } from "@/components/home/journey-timeline";
 import { RecentPledges } from "@/components/home/recent-pledges";
 import { TargetedCommitment } from "@/components/home/targeted-commitment";
 import { VisionSection } from "@/components/home/vision-section";
+import { JsonLd } from "@/components/seo/json-ld";
 import { CAMPAIGN } from "@/content/campaign";
 import { db } from "@/db";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 import { paymentDetails } from "@/lib/payment-details";
+import { organizationSchema, websiteSchema } from "@/lib/structured-data";
 import * as snapshots from "@/server/services/snapshots";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +47,17 @@ export default async function HomePage() {
 
   return (
     <>
+      {/*
+        Structured data for the site as a whole, emitted here and only here.
+
+        The church and this site do not change from page to page, so describing
+        them once on the page every share link lands on is enough. Repeating
+        the same two blocks under the site layout would put them on all nine
+        public pages and give a crawler nine copies to reconcile.
+      */}
+      <JsonLd data={organizationSchema()} />
+      <JsonLd data={websiteSchema()} />
+
       <Hero
         totals={totals}
         sparkline={
