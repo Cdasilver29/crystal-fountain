@@ -46,7 +46,20 @@ export function PledgeConfirmation({
   /** Where money is sent, read from the campaign row by the page above. */
   details: ResolvedPaymentDetails;
 }) {
-  const pledgeUrl = `${siteUrl.replace(/\/$/, "")}/p/${token}`;
+  const origin = siteUrl.replace(/\/$/, "");
+  const pledgeUrl = `${origin}/p/${token}`;
+
+  /*
+   * The redeem page, as something to read aloud or type.
+   *
+   * Built off NEXT_PUBLIC_SITE_URL rather than typed into the copy, so a
+   * preview deployment does not print the production host at somebody and a
+   * change of subdomain does not leave a dead address in the one paragraph a
+   * member is most likely to act on. The scheme is dropped: this is the printed
+   * form, and nobody says "https" out loud. The link itself is a plain relative
+   * href, so it stays on whichever host the reader is already on.
+   */
+  const redeemLabel = `${origin}/redeem`.replace(/^https?:\/\//, "");
 
   /*
    * The redemption plan, rebuilt from the columns rather than from a stored
@@ -164,9 +177,64 @@ export function PledgeConfirmation({
                 className="mx-auto size-44 sm:size-52"
               />
               <p className="mt-3 text-xs text-neutral-500">
-                Scan to open this page again on any phone.
+                Scan this QR code with any phone camera to view your pledge
+                details anytime.
               </p>
             </div>
+          </section>
+
+          {/*
+            What the reference is for, and how not to lose it.
+
+            Set on amber rather than on the white every other card uses, because
+            this is the one block on the page that asks the reader to do
+            something before they leave it. Most arrivals here are on a phone in
+            a church car park, and a reference that is only ever on a screen
+            somebody navigates away from is a reference the treasury will spend
+            an evening matching by hand.
+          */}
+          <section className="rounded-2xl border border-amber-300/70 bg-amber-50 p-5 shadow-sm sm:p-7">
+            <h2 className="text-lg font-semibold tracking-tight text-navy">
+              Save your pledge reference
+            </h2>
+
+            <p className="mt-3 text-sm leading-relaxed text-neutral-800">
+              Your reference number{" "}
+              <span className="tabular font-semibold text-navy">
+                {pledge.reference}
+              </span>{" "}
+              is your pledge identity. You will need it to:
+            </p>
+
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-800">
+              <Bullet>Make payments via M-Pesa or bank transfer</Bullet>
+              <Bullet>Check your pledge balance</Bullet>
+              <Bullet>Contact the church about your pledge</Bullet>
+            </ul>
+
+            <h3 className="mt-6 font-semibold text-navy">How to save it</h3>
+
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-800">
+              <Bullet>Screenshot this page now</Bullet>
+              <Bullet>
+                Tap &ldquo;Copy reference&rdquo; above to save it to your
+                clipboard
+              </Bullet>
+              <Bullet>
+                Tap &ldquo;Share your pledge&rdquo; above to send it to yourself
+                by WhatsApp or email
+              </Bullet>
+              {/*
+                The brief for this block said the QR code was below. On this page
+                it is above, inside the card carrying the reference itself, and
+                an instruction that points somebody the wrong way down a page is
+                worse than no instruction.
+              */}
+              <Bullet>
+                Your QR code above contains your reference. You can scan it
+                anytime to look up your pledge.
+              </Bullet>
+            </ul>
           </section>
 
           <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7">
@@ -216,6 +284,48 @@ export function PledgeConfirmation({
               How to pay your pledge
             </h2>
             <PaymentInstructions details={details} reference={pledge.reference} />
+          </section>
+
+          {/*
+            The same information as the tabs above, reduced to the four things
+            that actually have to happen and put in the order they happen in.
+
+            The tabs are a reference somebody comes back to; this is the list
+            they read once, on the day, before closing the page. The paybill is
+            read from the resolved payment details rather than typed here, so it
+            cannot disagree with the panel directly above it when the treasurer
+            changes it on the settings screen.
+          */}
+          <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7">
+            <h2 className="text-lg font-semibold tracking-tight text-navy">
+              What to do next
+            </h2>
+
+            <ol className="mt-4 space-y-3 text-sm text-neutral-800">
+              <Step index={1}>Save your reference number (above)</Step>
+              <Step index={2}>
+                Set up your payment plan using M-Pesa paybill{" "}
+                <span className="tabular font-semibold text-navy">
+                  {details.paybill}
+                </span>
+              </Step>
+              <Step index={3}>
+                Quote your reference{" "}
+                <span className="tabular font-semibold text-navy">
+                  {pledge.reference}
+                </span>{" "}
+                as the account number when paying
+              </Step>
+              <Step index={4}>
+                Check your progress anytime at{" "}
+                <Link
+                  href="/redeem"
+                  className="rounded font-medium break-words text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                >
+                  {redeemLabel}
+                </Link>
+              </Step>
+            </ol>
           </section>
 
           <section className="rounded-2xl border border-campfire/20 bg-campfire/5 p-5 sm:p-7">
@@ -280,5 +390,46 @@ export function PledgeConfirmation({
         </div>
       </main>
     </div>
+  );
+}
+
+/**
+ * One line in the amber block.
+ *
+ * The marker is a drawn dot rather than a list-style bullet, so it keeps its
+ * size and its colour and sits on the first line's baseline however many lines
+ * the text runs to at 360px.
+ */
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex gap-2.5">
+      <span
+        aria-hidden
+        className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-campfire"
+      />
+      <span>{children}</span>
+    </li>
+  );
+}
+
+/**
+ * One step in "What to do next".
+ *
+ * Numbered the same way the M-Pesa steps above it are, because they are the
+ * same kind of instruction and a reader who has just scrolled past one should
+ * recognise the other. The number is drawn rather than left to the list
+ * marker, which cannot be styled into a filled circle.
+ */
+function Step({ index, children }: { index: number; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span
+        aria-hidden
+        className="tabular mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-navy/10 text-xs font-semibold text-navy"
+      >
+        {index}
+      </span>
+      <span className="leading-relaxed">{children}</span>
+    </li>
   );
 }
