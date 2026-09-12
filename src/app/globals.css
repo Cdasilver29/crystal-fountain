@@ -139,6 +139,12 @@
 @theme {
   --color-navy: #052252;
   --color-campfire: #e36520;
+  /*
+   * The pledged fill and the legend dot that names it. A colour of its own
+   * rather than campfire at a lower opacity, so the two fills in the tracker
+   * are told apart by hue and not by strength.
+   */
+  --color-apricot: #f6be8e;
   --color-denim: #2f557f;
   --color-emperor: #4b207f;
   --color-earth: #5e3929;
@@ -420,6 +426,17 @@
     opacity: 0.3;
   }
 
+  /*
+   * The shine sweeping the bar. Removed outright rather than parked: a band of
+   * white left sitting somewhere along the fill would read as a fourth colour
+   * on a bar that is already carrying three, and the bar says everything it
+   * needs to in the label above it and the legend below.
+   */
+  .tracker-sweep::after {
+    animation: none !important;
+    opacity: 0;
+  }
+
   html {
     scroll-behavior: auto;
   }
@@ -498,29 +515,119 @@
 }
 
 /*
- * The bar fill. Campfire warming to amber along its length, so the leading edge
- * is the brightest part of it.
+ * The track the two fills sit in.
+ *
+ * Darker than the glass card around it rather than lighter, which is the whole
+ * point: the fills are warm and light, so the empty part of the bar has to
+ * recede. A white/10 track put a pale fill on a pale ground, and at 7% of the
+ * target there was nothing to see. The inset ring keeps the empty end of the
+ * bar readable as a shape over a photograph that is dark in some crops and not
+ * in others.
+ */
+.tracker-track {
+  background: rgb(3 14 36 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+}
+
+/*
+ * The pledged fill: what the congregation has promised.
+ *
+ * A light apricot, and deliberately not campfire at a lower opacity. A
+ * transparent orange over a dark track is just a darker orange, which is the
+ * one thing it must not be when the fill beside it is the real campfire. This
+ * is a different hue, so the two are told apart by colour rather than by asking
+ * somebody to judge two strengths of the same one.
  *
  * Laid out at its real width with the growth animation carrying no fill-mode,
  * exactly as the old thin bar was: if the animation never runs, the bar is
  * already showing the true figure rather than stranded at zero.
+ *
+ * No position here, deliberately.
+ *
+ * This rule used to declare position: relative, so that the leading edge glow
+ * below had something to anchor to. Unlayered CSS outranks a Tailwind utility,
+ * so that relative beat the absolute on the element and inset-y-0 stopped
+ * applying: the fill has been laid out 16px wide and zero pixels tall for as
+ * long as the two bar tracker has existed. What a member saw at seven per cent
+ * was the received sliver and the glow, never the pledged fill, which is the
+ * bar reading as empty that this session was called in to fix.
+ *
+ * The element is absolutely positioned by its own utilities, and an absolutely
+ * positioned element is a containing block for its absolutely positioned
+ * pseudo-elements just as well as a relative one, so the glow still lands on
+ * the leading edge with nothing here to help it.
  */
 .tracker-fill {
-  position: relative;
-  background-image: linear-gradient(90deg, #e36520, #f59e0b);
+  background-image: linear-gradient(90deg, var(--color-apricot), #fbd9b8);
   animation: progress-fill 1.5s ease-out;
 }
 
 /*
- * The received money, drawn inside the pledged fill.
+ * The received money, drawn over the pledged fill and from the same left edge,
+ * so the apricot showing past its right hand end is exactly the money promised
+ * and not yet in the bank.
  *
- * The same gradient so the two read as one bar rather than two colours, but no
- * leading edge glow: with both fills glowing, the dimmer one would put a bright
- * spot in the middle of the bar where nothing is happening.
+ * Solid campfire. It used to run the same orange to amber gradient as the fill
+ * underneath, which made the two read as one bar with a soft join rather than
+ * as two figures. This is the harder number and it gets the flat house colour.
  */
 .tracker-fill-solid {
-  background-image: linear-gradient(90deg, #e36520, #f59e0b);
+  background-image: linear-gradient(90deg, #e36520, #e97a34);
   animation: progress-fill 1.5s ease-out;
+}
+
+/*
+ * A shine travelling the length of whatever has been pledged.
+ *
+ * Drawn once, over both fills, rather than once per fill: two bands crossing
+ * the same bar at different times reads as a fault. The band is a fixed width
+ * and is moved with left rather than a transform percentage, so it sweeps at
+ * the same speed whether the fill is most of the bar or the 24px minimum,
+ * which at this stage of the campaign is the case that matters.
+ *
+ * Skewed, so the highlight crosses the bar diagonally rather than as a flat
+ * vertical wipe.
+ *
+ * The band is 40px and peaks at 0.18, and both numbers are set by the small
+ * fill rather than by the large one. A 24px fill is narrower than the band, so
+ * for most of the cycle the highlight covers the fill completely instead of
+ * travelling across it: at the 64px and 0.35 this started on, that turned the
+ * apricot a flat pale grey twice a second and the bar lost the colour the
+ * legend had just named. At 0.18 full coverage is a lighter apricot, which is
+ * a bar catching the light, which is the whole idea.
+ */
+.tracker-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tracker-sweep::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  bottom: -50%;
+  width: 40px;
+  transform: skewX(-20deg);
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0),
+    rgb(255 255 255 / 0.18),
+    rgb(255 255 255 / 0)
+  );
+  animation: tracker-sweep 2s ease-in-out infinite;
+}
+
+@keyframes tracker-sweep {
+  from {
+    left: -40px;
+  }
+  to {
+    left: 100%;
+  }
 }
 
 /*
