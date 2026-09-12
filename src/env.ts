@@ -101,6 +101,37 @@ const serverSchema = z.object({
    * does not reliably have them. See the note at the top of this file.
    */
   SENTRY_DSN: z.union([z.literal(""), z.url("must be a Sentry DSN url.")]).optional(),
+  /*
+   * Resend, which sends the pledge confirmation email.
+   *
+   * Optional, and its absence is a working configuration rather than a broken
+   * one: with no key the app records pledges exactly as before and simply does
+   * not send anything. A confirmation email is a courtesy on top of a pledge
+   * that is already safely in the database and already on screen, so a missing
+   * key must never be able to refuse a pledge. That is why this is not treated
+   * the way the Turnstile pair is, where absence in production is a failed
+   * deploy.
+   *
+   * An empty string counts as absent, because a Vercel project with the
+   * variable declared but blank is the same situation as one without it.
+   */
+  RESEND_API_KEY: z.string().optional(),
+  /*
+   * The From address on that email. Defaults to the development office, which
+   * is the address the footer of the message already tells people to reply to.
+   *
+   * Whatever this is set to has to be a domain verified in the Resend
+   * dashboard, or Resend refuses the send. That failure is logged and dropped,
+   * per the note on the send function.
+   */
+  RESEND_FROM_EMAIL: z
+    .string()
+    .optional()
+    .transform((value) =>
+      value === undefined || value.trim() === ""
+        ? "Crystal Fountain <churchdevelopment@newlifesdanairobi.org>"
+        : value.trim(),
+    ),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -142,6 +173,8 @@ function getServerEnv(): ServerEnv {
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
       PLEDGE_AUTO_APPROVE_LIMIT_KES: process.env.PLEDGE_AUTO_APPROVE_LIMIT_KES,
       SENTRY_DSN: process.env.SENTRY_DSN,
+      RESEND_API_KEY: process.env.RESEND_API_KEY,
+      RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     });
     if (!parsed.success) fail(parsed.error);
     serverEnv = parsed.data;

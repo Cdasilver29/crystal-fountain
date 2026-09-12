@@ -1,4 +1,6 @@
+import * as Sentry from "@sentry/nextjs";
 import { revalidateTag } from "next/cache";
+import { after } from "next/server";
 
 import { db } from "@/db";
 import {
@@ -9,13 +11,94 @@ import {
   validationProblem,
 } from "@/lib/api";
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
+import { resolvePaymentDetails } from "@/lib/payment-details";
 import { env } from "@/env";
-import { createPledgeInput } from "@/server/contracts/pledges";
+import { createPledgeInput, type CreatePledgeInput } from "@/server/contracts/pledges";
 import * as campaign from "@/server/services/campaign";
+import { sendPledgeConfirmation } from "@/server/services/email";
 import * as pledges from "@/server/services/pledges";
 import { turnstileBypassAllowed } from "@/server/services/turnstile";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Sends the confirmation, without the pledger waiting for it.
+ *
+ * Scheduled with next/server's after(), which on Vercel is the runtime's
+ * waitUntil: the response goes back the moment the pledge is committed and the
+ * send runs after it, on the same invocation, so the work is not cut off when
+ * the lambda is frozen. Off Vercel, where there is no waitUntil to hand it to,
+ * Next runs the task once the response has been sent, which is the fire and
+ * forget case and behaves the same from the pledger's side.
+ *
+ * Nothing in here can fail a pledge. The pledge is already committed and
+ * already on their screen by the time this runs, so every path swallows its
+ * error and reports it to Sentry instead. after() itself is called inside a try
+ * for the same reason: it needs a request context, and a future runtime that
+ * cannot give it one must not turn a recorded pledge into a 500.
+ */
+function sendConfirmation(args: {
+  input: CreatePledgeInput;
+  result: pledges.CreatePledgeResult;
+  settings: campaign.CampaignSettings | null;
+}) {
+  // No address, no email. The form's email field is optional and most pledgers
+  // leave it blank, so this is the ordinary case and not a failure.
+  if (!args.input.email) return;
+
+  const task = async () => {
+    const outcome = await sendPledgeConfirmation(
+      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      {
+        to: args.input.email,
+        pledge: {
+          fullName: args.input.fullName,
+          reference: args.result.reference,
+          publicToken: args.result.publicToken,
+          amountMinor: args.result.amountMinor,
+          addedMinor: args.result.addedMinor,
+          isAddition: args.result.isAddition,
+          /*
+           * What they chose on this submission, which is also what the service
+           * has just written to the pledge: a submission's frequency replaces
+           * whatever was on the pledge before, and the instalment is derived
+           * from the new cumulative total. So the plan quoted here is the plan
+           * in the database.
+           */
+          installmentFrequency: args.input.installmentFrequency ?? null,
+          // Database first, repo values as the fallback. The settings row was
+          // already read at the top of this handler, so this costs no query.
+          details: resolvePaymentDetails(args.settings),
+          siteUrl: env.NEXT_PUBLIC_SITE_URL,
+        },
+      },
+    );
+
+    if (outcome.status === "failed") {
+      /*
+       * The reference identifies which pledge went unconfirmed without naming
+       * anybody. No address, no name and no amount: Sentry is scrubbed of
+       * personal detail by src/lib/sentry-scrub.ts and this must not be the one
+       * place that puts it back.
+       */
+      Sentry.captureException(outcome.error, {
+        tags: { area: "pledge_confirmation_email" },
+        extra: { reference: args.result.reference },
+      });
+    }
+  };
+
+  try {
+    // A callback rather than a promise, so the work starts once the response
+    // has gone rather than racing it. Passing task() here would call it now.
+    after(() => task().catch(() => {}));
+  } catch {
+    // No request context to schedule against. Run it detached instead, so the
+    // email is still attempted and a failure still goes nowhere near the
+    // response.
+    void task().catch(() => {});
+  }
+}
 
 /**
  * POST /api/pledges
@@ -100,6 +183,18 @@ export async function POST(request: Request) {
     if (result.autoApproved) {
       revalidateTag(CAMPAIGN_TOTALS_TAG);
     }
+
+    /*
+     * The confirmation email, in the response path rather than in the service.
+     *
+     * Deliberately here and not inside pledges.create: the service runs the
+     * whole pledge in one transaction, and an email is not something that can
+     * be rolled back. Sending from inside it would mean either holding the
+     * transaction open across a call to somebody else's API, or sending a
+     * confirmation for a pledge that then failed to commit. This runs after the
+     * commit, when there is a reference worth confirming.
+     */
+    sendConfirmation({ input: parsed.data, result, settings });
 
     return Response.json(
       {
