@@ -73,23 +73,42 @@ type ListRow = {
 /**
  * Everyone with an account, retired ones last.
  *
- * TOTP enrolment is read from whether a secret exists on the row rather than
- * from the secret itself, which never leaves the database.
+ * TOTP enrolment is read from the enrolment Better Auth actually checks a code
+ * against: a row in auth_two_factors, reached through auth_user_id. Never the
+ * secret itself, which does not leave the database.
+ *
+ * Not admin_users.totp_secret, which this used to read. That column predates
+ * the two factor plugin and means something different from the plugin's own
+ * secret, so nothing has written it since Better Auth arrived: every account
+ * enrolled through the login screen showed as not enrolled, and an account
+ * whose enrolment was deleted by a lockout reset would have gone on showing as
+ * enrolled. The column is left where it is, unread.
+ *
+ * auth_users.two_factor_enabled is deliberately not the source either. It is
+ * the flag, not the enrolment, and the two can drift: it is what a lockout
+ * reset leaves behind, and what the login route puts back down. A row with
+ * verified false is one Better Auth itself refuses at sign in, so it does not
+ * count as enrolled here.
  */
 export async function list(db: Db): Promise<AdminUserRow[]> {
   const result = await db.execute(sql`
-    select id,
-           full_name,
-           email,
-           role,
-           is_active,
-           is_super,
-           totp_secret is not null as has_totp,
-           force_password_change,
-           last_login_at,
-           created_at
-    from admin_users
-    order by is_active desc, is_super desc, created_at
+    select a.id,
+           a.full_name,
+           a.email,
+           a.role,
+           a.is_active,
+           a.is_super,
+           exists (
+             select 1
+             from auth_two_factors t
+             where t.user_id = a.auth_user_id
+               and t.verified is distinct from false
+           ) as has_totp,
+           a.force_password_change,
+           a.last_login_at,
+           a.created_at
+    from admin_users a
+    order by a.is_active desc, a.is_super desc, a.created_at
   `);
 
   return (result.rows as ListRow[]).map((row) => ({

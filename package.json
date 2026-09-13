@@ -38,7 +38,8 @@
     "db:verify:pledge-delete": "tsx scripts/verify-part-x.ts",
     "db:verify:settings": "tsx scripts/verify-part-y.ts",
     "db:verify:sentry": "tsx scripts/verify-part-z.ts",
-    "db:verify:totp-recovery": "tsx scripts/verify-part-aa.ts"
+    "db:verify:totp-recovery": "tsx scripts/verify-part-aa.ts",
+    "db:verify:totp-badge": "tsx scripts/verify-part-ab.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",
