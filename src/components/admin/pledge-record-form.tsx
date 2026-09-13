@@ -16,6 +16,7 @@ import {
   type PledgeTier,
   type RedemptionChoice,
 } from "@/server/contracts/pledges";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * The treasurer recording a pledge made on paper or over the phone.
@@ -239,11 +240,11 @@ export function PledgeRecordForm() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Field id="rec-category" label="Pledging as">
-          <select
+          <SelectField
             id="rec-category"
             value={category}
             onChange={(e) => setCategory(e.target.value as PledgeCategory | "")}
-            className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="w-full"
           >
             <option value="">Not recorded</option>
             {PLEDGE_CATEGORIES.map((c) => (
@@ -251,39 +252,39 @@ export function PledgeRecordForm() {
                 {c === "family" ? "Family or group" : "Individual"}
               </option>
             ))}
-          </select>
+          </SelectField>
         </Field>
 
         <Field id="rec-plan" label="Redemption plan">
-          <select
+          <SelectField
             id="rec-plan"
             value={redemption}
             onChange={(e) => setRedemption(e.target.value as RedemptionChoice)}
-            className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="w-full"
           >
             {REDEMPTION_CHOICES.map((choice) => (
               <option key={choice} value={choice}>
                 {REDEMPTION_PLANS[choice].label}
               </option>
             ))}
-          </select>
+          </SelectField>
         </Field>
 
         <Field id="rec-channel" label="How it arrived">
-          <select
+          <SelectField
             id="rec-channel"
             value={channel}
             onChange={(e) =>
               setChannel(e.target.value as (typeof CHANNELS)[number])
             }
-            className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="w-full"
           >
             {CHANNELS.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-          </select>
+          </SelectField>
         </Field>
       </div>
 

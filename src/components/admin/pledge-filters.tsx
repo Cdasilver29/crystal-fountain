@@ -8,6 +8,7 @@ import {
   PLEDGE_STATUS_FILTERS,
   type PledgeStatusFilter,
 } from "@/server/contracts/admin";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * Filtering the pledge list.
@@ -108,7 +109,7 @@ export function PledgeFilters({
         <label htmlFor="pledge-status" className="sr-only">
           Filter by status
         </label>
-        <select
+        <SelectField
           id="pledge-status"
           value={status}
           onChange={(event) => {
@@ -118,14 +119,14 @@ export function PledgeFilters({
             committed.current = term.trim();
             router.replace(hrefFor(term.trim() || null, next));
           }}
-          className="h-11 w-full cursor-pointer rounded-lg border border-neutral-300 bg-white px-3 text-base text-navy focus-visible:border-campfire focus-visible:ring-2 focus-visible:ring-campfire/40 focus-visible:outline-none sm:w-48"
+          className="w-full sm:w-48"
         >
           {PLEDGE_STATUS_FILTERS.map((value) => (
             <option key={value} value={value}>
               {STATUS_LABELS[value]}
             </option>
           ))}
-        </select>
+        </SelectField>
       </div>
 
       {filtered && (

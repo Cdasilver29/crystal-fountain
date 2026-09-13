@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AUDIT_FILTERS, type AuditFilter } from "@/server/contracts/admin";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * Filtering the audit journal.
@@ -98,7 +99,7 @@ export function AuditFilters({
         <label htmlFor="audit-filter" className="sr-only">
           Filter by kind of action
         </label>
-        <select
+        <SelectField
           id="audit-filter"
           value={filter}
           onChange={(event) => {
@@ -108,14 +109,14 @@ export function AuditFilters({
             committed.current = term.trim();
             router.replace(hrefFor(term.trim() || null, next));
           }}
-          className="h-11 w-full cursor-pointer rounded-lg border border-neutral-300 bg-white px-3 text-base text-navy focus-visible:border-campfire focus-visible:ring-2 focus-visible:ring-campfire/40 focus-visible:outline-none sm:w-48"
+          className="w-full sm:w-48"
         >
           {AUDIT_FILTERS.map((value) => (
             <option key={value} value={value}>
               {FILTER_LABELS[value]}
             </option>
           ))}
-        </select>
+        </SelectField>
       </div>
 
       {filtered && (

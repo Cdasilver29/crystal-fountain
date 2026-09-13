@@ -13,6 +13,7 @@ import {
   MAX_ADMIN_USERS,
   type AdminUserRole,
 } from "@/server/contracts/admin-users";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * Who can sign in to the portal, and what can be done about it.
@@ -479,18 +480,18 @@ function AddUserForm({
 
         <div>
           <Label htmlFor="new-role">Role</Label>
-          <select
+          <SelectField
             id="new-role"
             value={role}
             onChange={(e) => setRole(e.target.value as AdminUserRole)}
-            className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="mt-2 w-full"
           >
             {roles.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
       </div>
 

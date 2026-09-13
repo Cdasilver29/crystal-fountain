@@ -10,6 +10,7 @@ import {
   recordPaymentInput,
   type PaymentMethod,
 } from "@/server/contracts/payments";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * Recording a payment.
@@ -177,18 +178,18 @@ export function PaymentForm() {
           <label htmlFor="method" className="block text-sm font-medium text-navy">
             How the money arrived
           </label>
-          <select
+          <SelectField
             id="method"
             value={method}
             onChange={(event) => setMethod(event.target.value as PaymentMethod)}
-            className="mt-1.5 h-11 w-full cursor-pointer rounded-lg border border-neutral-300 bg-white px-3 text-base text-navy focus-visible:border-campfire focus-visible:ring-2 focus-visible:ring-campfire/40 focus-visible:outline-none"
+            className="mt-1.5 w-full"
           >
             {PAYMENT_METHODS.map((value) => (
               <option key={value} value={value}>
                 {METHOD_LABELS[value]}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
 
         <Field

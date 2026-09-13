@@ -16,6 +16,7 @@ import {
   type PledgeStatus,
   type RedemptionChoice,
 } from "@/server/contracts/pledges";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * Correcting a pledge, in place on the detail screen.
@@ -202,18 +203,18 @@ export function PledgeEdit({ pledge }: { pledge: EditablePledge }) {
 
         <div>
           <Label htmlFor="edit-status">Status</Label>
-          <select
+          <SelectField
             id="edit-status"
             value={status}
             onChange={(e) => setStatus(e.target.value as PledgeStatus)}
-            className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="mt-2 w-full"
           >
             {PLEDGE_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
       </div>
 
@@ -235,18 +236,18 @@ export function PledgeEdit({ pledge }: { pledge: EditablePledge }) {
 
       <div className="mt-4">
         <Label htmlFor="edit-plan">Redemption plan</Label>
-        <select
+        <SelectField
           id="edit-plan"
           value={redemption}
           onChange={(e) => setRedemption(e.target.value as RedemptionChoice)}
-          className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          className="mt-2 w-full"
         >
           {REDEMPTION_CHOICES.map((choice) => (
             <option key={choice} value={choice}>
               {REDEMPTION_PLANS[choice].label}
             </option>
           ))}
-        </select>
+        </SelectField>
         {breakdown && (
           <p className="tabular mt-2 rounded-lg bg-white px-3 py-2 text-sm text-navy">
             {breakdown}

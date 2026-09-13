@@ -25,6 +25,7 @@ import {
   type PledgeTier,
   type RedemptionChoice,
 } from "@/server/contracts/pledges";
+import { SelectField } from "@/components/ui/select-field";
 
 /**
  * The three step pledge form.
@@ -717,20 +718,20 @@ export function PledgeForm({
                 How do you plan to redeem your pledge?
               </Label>
 
-              <select
+              <SelectField
                 id="redemption"
                 value={redemption}
                 onChange={(event) =>
                   setRedemption(event.target.value as RedemptionChoice)
                 }
-                className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                className="mt-2 w-full"
               >
                 {REDEMPTION_CHOICES.map((choice) => (
                   <option key={choice} value={choice}>
                     {REDEMPTION_PLANS[choice].label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
 
               {/*
                 The arithmetic, shown the moment a frequency is picked. A

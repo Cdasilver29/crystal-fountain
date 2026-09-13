@@ -825,3 +825,108 @@
     animation: none !important;
   }
 }
+
+/*
+ * Native selects, dressed to match the inputs beside them.
+ *
+ * These are still native `select` elements and nothing here changes that: the
+ * list that drops down is drawn by the operating system, which is what makes
+ * them reachable with a keyboard, with a screen reader and with the phone
+ * wheel picker an Android visitor already knows. All that is replaced is the
+ * closed control, which is the only part a browser lets anyone style and the
+ * only part that was inconsistent between Chrome, Safari and Android in the
+ * first place.
+ *
+ * The chevron is a sibling element rather than a background image, because a
+ * background image cannot rotate. It is positioned over the right hand padding
+ * and is pointer-events: none, so a tap on the arrow still opens the select.
+ */
+.select-field {
+  position: relative;
+  display: block;
+}
+
+.select-field > select {
+  /*
+   * The native arrow and, on Android, the whole native chrome. -webkit- is
+   * still required by Safari and by the Android WebView, and without it the
+   * platform arrow is drawn on top of ours.
+   */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  width: 100%;
+  height: 44px;
+  /*
+   * Matches the inputs beside it, which are rounded-lg. Not the 8px the
+   * buttons take: a select sits in a row of text inputs and has to agree with
+   * those, not with the action at the bottom of the form.
+   */
+  border-radius: var(--radius-lg, 0.625rem);
+  border: 1px solid #d4d4d4;
+  background-color: #fff;
+  color: #052252;
+  /*
+   * 16px. Anything smaller makes iOS Safari zoom the page when the control is
+   * focused, and the page never zooms back out.
+   */
+  font-size: 1rem;
+  line-height: normal;
+  /* Room on the right for the chevron sitting over the padding. */
+  padding: 0 2.5rem 0 0.75rem;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.select-field > select:hover {
+  border-color: #a3a3a3;
+}
+
+/*
+ * Campfire and a ring on focus, the same pair the text inputs use. Written as
+ * a box-shadow rather than an outline so it follows the rounded corner.
+ */
+.select-field > select:focus-visible {
+  border-color: #e36520;
+  box-shadow: 0 0 0 2px rgb(227 101 32 / 0.4);
+}
+
+.select-field > select:disabled {
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+  color: #737373;
+}
+
+.select-field-chevron {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  width: 1rem;
+  height: 1rem;
+  color: #737373;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: transform 150ms ease;
+}
+
+/*
+ * The chevron turns over while the list is open.
+ *
+ * :open on a select is the only way to know that without building a custom
+ * dropdown, which is the change this was asked not to be. Where a browser does
+ * not support it the whole rule is dropped and the arrow simply stays put,
+ * which is what every native select has always done.
+ */
+.select-field > select:open + .select-field-chevron {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .select-field-chevron {
+    transition: none;
+  }
+}
