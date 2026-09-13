@@ -560,6 +560,20 @@ export const authSessions = pgTable(
     token: text("token").notNull().unique(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    /*
+     * How this session was opened, "password" or "google".
+     *
+     * Nullable because every session that existed before this column did, and
+     * a null reads as "opened before we started recording it" rather than as
+     * either method. Written once at creation and never updated: Better Auth
+     * rolls the idle window forward on use, and a session does not change how
+     * it was opened.
+     *
+     * It decides what the portal may assume about the second factor. A
+     * password session has been through TOTP; a Google one has been through
+     * Google's own protection instead. See the note in src/lib/auth.ts.
+     */
+    signInMethod: text("sign_in_method"),
     userId: text("user_id")
       .notNull()
       .references(() => authUsers.id, { onDelete: "cascade" }),

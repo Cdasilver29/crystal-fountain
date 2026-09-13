@@ -44,6 +44,30 @@ export default async function AdminChangePasswordPage() {
             Signed in as {admin.email}.
           </p>
 
+          {/*
+            The one screen in the portal that is about this account rather than
+            the campaign, so it is where the second factor policy is stated.
+
+            Only shown to a session that actually came in through Google. An
+            administrator who has both methods and used their password this
+            time was asked for a TOTP code as usual, and telling them otherwise
+            would be wrong.
+          */}
+          {admin.signInMethod === "google" && (
+            <div className="mt-4 rounded-xl bg-navy/5 p-4">
+              <p className="text-sm leading-relaxed text-navy">
+                You signed in with Google. Google&apos;s own two-factor
+                protection applies to this session.
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+                This portal did not ask you for an authenticator code, so the
+                protection on your Google account is what stands in front of it.
+                Your password and authenticator still work if you sign in that
+                way instead.
+              </p>
+            </div>
+          )}
+
           <div className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
             <ChangePasswordForm forced={admin.mustChangePassword} />
           </div>

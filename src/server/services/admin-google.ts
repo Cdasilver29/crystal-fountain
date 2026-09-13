@@ -25,19 +25,62 @@ import { ServiceError } from "@/server/errors";
  * verification script drives every branch of it against real rows.
  */
 
-/** The code that travels back to the sign in page in the error query string. */
-export const GOOGLE_REJECTED_CODE = "google_not_authorised";
+/**
+ * The codes that travel back to the sign in page in the error query string.
+ *
+ * They are the reasons, so the two refusals can be told apart on the way back
+ * and given different sentences.
+ *
+ * G1 used one code for both on the grounds that naming which addresses are
+ * administrators answers a question an outsider has no business asking. That
+ * was too cautious. Neither message can be read without first completing a
+ * real Google sign in as that address, so the only account anybody can learn
+ * anything about is one they already control, and there is no way to probe an
+ * address belonging to somebody else. /api/admin/login already draws exactly
+ * this line: it says nothing about whether an account exists until a correct
+ * password has been presented, then names the deactivation plainly.
+ *
+ * The wording still never says "you are an administrator here". A retired
+ * administrator is told their account is deactivated, which is about them, not
+ * about the shape of the portal.
+ */
+export const GOOGLE_REJECTED_CODES = {
+  not_an_admin: "not_an_admin",
+  deactivated: "deactivated",
+} as const;
+
+/** What each refusal says on the sign in page. */
+export const GOOGLE_REJECTED_MESSAGES: Record<string, string> = {
+  not_an_admin:
+    "This Google account is not authorised for the admin portal. Contact the administrator.",
+  deactivated:
+    "This account has been deactivated. Contact the administrator.",
+};
 
 /**
- * What the person is told.
+ * What a code that is not one of ours says.
  *
- * Deliberately the same sentence for "never was an administrator" and "was one
- * and is retired". Telling an outsider which addresses are administrators here
- * would answer a question they have no business asking, and the reason is on
- * the audit row for whoever does have business asking it.
+ * Everything else that can come back on that query string is Better Auth's or
+ * Google's, in their words, about their internals. Anything from a cancelled
+ * consent screen to a mismatched redirect URI lands here, and none of it is
+ * worth showing to a treasurer.
  */
-export const GOOGLE_REJECTED_MESSAGE =
-  "This Google account is not authorised for the admin portal. Contact the administrator.";
+export const GOOGLE_FAILED_MESSAGE =
+  "Sign-in failed. Try again or use your email and password.";
+
+/**
+ * The sentence for an error code coming back from the callback.
+ *
+ * Mapped, never printed. error_description on that query string is chosen by
+ * whoever wrote the link, so rendering it would let anyone who can get an
+ * administrator to click something put their own words inside the portal's own
+ * error box, next to its own branding. An unrecognised code gets the generic
+ * sentence instead.
+ */
+export function messageForRejection(code: string | undefined): string {
+  if (!code) return GOOGLE_FAILED_MESSAGE;
+  return GOOGLE_REJECTED_MESSAGES[code] ?? GOOGLE_FAILED_MESSAGE;
+}
 
 export type GoogleKeys = {
   clientId: string | undefined;

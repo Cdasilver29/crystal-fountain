@@ -25,12 +25,27 @@ type Outcome =
   | { kind: "enrol"; totpUri: string; backupCodes: string[] }
   | { kind: "failed"; message: string };
 
-export function AdminLogin({ next }: { next: string }) {
+export function AdminLogin({
+  next,
+  googleEnabled = false,
+  rejection = null,
+}: {
+  next: string;
+  /** Whether both Google keys are configured. Decided on the server. */
+  googleEnabled?: boolean;
+  /**
+   * The mapped sentence for a refused Google sign in, already turned from a
+   * code into words on the server. Never text taken from the query string.
+   */
+  rejection?: string | null;
+}) {
   const [step, setStep] = useState<Step>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // Seeded with the refusal, so a bounce back from Google reads as an error on
+  // this form rather than as a page that silently forgot what happened.
+  const [error, setError] = useState<string | null>(rejection);
   const [busy, setBusy] = useState(false);
 
   // Enrolment material, held only for the life of this form.
@@ -223,6 +238,13 @@ export function AdminLogin({ next }: { next: string }) {
         {step === "password" ? "Admin sign in" : "Two factor"}
       </h1>
 
+      {step === "password" && googleEnabled && (
+        <>
+          <GoogleButton next={next} onFailure={setError} />
+          <Divider />
+        </>
+      )}
+
       {step === "password" && (
         <form onSubmit={submitPassword} className="mt-6 space-y-4">
           <Field
@@ -330,6 +352,122 @@ export function AdminLogin({ next }: { next: string }) {
           <Submit busy={busy} label="Verify" busyLabel="Checking" />
         </form>
       )}
+    </div>
+  );
+}
+
+/**
+ * The four colour G, drawn inline.
+ *
+ * Inline rather than an image file or a CDN link on purpose. It is four paths
+ * and a viewBox, so it costs less than the request it replaces, it cannot fail
+ * to load and leave a button with a gap where the mark should be, and it asks
+ * nothing of a third party at the moment somebody is signing in.
+ *
+ * aria-hidden because the button's own text already says Google. A title here
+ * would have a screen reader announce the word twice.
+ */
+function GoogleLogo() {
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      className="h-5 w-5 shrink-0"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+      <path fill="none" d="M0 0h48v48H0z" />
+    </svg>
+  );
+}
+
+/**
+ * The Google option, offered above the password form.
+ *
+ * The whole exchange is a full page navigation to Google and back, so there is
+ * no success path to handle here. Only the failure to leave at all is caught:
+ * if Better Auth cannot even produce a redirect, the person is told rather
+ * than left looking at a button that did nothing.
+ *
+ * errorCallbackURL is what brings a refusal back to this page instead of
+ * Better Auth's own error screen. It carries next through, so somebody who was
+ * sent here from a deep link still lands there once they get in.
+ */
+function GoogleButton({
+  next,
+  onFailure,
+}: {
+  next: string;
+  onFailure: (message: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function start() {
+    setBusy(true);
+    onFailure("");
+
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: next,
+        errorCallbackURL: `/admin/login?next=${encodeURIComponent(next)}`,
+      });
+
+      // Reached only when the redirect never happened.
+      if (result?.error) {
+        onFailure(
+          result.error.message ??
+            "Sign-in failed. Try again or use your email and password.",
+        );
+        setBusy(false);
+      }
+    } catch {
+      onFailure("Could not reach the server. Check your connection.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={start}
+      disabled={busy}
+      className="mt-6 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-3 rounded-lg border border-neutral-300 bg-white px-6 text-base font-medium text-navy transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <GoogleLogo />
+      {busy ? "Taking you to Google" : "Continue with Google"}
+    </button>
+  );
+}
+
+/**
+ * The word "or" sitting on a rule.
+ *
+ * The rule is decorative, so it is aria-hidden and the word carries no
+ * meaning of its own to a screen reader, which reaches the button and the form
+ * in order regardless.
+ */
+function Divider() {
+  return (
+    <div className="mt-5 flex items-center gap-3" aria-hidden="true">
+      <span className="h-px flex-1 bg-neutral-200" />
+      <span className="text-sm text-neutral-500">or</span>
+      <span className="h-px flex-1 bg-neutral-200" />
     </div>
   );
 }

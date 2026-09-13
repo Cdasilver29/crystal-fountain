@@ -135,7 +135,41 @@ export function summarise(
       return attempted ?? "";
     }
 
-    case "admin.login":
+    case "admin.login": {
+      /*
+       * How they got in matters more than that they did. A password sign in
+       * has been through TOTP; a Google one has been through Google's own
+       * protection instead, and the trail is where that difference is visible
+       * afterwards.
+       *
+       * A session opened before the method was recorded says nothing rather
+       * than guessing at one.
+       */
+      const email = str(a.email);
+      const method = str(a.method);
+      const how =
+        method === "google"
+          ? "signed in with Google"
+          : method === "password"
+            ? "signed in with password"
+            : null;
+      return [email && `email: ${email}`, how].filter(Boolean).join(", ");
+    }
+
+    case "admin.google_rejected": {
+      // The reason is the whole point of the row: it separates somebody who
+      // was never an administrator from one who has been retired.
+      const email = str(a.email);
+      const reason = str(a.reason);
+      const why =
+        reason === "deactivated"
+          ? "account deactivated"
+          : reason === "not_an_admin"
+            ? "not an administrator"
+            : reason;
+      return [email && `email: ${email}`, why].filter(Boolean).join(", ");
+    }
+
     case "admin.login_failed":
     case "admin.logout":
     case "admin.totp_enrolled": {

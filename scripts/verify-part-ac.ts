@@ -81,7 +81,14 @@ async function main() {
   const { sql } = await import("drizzle-orm");
   const google = await import("@/server/services/admin-google");
   const audit = await import("@/server/services/admin-audit");
-  const { getAuth } = await import("@/lib/auth");
+  const {
+    getAuth,
+    requiresTotp,
+    signInMethodOf,
+    SIGN_IN_GOOGLE,
+    SIGN_IN_PASSWORD,
+  } = await import("@/lib/auth");
+  const { summarise } = await import("@/server/services/audit");
 
   const failures: string[] = [];
   const check = (label: string, ok: boolean, detail?: string) => {
@@ -257,14 +264,46 @@ async function main() {
       emptyGate.allowed === false && emptyGate.reason === "not_an_admin",
     );
 
-    heading("the same sentence, whatever the reason");
+    heading("a sentence per reason, and a fallback for the rest");
 
     check(
-      "the message names no address and admits nothing",
-      google.GOOGLE_REJECTED_MESSAGE ===
+      "a stranger is told the account is not authorised",
+      google.messageForRejection("not_an_admin") ===
         "This Google account is not authorised for the admin portal. Contact the administrator.",
-      google.GOOGLE_REJECTED_MESSAGE,
+      google.messageForRejection("not_an_admin"),
     );
+    check(
+      "a retired administrator is told the account is deactivated",
+      google.messageForRejection("deactivated") ===
+        "This account has been deactivated. Contact the administrator.",
+      google.messageForRejection("deactivated"),
+    );
+    check(
+      "every reason the gate can give has a sentence of its own",
+      (["not_an_admin", "deactivated"] as const).every(
+        (reason) =>
+          google.messageForRejection(reason) !== google.GOOGLE_FAILED_MESSAGE,
+      ),
+    );
+
+    /*
+     * The fallback is the security relevant half. Anything Better Auth or
+     * Google puts on that query string, including text an attacker chose, has
+     * to come out as our sentence rather than theirs.
+     */
+    for (const hostile of [
+      undefined,
+      "",
+      "access_denied",
+      "state_not_found",
+      "Your account is fine, call 0700000000 to verify",
+      "<script>alert(1)</script>",
+    ]) {
+      check(
+        `an unrecognised code falls back to our own words (${JSON.stringify(hostile)?.slice(0, 32)})`,
+        google.messageForRejection(hostile) === google.GOOGLE_FAILED_MESSAGE,
+      );
+    }
 
     heading("every refusal leaves an audit row");
 
@@ -388,6 +427,274 @@ async function main() {
       "an existing link is never overwritten",
       afterOverwrite[0]?.auth_user_id === active.authUserId,
       String(afterOverwrite[0]?.auth_user_id),
+    );
+
+    heading("the second factor policy");
+
+    /*
+     * The policy from CLAUDE.md's point of view: a password session has been
+     * through TOTP, a Google session has been through Google instead. Asserted
+     * against the function the portal actually calls, not restated here.
+     */
+    check(
+      "a password session is asked for a TOTP code",
+      requiresTotp(SIGN_IN_PASSWORD) === true,
+    );
+    check(
+      "a google session is not",
+      requiresTotp(SIGN_IN_GOOGLE) === false,
+    );
+    check(
+      "a session with no method recorded is treated as a password one",
+      requiresTotp(null) === true && requiresTotp(undefined) === true,
+      "an old cookie cannot claim the google exemption",
+    );
+
+    /*
+     * The bypass itself, at the level it actually happens.
+     *
+     * Better Auth's two factor plugin only intercepts the three credential
+     * sign in paths. An OAuth callback is not among them, so a Google sign in
+     * for an account with TOTP enrolled is handed a full session rather than a
+     * two factor challenge. That is read off the plugin's own matcher rather
+     * than asserted from a comment, so the day the library starts hooking
+     * OAuth this check fails instead of the policy silently changing.
+     */
+    const totpPlugin = getAuth().options.plugins?.find(
+      (plugin) => plugin.id === "two-factor",
+    );
+
+    /*
+     * The matcher is typed for the full endpoint context but reads only path,
+     * so a stub is enough and the cast goes through unknown deliberately.
+     */
+    const hooks = (totpPlugin?.hooks?.after ?? []) as unknown as {
+      matcher: (context: { path: string }) => boolean;
+    }[];
+    const intercepts = (path: string) =>
+      hooks.some((hook) => hook.matcher({ path }));
+
+    check(
+      "the two factor plugin is actually installed",
+      hooks.length > 0,
+      `${hooks.length} after hook(s)`,
+    );
+    check(
+      "it does not intercept the google callback",
+      intercepts("/callback/google") === false,
+      "so an enrolled account gets a session, not a code prompt",
+    );
+    check(
+      "and it still intercepts the password path",
+      intercepts("/sign-in/email") === true,
+      "so TOTP stays mandatory for email and password",
+    );
+
+    heading("an enrolled account signing in with google");
+
+    /*
+     * The same assertion end to end, against a real enrolled account. The
+     * session is created the way the callback creates one, through Better
+     * Auth's own adapter, and comes back complete rather than as a challenge.
+     */
+    await db.execute(sql`
+      insert into auth_two_factors (id, user_id, secret, backup_codes, verified)
+      values (
+        ${`verify-ac-2fa-${active.authUserId}`},
+        ${active.authUserId},
+        'not-a-real-secret',
+        '[]',
+        true
+      )
+    `);
+    await db.execute(sql`
+      update auth_users set two_factor_enabled = true where id = ${active.authUserId}
+    `);
+
+    const enrolled = (
+      await db.execute(sql`
+        select u.two_factor_enabled as flag, count(t.id)::int as enrolments
+        from auth_users u
+        left join auth_two_factors t on t.user_id = u.id
+        where u.id = ${active.authUserId}
+        group by u.two_factor_enabled
+      `)
+    ).rows as Record<string, unknown>[];
+
+    show(enrolled);
+
+    check(
+      "the account really is enrolled before the test means anything",
+      String(enrolled[0]?.flag) === "true" &&
+        Number(enrolled[0]?.enrolments) === 1,
+    );
+
+    /*
+     * A session is created for the enrolled account the way Better Auth
+     * creates one. Enrolment does not stand in the way of the row itself: the
+     * challenge, when there is one, is imposed by the plugin's hook on the
+     * credential paths, which the check above shows does not run here.
+     */
+    const ctx = await getAuth().$context;
+    const session = await ctx.internalAdapter.createSession(
+      active.authUserId,
+      undefined,
+    );
+
+    check(
+      "a session for an enrolled account comes back whole",
+      Boolean(session?.token),
+      "no two factor challenge in the way",
+    );
+
+    /*
+     * Outside any endpoint, so the create hook takes its default branch and
+     * writes "password". That is the branch worth asserting here, because it
+     * is the one that decides what every ordinary sign in is recorded as, and
+     * it proves the field is actually written rather than declared.
+     *
+     * The google branch needs a real OAuth callback to reach, so it is proven
+     * end to end in the round trip rather than faked here. A createSession
+     * call cannot stand in for it: the hook's return value is merged over any
+     * override passed in, so forcing the value would assert nothing about the
+     * code path that sets it.
+     */
+    check(
+      "the method is written on the session row",
+      signInMethodOf(session) === SIGN_IN_PASSWORD,
+      String(signInMethodOf(session)),
+    );
+
+    const stored = (
+      await db.execute(sql`
+        select sign_in_method
+        from auth_sessions
+        where user_id = ${active.authUserId}
+        order by created_at desc
+        limit 1
+      `)
+    ).rows as Record<string, unknown>[];
+
+    show(stored);
+
+    check(
+      "and it survives the round trip to the database",
+      stored[0]?.sign_in_method === SIGN_IN_PASSWORD,
+    );
+
+    heading("the login row is written even with no address to record");
+
+    /*
+     * The session above was created outside any request, so Better Auth wrote
+     * the empty string into ipAddress rather than null, and the audit hook
+     * hung off that row had to insert it into an inet column. It used ??,
+     * which does not catch an empty string, so the insert threw, the hook
+     * swallowed the error, and admin.login was silently never written.
+     *
+     * CLAUDE.md allows no exceptions to that row, so this asserts the row
+     * exists for the session that was just made rather than trusting that no
+     * error appeared.
+     */
+    const hookRows = (
+      await db.execute(sql`
+        select after->>'method' as method, ip::text as ip
+        from audit_log
+        where action = 'admin.login'
+          and actor_id = ${active.adminUserId}::uuid
+          and id > ${baseline}
+      `)
+    ).rows as Record<string, unknown>[];
+
+    show(hookRows);
+
+    check(
+      "the session hook wrote its admin.login row",
+      hookRows.length === 1,
+      `${hookRows.length} row(s)`,
+    );
+    check(
+      "with a null address rather than a blank one",
+      hookRows[0]?.ip === null,
+      String(hookRows[0]?.ip),
+    );
+
+    heading("the audit row says how they got in");
+
+    /*
+     * A second high water mark. The session hook above wrote a real
+     * admin.login row of its own, and counting from the original baseline
+     * would sweep it into this check and make the expected count wrong.
+     */
+    const [{ loginBaseline }] = (
+      await db.execute(sql`
+        select coalesce(max(id), 0)::bigint as "loginBaseline" from audit_log
+      `)
+    ).rows as { loginBaseline: string }[];
+
+    await audit.recordLoginSuccess(db, {
+      adminUserId: active.adminUserId,
+      email: ACTIVE,
+      role: "treasurer",
+      method: SIGN_IN_GOOGLE,
+      ip: "203.0.113.7",
+      userAgent: "verification",
+    });
+    await audit.recordLoginSuccess(db, {
+      adminUserId: active.adminUserId,
+      email: ACTIVE,
+      role: "treasurer",
+      method: SIGN_IN_PASSWORD,
+      ip: "203.0.113.7",
+      userAgent: "verification",
+    });
+
+    const logins = (
+      await db.execute(sql`
+        select after->>'method' as method,
+               after->>'email'  as email
+        from audit_log
+        where action = 'admin.login'
+          and id > ${loginBaseline}
+        order by id
+      `)
+    ).rows as Record<string, unknown>[];
+
+    show(logins);
+
+    check(
+      "the method is on the row",
+      logins.length === 2 &&
+        logins[0]?.method === SIGN_IN_GOOGLE &&
+        logins[1]?.method === SIGN_IN_PASSWORD,
+    );
+
+    check(
+      "and the detail formatter says it in words",
+      summarise("admin.login", null, {
+        email: ACTIVE,
+        method: SIGN_IN_GOOGLE,
+      }) === `email: ${ACTIVE}, signed in with Google` &&
+        summarise("admin.login", null, {
+          email: ACTIVE,
+          method: SIGN_IN_PASSWORD,
+        }) === `email: ${ACTIVE}, signed in with password`,
+      summarise("admin.login", null, {
+        email: ACTIVE,
+        method: SIGN_IN_GOOGLE,
+      }),
+    );
+
+    check(
+      "a login with no method recorded still reads cleanly",
+      summarise("admin.login", null, { email: ACTIVE }) === `email: ${ACTIVE}`,
+    );
+
+    check(
+      "and a refusal reads as its reason",
+      summarise("admin.google_rejected", null, {
+        email: STRANGER,
+        reason: "not_an_admin",
+      }) === `email: ${STRANGER}, not an administrator`,
     );
 
     heading(failures.length === 0 ? "all checks passed" : "failures");

@@ -45,7 +45,17 @@ export async function findAdminByAuthUserId(
 /** A completed sign in. Written when the session row itself is created. */
 export async function recordLoginSuccess(
   db: Db,
-  input: AuditContext & { adminUserId: string; email: string; role: string },
+  input: AuditContext & {
+    adminUserId: string;
+    email: string;
+    role: string;
+    /*
+     * "password" or "google", read off the session row this hangs from. Null
+     * only for a session opened before the column existed, which the formatter
+     * renders as an unrecorded method rather than guessing at one.
+     */
+    method: string | null;
+  },
 ): Promise<void> {
   await db.insert(auditLog).values({
     actorType: "admin",
@@ -53,7 +63,7 @@ export async function recordLoginSuccess(
     action: "admin.login",
     entity: "admin_users",
     entityId: input.adminUserId,
-    after: { email: input.email, role: input.role },
+    after: { email: input.email, role: input.role, method: input.method },
     ip: input.ip,
     userAgent: input.userAgent,
   });

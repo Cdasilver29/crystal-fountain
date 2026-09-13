@@ -20,6 +20,80 @@ function requestIp(context: { request?: Request } | null): string | null {
   return context?.request ? clientIp(context.request) : null;
 }
 
+/**
+ * A value Better Auth stored on the session row, as null when it is blank.
+ *
+ * Better Auth writes the empty string rather than null when it cannot read an
+ * address or a user agent from the headers: createSession does
+ * `getIP(headers, options) || ""`. Nullish coalescing does not catch an empty
+ * string, so `session.ipAddress ?? requestIp(context)` kept the "" and handed
+ * it to an inet column, which refuses it.
+ *
+ * The audit hook that did this catches its own errors so a bad insert cannot
+ * fail a good login, which meant the insert threw, the error went to the
+ * console, and the admin.login row was silently not written. CLAUDE.md has no
+ * exceptions to that row, so blank is normalised to null here and the fallback
+ * actually gets its turn.
+ */
+function blankToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed === "" ? null : trimmed;
+}
+
+/**
+ * The two ways into the portal, as written on auth_sessions.sign_in_method.
+ *
+ * Deliberately not an enum in the database. The column is plain text and
+ * nullable, because sessions that predate it have no answer and a check
+ * constraint would have to be taught about every future method before the code
+ * that writes it exists.
+ */
+export const SIGN_IN_PASSWORD = "password";
+export const SIGN_IN_GOOGLE = "google";
+
+export type SignInMethod = typeof SIGN_IN_PASSWORD | typeof SIGN_IN_GOOGLE;
+
+/**
+ * Whether TOTP has been asked for on a session opened this way.
+ *
+ * The second factor policy, in one place and stated plainly.
+ *
+ * An administrator who signs in with Google does not see a TOTP prompt, even
+ * when their account has TOTP enrolled. This is intentional. Google has
+ * already put them through its own authentication, whatever that account is
+ * configured to require, and asking for a code on top is a second factor
+ * stacked on a second factor.
+ *
+ * Be clear about what that costs. For an account with TOTP enrolled, signing
+ * in with Google is weaker than signing in with a password: the code that the
+ * password flow insists on is skipped, so whoever holds that Google account
+ * holds the portal. The protection is only as strong as the two step
+ * verification on the Google account itself, which this application cannot
+ * see, cannot require, and is not told about.
+ *
+ * This is not enforcement code. Better Auth's two factor plugin hooks only
+ * /sign-in/email, /sign-in/username and /sign-in/phone-number, so an OAuth
+ * callback never reaches it and the skip happens whether or not this function
+ * exists. It is here so the policy is written down, tested, and has somewhere
+ * to change if it is ever decided the other way.
+ */
+export function requiresTotp(method: string | null | undefined): boolean {
+  return method !== SIGN_IN_GOOGLE;
+}
+
+/**
+ * The method written on a session row.
+ *
+ * Better Auth's inferred session type does not carry the additional field, so
+ * it is read defensively rather than asserted. A row without one answers null,
+ * which every caller treats as "not recorded".
+ */
+export function signInMethodOf(session: unknown): string | null {
+  if (!session || typeof session !== "object") return null;
+  const value = (session as { signInMethod?: unknown }).signInMethod;
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
 /** The shape of the endpoint context Better Auth hands a database hook. */
 type HookContext = {
   request?: Request;
@@ -75,9 +149,15 @@ async function refuseGoogle(
     console.error("audit admin.google_rejected failed", error);
   }
 
+  /*
+   * The reason is the code, so the sign in page can tell the two refusals
+   * apart. Better Auth puts body.code on the redirect as ?error= and
+   * body.message as ?error_description=. Only the code is read back; the
+   * message is there for a log, never for the screen.
+   */
   throw new APIError("FORBIDDEN", {
-    code: google.GOOGLE_REJECTED_CODE,
-    message: google.GOOGLE_REJECTED_MESSAGE,
+    code: google.GOOGLE_REJECTED_CODES[result.reason],
+    message: google.messageForRejection(result.reason),
   });
 }
 
@@ -212,6 +292,21 @@ function createAuth() {
        * are needed; expiresIn alone would roll forward indefinitely.
        */
       expiresIn: 60 * 60 * 8,
+      /*
+       * How the session was opened, carried on the session row itself.
+       *
+       * input false means no caller can set it from a request body. It is
+       * decided by the create hook below from the endpoint that is running,
+       * which is the only thing that actually knows.
+       */
+      additionalFields: {
+        signInMethod: {
+          type: "string",
+          required: false,
+          input: false,
+        },
+      },
+
       // Refresh at most every fifteen minutes rather than on every request, so
       // an admin browsing the pledge table is not one session write per click.
       updateAge: 60 * 15,
@@ -291,7 +386,12 @@ function createAuth() {
            * would fire during /admin/setup before the admin_users row exists.
            */
           before: async (session, context) => {
-            if (!isSocialCallback(context)) return;
+            if (!isSocialCallback(context)) {
+              // Everything that is not a social callback is the password flow,
+              // whether it finished at the password or at the TOTP code. Both
+              // are one method as far as the trail is concerned.
+              return { data: { signInMethod: SIGN_IN_PASSWORD } };
+            }
 
             const email = await google.emailForAuthUser(db, session.userId);
             const gate = await google.checkGoogleSignIn(db, {
@@ -299,6 +399,8 @@ function createAuth() {
             });
 
             if (!gate.allowed) await refuseGoogle(gate, context);
+
+            return { data: { signInMethod: SIGN_IN_GOOGLE } };
           },
 
           after: async (session, context) => {
@@ -312,8 +414,17 @@ function createAuth() {
                 adminUserId: admin.id,
                 email: admin.email,
                 role: admin.role,
-                ip: session.ipAddress ?? requestIp(context),
-                userAgent: session.userAgent ?? null,
+                /*
+                 * Read off the row the before hook just wrote rather than
+                 * recomputed from the context, so the trail and the session
+                 * can never disagree about how somebody got in.
+                 */
+                method: signInMethodOf(session),
+                ip: blankToNull(session.ipAddress) ?? requestIp(context),
+                userAgent:
+                  blankToNull(session.userAgent) ??
+                  context?.request?.headers.get("user-agent") ??
+                  null,
               });
             } catch (error) {
               console.error("audit admin.login failed", error);

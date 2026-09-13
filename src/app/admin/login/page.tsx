@@ -4,8 +4,13 @@ import { redirect } from "next/navigation";
 
 import { AdminLogin } from "@/components/admin/admin-login";
 import { db } from "@/db";
+import { env } from "@/env";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { isSetupAvailable } from "@/server/services/admin-setup";
+import {
+  isGoogleConfigured,
+  messageForRejection,
+} from "@/server/services/admin-google";
 
 export const metadata: Metadata = {
   title: "Admin sign in",
@@ -25,10 +30,10 @@ export const dynamic = "force-dynamic";
 export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const admin = await getCurrentAdmin();
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
 
   // Only ever redirect to a path on this site. An absolute URL here would be
   // an open redirect handed to anyone who can write a link.
@@ -41,9 +46,32 @@ export default async function AdminLoginPage({
 
   const setupOpen = await isSetupAvailable(db);
 
+  /*
+   * Whether to offer the button at all, decided on the server. The keys never
+   * reach the browser: the client id travels in the redirect Better Auth
+   * builds server side, and the page is told only yes or no.
+   */
+  const googleEnabled = isGoogleConfigured({
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+  });
+
+  /*
+   * A refused Google sign in comes back here with ?error=<code>. The code is
+   * mapped to one of our sentences and the query string's own
+   * error_description is ignored, because that text is chosen by whoever wrote
+   * the link and rendering it would put a stranger's words inside the portal's
+   * error box.
+   */
+  const rejection = error ? messageForRejection(error) : null;
+
   return (
     <main className="flex flex-1 flex-col items-center justify-center bg-navy px-4 py-16 sm:px-6">
-      <AdminLogin next={target} />
+      <AdminLogin
+        next={target}
+        googleEnabled={googleEnabled}
+        rejection={rejection}
+      />
 
       {setupOpen && (
         <p className="mt-6 max-w-md text-center text-sm text-white/70">

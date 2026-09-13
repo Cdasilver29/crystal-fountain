@@ -85,6 +85,13 @@
       "when": 1789283193711,
       "tag": "0011_drop_legacy_totp_secret",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789289995722,
+      "tag": "0012_session_sign_in_method",
+      "breakpoints": true
     }
   ]
 }

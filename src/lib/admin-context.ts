@@ -3,7 +3,12 @@ import { headers } from "next/headers";
 
 import { db } from "@/db";
 import { adminUsers } from "@/db/schema";
-import { AUTH_SESSION_ABSOLUTE_MAX_AGE_SECONDS, getAuth } from "@/lib/auth";
+import {
+  AUTH_SESSION_ABSOLUTE_MAX_AGE_SECONDS,
+  getAuth,
+  requiresTotp,
+  signInMethodOf,
+} from "@/lib/auth";
 
 /**
  * Who is signed in.
@@ -26,6 +31,19 @@ export type CurrentAdmin = {
   role: AdminRole;
   /** Whether TOTP is enrolled and verified on this account. */
   twoFactorEnabled: boolean;
+  /**
+   * How this session was opened, "password" or "google", or null for a session
+   * that predates the column.
+   */
+  signInMethod: string | null;
+  /**
+   * Whether this session was asked for a TOTP code.
+   *
+   * False for a Google sign in, where Google's own authentication stands in
+   * for the second factor. Null reads as true, so an old session cannot claim
+   * the Google exemption by having no method recorded.
+   */
+  totpRequired: boolean;
   /**
    * The first administrator, and the only one who can create another, change
    * campaign settings or delete a pledge. Read from the row, never from the
@@ -66,6 +84,9 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
 
   if (ageSeconds > AUTH_SESSION_ABSOLUTE_MAX_AGE_SECONDS) return null;
 
+  // How they got in, written on the session row when it was created.
+  const method = signInMethodOf(session.session);
+
   // The role is ours, not Better Auth's. It lives on admin_users and is looked
   // up by the link column rather than trusted from the session.
   const [row] = await db
@@ -92,6 +113,8 @@ export async function getCurrentAdmin(): Promise<CurrentAdmin | null> {
     email: row.email,
     role: row.role,
     twoFactorEnabled: session.user.twoFactorEnabled === true,
+    signInMethod: method,
+    totpRequired: requiresTotp(method),
     isSuper: row.isSuper,
     mustChangePassword: row.forcePasswordChange,
   };
