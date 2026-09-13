@@ -35,6 +35,9 @@ export type UserRow = {
   isActive: boolean;
   isSuper: boolean;
   twoFactorEnabled: boolean;
+  hasPassword: boolean;
+  hasGoogle: boolean;
+  singleMethod: boolean;
   mustChangePassword: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -188,6 +191,7 @@ export function UserTable({
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Role</th>
+              <th className="px-4 py-3 font-medium">Can sign in with</th>
               <th className="px-4 py-3 font-medium">Two factor</th>
               <th className="px-4 py-3 font-medium">Last signed in</th>
               <th className="px-4 py-3 font-medium">Added</th>
@@ -221,6 +225,9 @@ export function UserTable({
                         must set a password
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <SignInMethods user={user} />
                   </td>
                   <td className="px-4 py-3">
                     {user.twoFactorEnabled ? "Enrolled" : "Not enrolled"}
@@ -303,6 +310,56 @@ export function UserTable({
  * Two presses, not a browser confirm dialog: a dialog blocks the page and reads
  * as a browser fault rather than as a question this screen is asking.
  */
+/**
+ * What this account can sign in with, and whether that is enough.
+ *
+ * The point of the column is the question a super administrator actually has,
+ * which is not "who has Google" but "who is one lost phone away from being
+ * locked out of the pledge ledger". So the methods are listed plainly and the
+ * amber badge does the real work.
+ *
+ * "None yet" is a real state, not a gap in the data: an admin_users row exists
+ * from the moment somebody is added, and until they first sign in there may be
+ * no credential behind it.
+ */
+function SignInMethods({ user }: { user: UserRow }) {
+  const methods = [
+    user.hasPassword && "Password",
+    user.hasGoogle && "Google",
+  ].filter(Boolean) as string[];
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {methods.length === 0 ? (
+        <span className="text-xs text-neutral-500">None yet</span>
+      ) : (
+        methods.map((method) => (
+          <span
+            key={method}
+            className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-navy"
+          >
+            {method}
+          </span>
+        ))
+      )}
+
+      {user.singleMethod && user.isActive && (
+        /*
+          title rather than a bespoke tooltip. It is the one thing that works
+          on a keyboard, on a screen reader and on a phone without a library,
+          and this is a hint on an admin screen rather than a control.
+        */
+        <span
+          title="Only one way in and no authenticator enrolled, so there are no backup codes either. If they lose it, another administrator has to let them back in."
+          className="cursor-help rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900"
+        >
+          Single method
+        </span>
+      )}
+    </div>
+  );
+}
+
 function RowButton({
   label,
   confirmLabel,

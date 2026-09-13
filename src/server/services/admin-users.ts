@@ -52,6 +52,19 @@ export type AdminUserRow = {
   isActive: boolean;
   isSuper: boolean;
   twoFactorEnabled: boolean;
+  /** A credential account with a hash on it. */
+  hasPassword: boolean;
+  /** A linked Google account. */
+  hasGoogle: boolean;
+  /**
+   * One way in and no second factor to fall back on.
+   *
+   * Worth surfacing because it is the shape that ends with somebody locked
+   * out of the pledge ledger: lose the one thing and there is no other door
+   * and no backup code. An account with two methods survives losing one, and
+   * an account with TOTP has backup codes.
+   */
+  singleMethod: boolean;
   mustChangePassword: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -65,6 +78,8 @@ type ListRow = {
   is_active: boolean;
   is_super: boolean;
   has_totp: boolean;
+  has_password: boolean;
+  has_google: boolean;
   force_password_change: boolean;
   last_login_at: string | null;
   created_at: string;
@@ -90,6 +105,99 @@ type ListRow = {
  * verified false is one Better Auth itself refuses at sign in, so it does not
  * count as enrolled here.
  */
+/** How many ways into the portal an account actually has. */
+export function countSignInMethods(account: {
+  has_password: boolean;
+  has_google: boolean;
+}): number {
+  return (account.has_password ? 1 : 0) + (account.has_google ? 1 : 0);
+}
+
+/**
+ * One door and no spare key.
+ *
+ * Two methods is not single, whatever the second factor situation, because
+ * losing one still leaves the other. One method with TOTP is not single
+ * either: enrolment hands out backup codes, which are the spare key.
+ *
+ * One method and no enrolment is the shape worth warning about. Lose the
+ * password, or lose the Google account, and there is no other way in and
+ * nothing to fall back on.
+ *
+ * An account with no method at all counts as single. It is already worse than
+ * the warning describes, and it is what a row created before its credential
+ * exists looks like.
+ */
+export function isSingleMethod(account: {
+  has_password: boolean;
+  has_google: boolean;
+  has_totp: boolean;
+}): boolean {
+  if (countSignInMethods(account) >= 2) return false;
+  return !account.has_totp;
+}
+
+/**
+ * Whether a sign in method may be taken away from this account.
+ *
+ * Nothing in the portal removes a method today, so this guards no button yet.
+ * It is the rule itself, in the one place the rule belongs, so that the day an
+ * unlink action is built it cannot be built without it, and so that the
+ * verification suite can hold it to account now rather than then.
+ *
+ * The last method is refused for everybody, not only the super
+ * administrator. An ordinary administrator left with no way in is a person who
+ * cannot work and a row somebody has to repair; the super administrator is
+ * worse only because nobody can repair it for them.
+ */
+export function canRemoveSignInMethod(account: {
+  has_password: boolean;
+  has_google: boolean;
+}): boolean {
+  return countSignInMethods(account) > 1;
+}
+
+/**
+ * Which credentials one account can sign in with.
+ *
+ * The same two questions list() asks for every row, asked for one, so the
+ * guard and the badge cannot drift apart into two different ideas of what a
+ * password is.
+ */
+export async function signInMethods(
+  db: Db,
+  adminUserId: string,
+): Promise<{ has_password: boolean; has_google: boolean; has_totp: boolean }> {
+  const result = await db.execute(sql`
+    select exists (
+             select 1 from auth_accounts c
+             where c.user_id = a.auth_user_id
+               and c.provider_id = 'credential'
+               and c.password is not null
+           ) as has_password,
+           exists (
+             select 1 from auth_accounts g
+             where g.user_id = a.auth_user_id
+               and g.provider_id = 'google'
+           ) as has_google,
+           exists (
+             select 1 from auth_two_factors t
+             where t.user_id = a.auth_user_id
+               and t.verified is distinct from false
+           ) as has_totp
+    from admin_users a
+    where a.id = ${adminUserId}::uuid
+  `);
+
+  const row = (result.rows as Record<string, boolean>[])[0];
+
+  return {
+    has_password: row?.has_password ?? false,
+    has_google: row?.has_google ?? false,
+    has_totp: row?.has_totp ?? false,
+  };
+}
+
 export async function list(db: Db): Promise<AdminUserRow[]> {
   const result = await db.execute(sql`
     select a.id,
@@ -104,6 +212,28 @@ export async function list(db: Db): Promise<AdminUserRow[]> {
              where t.user_id = a.auth_user_id
                and t.verified is distinct from false
            ) as has_totp,
+           /*
+            * Which credentials this account can actually sign in with, read
+            * from auth_accounts rather than inferred.
+            *
+            * A password is a credential row with a hash on it. The row can
+            * exist with a null password, which is what a Google only account
+            * looks like from this side, and treating that as a password would
+            * put a badge on an account that cannot use one.
+            */
+           exists (
+             select 1
+             from auth_accounts c
+             where c.user_id = a.auth_user_id
+               and c.provider_id = 'credential'
+               and c.password is not null
+           ) as has_password,
+           exists (
+             select 1
+             from auth_accounts g
+             where g.user_id = a.auth_user_id
+               and g.provider_id = 'google'
+           ) as has_google,
            a.force_password_change,
            a.last_login_at,
            a.created_at
@@ -119,6 +249,9 @@ export async function list(db: Db): Promise<AdminUserRow[]> {
     isActive: row.is_active,
     isSuper: row.is_super,
     twoFactorEnabled: row.has_totp,
+    hasPassword: row.has_password,
+    hasGoogle: row.has_google,
+    singleMethod: isSingleMethod(row),
     mustChangePassword: row.force_password_change,
     lastLoginAt: row.last_login_at ? new Date(row.last_login_at) : null,
     createdAt: new Date(row.created_at),
@@ -534,6 +667,28 @@ export async function deactivate(
   }
 
   if (!target.isActive) return;
+
+  /*
+   * Deactivating is the one thing in the portal that takes every sign in
+   * method away at once: the sessions go and the next attempt is refused
+   * whichever door it comes to. So it answers to the same rule an unlink
+   * would, and the two guards above are that rule's first two cases.
+   *
+   * This is the third, and it is a belt and braces check rather than a new
+   * policy: a target who is neither the super administrator nor the caller
+   * still has somebody able to reactivate them, so it cannot fire today. It
+   * is here so that canRemoveSignInMethod has a caller in the product and not
+   * only in the suite, and so the rule is enforced in one place when an
+   * unlink action arrives.
+   */
+  const methods = await signInMethods(db, adminUserId);
+
+  if (!canRemoveSignInMethod(methods) && !(await anotherAdminExists(db, adminUserId))) {
+    throw rejected(
+      "last_sign_in_method",
+      "That is the only administrator left and the only way into the portal. Add another administrator first.",
+    );
+  }
 
   await db.transaction(async (tx) => {
     await tx
