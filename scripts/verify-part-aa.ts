@@ -210,7 +210,14 @@ async function main() {
 
     const response = await fetch(`${BASE}/api/auth/two-factor/${path}`, {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: cookies },
+      headers: {
+        "content-type": "application/json",
+        cookie: cookies,
+        // Better Auth refuses a cookie bearing POST that carries no origin,
+        // and a browser always sends one. Without it every call is a 403 that
+        // looks like a permissions bug.
+        origin: BASE,
+      },
       body: JSON.stringify(payload),
     });
     const body = (await response.json().catch(() => null)) as {
@@ -259,6 +266,12 @@ async function main() {
     );
 
     const uri = enrol.body?.totpURI ?? "";
+    if (!uri) {
+      throw new Error(
+        `enrolment returned no QR (status ${enrol.status}: ${enrol.body?.message ?? "no message"}), nothing after this can run`,
+      );
+    }
+
     const verified = await twoFactorCall(
       "verify-totp",
       [first.cookies, enrol.cookies].filter(Boolean).join("; "),
