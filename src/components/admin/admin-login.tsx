@@ -19,6 +19,12 @@ import { authClient } from "@/lib/auth-client";
 
 type Step = "password" | "totp" | "enrol";
 
+/** What the password stage decided the next screen should be. */
+type Outcome =
+  | { kind: "verify" }
+  | { kind: "enrol"; totpUri: string; backupCodes: string[] }
+  | { kind: "failed"; message: string };
+
 export function AdminLogin({ next }: { next: string }) {
   const [step, setStep] = useState<Step>("password");
   const [email, setEmail] = useState("");
@@ -58,56 +64,101 @@ export function AdminLogin({ next }: { next: string }) {
     window.location.assign(next);
   }
 
+  /**
+   * The password stage, and the decision about what comes after it.
+   *
+   * Verify or enrol turns on what the account can actually do, not on the
+   * twoFactorRedirect flag alone. That flag only says a second factor is
+   * expected; twoFactorMethods says which ones are enrolled, and an account
+   * whose enrolment row was deleted answers the first without the second. The
+   * old code read the flag by itself and sent those accounts to a code field
+   * that could never pass.
+   *
+   * That case is repaired by the login route before it signs anybody in, so it
+   * should not reach here at all. If it does, because the row went missing in
+   * between, one more attempt goes through the repair and comes back with a
+   * session. One, and then it gives up rather than looping.
+   */
+  async function runPasswordStage(attempt = 0): Promise<Outcome> {
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      return { kind: "failed", message: body?.title ?? "That did not work." };
+    }
+
+    if (body?.twoFactorRedirect) {
+      const methods: unknown = body.twoFactorMethods;
+      // An older shape with no list at all is taken at its word.
+      const enrolled = Array.isArray(methods) ? methods.includes("totp") : true;
+
+      if (enrolled) return { kind: "verify" };
+      if (attempt === 0) return runPasswordStage(attempt + 1);
+
+      return {
+        kind: "failed",
+        message:
+          "This account expects a second factor but has nothing enrolled. Ask the super administrator to reset it.",
+      };
+    }
+
+    // Signed in with no second factor on the account. Enrol before going
+    // anywhere: TOTP is mandatory for an admin.
+    // method is passed explicitly: the response is a union and only the totp
+    // branch carries a URI to build a QR from.
+    const started = await authClient.twoFactor.enable({
+      password,
+      method: "totp",
+    });
+
+    if (started.error || !started.data || !("totpURI" in started.data)) {
+      return {
+        kind: "failed",
+        message:
+          started.error?.message ??
+          "Signed in, but two factor enrolment could not start.",
+      };
+    }
+
+    return {
+      kind: "enrol",
+      totpUri: started.data.totpURI,
+      backupCodes: started.data.backupCodes ?? [],
+    };
+  }
+
+  /** Moves the form to whichever screen the password stage settled on. */
+  function show(outcome: Outcome) {
+    setBusy(false);
+
+    if (outcome.kind === "failed") {
+      setError(outcome.message);
+      return;
+    }
+
+    if (outcome.kind === "verify") {
+      setStep("totp");
+      return;
+    }
+
+    setTotpUri(outcome.totpUri);
+    setBackupCodes(outcome.backupCodes);
+    setCode("");
+    setStep("enrol");
+  }
+
   async function submitPassword(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const body = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        setError(body?.title ?? "That did not work.");
-        setBusy(false);
-        return;
-      }
-
-      // Better Auth answers with twoFactorRedirect when the account already has
-      // a verified second factor.
-      if (body?.twoFactorRedirect) {
-        setStep("totp");
-        setBusy(false);
-        return;
-      }
-
-      // Signed in with no second factor on the account. Enrol before going
-      // anywhere: TOTP is mandatory for an admin.
-      // method is passed explicitly: the response is a union and only the totp
-      // branch carries a URI to build a QR from.
-      const enrolled = await authClient.twoFactor.enable({
-        password,
-        method: "totp",
-      });
-
-      if (enrolled.error || !enrolled.data || !("totpURI" in enrolled.data)) {
-        setError(
-          enrolled.error?.message ??
-            "Signed in, but two factor enrolment could not start.",
-        );
-        setBusy(false);
-        return;
-      }
-
-      setTotpUri(enrolled.data.totpURI);
-      setBackupCodes(enrolled.data.backupCodes ?? []);
-      setStep("enrol");
-      setBusy(false);
+      show(await runPasswordStage());
     } catch {
       setError("Could not reach the server. Check your connection.");
       setBusy(false);
@@ -122,6 +173,39 @@ export function AdminLogin({ next }: { next: string }) {
     const result = await authClient.twoFactor.verifyTotp({ code: code.trim() });
 
     if (result.error) {
+      /*
+       * "TOTP not enabled" means the enrolment this code would be checked
+       * against is not there, so no code will ever work and repeating the
+       * message is a dead end. The way out is enrolment, which needs a
+       * session, and this screen has none: the password stage traded it for a
+       * two factor challenge. So the password goes back through that stage,
+       * which repairs the account on the way and hands back a session and a
+       * fresh QR.
+       */
+      const missing =
+        result.error.code === "TOTP_NOT_ENABLED" ||
+        result.error.message === "TOTP not enabled";
+
+      if (missing) {
+        setCode("");
+
+        try {
+          const outcome = await runPasswordStage();
+
+          if (outcome.kind === "enrol") {
+            show(outcome);
+            setError(
+              "This account has no second factor enrolled any more. Set one up below.",
+            );
+            return;
+          }
+        } catch {
+          setError("Could not reach the server. Check your connection.");
+          setBusy(false);
+          return;
+        }
+      }
+
       setError(
         result.error.message ?? "That code is not right. Try the next one.",
       );

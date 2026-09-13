@@ -6,6 +6,7 @@ import { clientIp, problem, userAgent, validationProblem } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { adminLoginInput } from "@/server/contracts/auth";
 import * as audit from "@/server/services/admin-audit";
+import * as twoFactor from "@/server/services/admin-two-factor";
 import * as attempts from "@/server/services/login-attempts";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +66,33 @@ export async function POST(request: Request) {
       `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
       { detail: String(lockout.retryAfterSeconds) },
     );
+  }
+
+  /*
+   * An account whose enrolment row was deleted, by a lockout reset or any
+   * other hand edit, still carries two_factor_enabled. Left alone, Better Auth
+   * branches on that flag below, answers twoFactorRedirect, throws the session
+   * away and sends the person to a code field checked against a secret that is
+   * gone: "TOTP not enabled" on every attempt, with no way to enrol again.
+   *
+   * The flag is put back down first, so the sign in below takes the ordinary
+   * no second factor path and the form shows the enrolment QR exactly as it
+   * does for a first login. It has to happen before the sign in rather than
+   * after, because afterwards the session the enrolment needs is already gone.
+   *
+   * Nothing is repaired for an account that still has its enrolment row, and
+   * the flag on its own opens nothing, so this is not a way past the second
+   * factor for anybody who has the password.
+   */
+  const repair = await twoFactor.clearStaleTotpFlag(db, { email });
+
+  if (repair.cleared && repair.authUserId) {
+    await audit.recordTotpEnrolmentReset(db, {
+      email,
+      authUserId: repair.authUserId,
+      ip,
+      userAgent: agent,
+    });
   }
 
   const response = await getAuth()
@@ -130,6 +158,7 @@ export async function POST(request: Request) {
   }
 
   // Forwarded whole. The body carries twoFactorRedirect when the account has
-  // TOTP enrolled, which is how the form knows to show the code step.
+  // TOTP enrolled, and twoFactorMethods listing what it can be asked for,
+  // which together are how the form knows to show the code step.
   return response;
 }

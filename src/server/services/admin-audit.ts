@@ -150,6 +150,33 @@ export async function recordTotpEnrolled(
 }
 
 /**
+ * A stale two factor flag put back down.
+ *
+ * Written as system rather than admin: nobody has proved who they are at the
+ * point it happens and nobody asked for it. It is the login route noticing
+ * that an account claims a second factor it no longer has an enrolment for,
+ * which is what a lockout reset leaves behind, and repairing it so the next
+ * sign in offers enrolment instead of a code field that can never pass.
+ */
+export async function recordTotpEnrolmentReset(
+  db: Db,
+  input: AuditContext & { email: string; authUserId: string },
+): Promise<void> {
+  const admin = await findAdminByAuthUserId(db, input.authUserId);
+
+  await db.insert(auditLog).values({
+    actorType: "system",
+    actorId: null,
+    action: "admin.totp_enrolment_reset",
+    entity: "admin_users",
+    entityId: admin?.id ?? null,
+    after: { email: input.email, reason: "enrolment missing" },
+    ip: input.ip,
+    userAgent: input.userAgent,
+  });
+}
+
+/**
  * An authenticated admin who tried something their role does not allow.
  *
  * Worth a row of its own. A viewer repeatedly reaching for the approve button
