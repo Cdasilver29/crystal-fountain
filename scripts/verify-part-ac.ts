@@ -106,11 +106,18 @@ async function main() {
   show(target);
 
   await removeVerificationAdmins(db);
-  await db.execute(sql`
-    delete from audit_log
-    where action = 'admin.google_rejected'
-      and after->>'email' like 'verify-part-ac-%@example.test'
-  `);
+
+  /*
+   * audit_log is append only, enforced by a trigger, so this run cannot tidy
+   * its rows away afterwards and must not try. The high water mark before it
+   * starts is the baseline, and every assertion below counts only what this
+   * run itself wrote. Absolutes would pass once and fail on every rerun.
+   */
+  const [{ baseline }] = (
+    await db.execute(sql`
+      select coalesce(max(id), 0)::bigint as baseline from audit_log
+    `)
+  ).rows as { baseline: string }[];
 
   try {
     heading("configuration is both keys or neither");
@@ -184,7 +191,7 @@ async function main() {
       fullName: "Retired Admin",
       role: "treasurer",
     });
-    await provisionAdmin(db, {
+    const unlinked = await provisionAdmin(db, {
       email: UNLINKED,
       password: PASSWORD,
       fullName: "Unlinked Admin",
@@ -283,7 +290,7 @@ async function main() {
                ip::text           as ip
         from audit_log
         where action = 'admin.google_rejected'
-          and after->>'email' like 'verify-part-ac-%@example.test'
+          and id > ${baseline}
         order by after->>'email'
       `)
     ).rows as Record<string, unknown>[];
@@ -335,9 +342,15 @@ async function main() {
       `)
     ).rows as { id: string }[];
 
+    /*
+     * Its own Better Auth user, the one provisioning made before the column
+     * was nulled above. Not somebody else's: admin_users.auth_user_id is
+     * unique, so pointing two administrators at one user is a constraint
+     * violation rather than a test.
+     */
     await google.linkAuthUser(db, {
       adminUserId: unlinkedRow.id,
-      authUserId: active.authUserId,
+      authUserId: unlinked.authUserId,
     });
 
     const afterLink = (
@@ -354,14 +367,15 @@ async function main() {
     check(
       "a null auth_user_id is filled",
       afterLink.find((r) => r.email === UNLINKED)?.auth_user_id ===
-        active.authUserId,
+        unlinked.authUserId,
     );
 
     // The guard that matters: linking must never move an account that already
-    // has a credential onto somebody else's Better Auth user.
+    // has a credential onto a different Better Auth user. A real id is used so
+    // that the only thing standing in the way is the guard itself.
     await google.linkAuthUser(db, {
       adminUserId: active.adminUserId,
-      authUserId: "some-other-auth-user",
+      authUserId: retired.authUserId,
     });
 
     const afterOverwrite = (
@@ -382,12 +396,10 @@ async function main() {
       process.exitCode = 1;
     }
   } finally {
+    // Only the accounts. The audit rows stay where they are, because
+    // audit_log is append only and the baseline above is what keeps a rerun
+    // honest.
     await removeVerificationAdmins(db);
-    await db.execute(sql`
-      delete from audit_log
-      where action = 'admin.google_rejected'
-        and after->>'email' like 'verify-part-ac-%@example.test'
-    `);
   }
 }
 
