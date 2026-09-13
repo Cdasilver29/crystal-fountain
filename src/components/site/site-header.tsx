@@ -107,14 +107,14 @@ export function SiteHeader() {
           */}
           <Link
             href="/redeem"
-            className="ml-1 rounded-lg bg-denim px-3 py-1.5 text-sm font-medium text-white hover:bg-denim/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="btn-primary ml-1 bg-denim px-3 py-1.5 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Redeem your pledge
           </Link>
 
           <Link
             href="/pledge"
-            className="rounded-lg bg-campfire px-3 py-1.5 text-sm font-medium text-white hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="btn-primary bg-campfire px-3 py-1.5 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Make a pledge
           </Link>
