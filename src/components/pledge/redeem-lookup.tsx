@@ -251,7 +251,7 @@ export function RedeemLookup({
               <CopyButton value={found.reference} />
               <Link
                 href={`/p/${found.publicToken}`}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-neutral-200 px-4 text-sm font-medium text-navy transition-colors hover:border-denim focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-200 px-4 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               >
                 Open my pledge page
               </Link>

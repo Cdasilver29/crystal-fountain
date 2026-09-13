@@ -388,7 +388,7 @@ export function PledgeConfirmation({
             </p>
             <Link
               href={`/pledge?add=${token}`}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-denim px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-denim/90 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              className="btn-primary mt-4 inline-flex items-center gap-1.5 bg-denim px-4 py-2.5 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
             >
               Increase my pledge
               <span aria-hidden>&rarr;</span>

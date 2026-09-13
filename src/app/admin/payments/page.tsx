@@ -84,7 +84,7 @@ export default async function AdminPaymentsPage({
             {can(admin, "exports.download") && (
               <Link
                 href="/admin/payments/new"
-                className="inline-flex h-10 items-center justify-center rounded-lg bg-campfire px-5 text-sm font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+                className="btn-primary inline-flex h-10 items-center justify-center bg-campfire px-5 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
               >
                 Record a payment
               </Link>
@@ -147,7 +147,7 @@ export default async function AdminPaymentsPage({
               {page.nextCursor && (
                 <Link
                   href={`/admin/payments?cursor=${encodeURIComponent(page.nextCursor)}`}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 text-sm font-medium text-navy transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   Older payments
                 </Link>

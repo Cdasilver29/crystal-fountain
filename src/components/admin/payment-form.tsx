@@ -152,13 +152,13 @@ export function PaymentForm() {
           <button
             type="button"
             onClick={reset}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg bg-campfire px-6 text-base font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="btn-primary inline-flex h-11 cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Record another
           </button>
           <Link
             href="/admin/pledges"
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-neutral-300 px-6 text-base font-medium text-navy transition-colors hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            className="btn-secondary inline-flex h-11 items-center justify-center border border-neutral-300 px-6 text-base font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
           >
             Back to pledges
           </Link>
@@ -331,7 +331,7 @@ export function PaymentForm() {
       <button
         type="submit"
         disabled={busy}
-        className="mt-7 inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-campfire px-6 text-base font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        className="btn-primary mt-7 inline-flex h-11 w-full cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {busy ? "Recording" : "Record payment"}
       </button>

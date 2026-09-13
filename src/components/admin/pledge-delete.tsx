@@ -113,7 +113,7 @@ export function PledgeDelete({
           type="button"
           onClick={remove}
           disabled={busy}
-          className="rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-800 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:opacity-60"
+          className="btn-primary bg-red-700 px-4 py-2 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:opacity-60"
         >
           {busy ? "Removing" : `Yes, remove ${reference}`}
         </button>

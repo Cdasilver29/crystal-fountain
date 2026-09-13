@@ -342,7 +342,7 @@ export function SettingsForm({
               type="button"
               onClick={save}
               disabled={busy}
-              className="rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:opacity-60"
+              className="btn-primary bg-red-700 px-4 py-2 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:opacity-60"
             >
               {busy ? "Saving" : "Yes, these are correct"}
             </button>

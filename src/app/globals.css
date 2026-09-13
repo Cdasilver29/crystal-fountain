@@ -989,3 +989,120 @@
     transition: none;
   }
 }
+
+/*
+ * Buttons.
+ *
+ * Three classes, added to the buttons and calls to action that are already on
+ * the page rather than replacing what they are. Each one keeps its own colour,
+ * its own width and its own focus ring; what these add is the part that was
+ * inconsistent from one to the next: a common radius, a touch sized target on
+ * a phone, and a press that feels like a press.
+ *
+ * The ring is the reason the elevation below is written the way it is. Tailwind
+ * draws focus-visible:ring-* as a box-shadow, and unlayered CSS outranks a
+ * utility, so a plain box-shadow here would quietly delete the focus ring from
+ * every button on the site. The ring variables are composed into the shadow
+ * instead: when a button is not focused they resolve to nothing, and when it is
+ * they carry the ring Tailwind put there, in front of the elevation.
+ */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  border-radius: 8px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+/*
+ * A thumb sized target on a phone, and only on a phone: a pointer is precise
+ * and the dense admin tables are read on a desktop. Icon buttons are left
+ * square, since a 44px tall 32px wide button is not a target, it is a mistake.
+ */
+@media (max-width: 639px) {
+  .btn-primary:not([data-size^="icon"]),
+  .btn-secondary:not([data-size^="icon"]),
+  .btn-ghost:not([data-size^="icon"]) {
+    min-height: 44px;
+  }
+}
+
+/*
+ * The solid ones. No border: a one pixel highlight along the top edge instead,
+ * which is what makes a filled rectangle read as raised rather than as printed
+ * on the page.
+ *
+ * The hover lightening is a white wash rather than a lighter colour, so the one
+ * rule serves campfire, navy, denim, the red of a destructive action and the
+ * white button on the campfire band without any of them being named here.
+ */
+.btn-primary {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 1px 2px rgb(5 34 82 / 0.14);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-image: linear-gradient(
+    rgb(255 255 255 / 0.09),
+    rgb(255 255 255 / 0.09)
+  );
+  transform: translateY(-1px);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    0 6px 16px rgb(5 34 82 / 0.22);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 1px 2px rgb(5 34 82 / 0.14);
+}
+
+/*
+ * The bordered ones. They keep the border colour they were given; on hover it
+ * brightens to campfire over a five per cent wash of the same, so a secondary
+ * action answers in the house colour rather than in grey.
+ */
+.btn-secondary:hover:not(:disabled) {
+  border-color: #e36520;
+  background-color: rgb(227 101 32 / 0.05);
+}
+
+.btn-secondary:active:not(:disabled),
+.btn-ghost:active:not(:disabled) {
+  background-color: rgb(227 101 32 / 0.1);
+}
+
+/* The same again, lighter, for the quiet ones. */
+.btn-ghost:hover:not(:disabled) {
+  border-color: rgb(227 101 32 / 0.45);
+  background-color: rgb(227 101 32 / 0.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * The colour changes stay, because they are how a button says it is under the
+   * cursor. The movement goes: a button that lifts is the one thing here that
+   * is motion for its own sake.
+   */
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    transition: none;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: none;
+  }
+}

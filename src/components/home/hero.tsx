@@ -161,14 +161,14 @@ export function Hero({
         <div className="mt-11 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
           <Link
             href="/pledge"
-            className="inline-flex h-14 items-center justify-center rounded-xl bg-campfire px-10 text-lg font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="btn-primary inline-flex h-14 items-center justify-center bg-campfire px-10 text-lg font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Make a pledge
           </Link>
 
           <Link
             href="/faq"
-            className="inline-flex h-14 items-center justify-center rounded-xl border border-white/30 px-6 text-base font-medium text-white transition-colors hover:border-white/60 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none sm:px-8 sm:text-lg"
+            className="btn-secondary inline-flex h-14 items-center justify-center border border-white/30 px-6 text-base font-medium text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none sm:px-8 sm:text-lg"
           >
             Frequently asked questions
           </Link>

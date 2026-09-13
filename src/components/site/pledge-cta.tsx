@@ -21,7 +21,7 @@ export function PledgeCta({ heading }: { heading: string }) {
 
         <Link
           href="/pledge"
-          className="mt-7 inline-flex h-12 items-center justify-center rounded-xl bg-campfire px-7 text-base font-semibold text-white transition-colors hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+          className="btn-primary mt-7 inline-flex h-12 items-center justify-center bg-campfire px-7 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
         >
           Make a pledge
         </Link>

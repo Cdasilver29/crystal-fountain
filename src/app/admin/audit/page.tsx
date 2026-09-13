@@ -156,7 +156,7 @@ export default async function AdminAuditPage({
               {nextHref && (
                 <Link
                   href={nextHref}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 text-sm font-medium text-navy transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   Older entries
                 </Link>

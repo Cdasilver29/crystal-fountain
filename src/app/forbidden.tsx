@@ -26,7 +26,7 @@ export default function Forbidden() {
       </p>
       <Link
         href="/admin/pledges"
-        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-navy px-6 text-sm font-semibold text-white transition-colors hover:bg-[#0a2f6b] focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="btn-primary mt-6 inline-flex h-11 items-center justify-center bg-navy px-6 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         Back to pledges
       </Link>

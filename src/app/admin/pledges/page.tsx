@@ -123,7 +123,7 @@ export default async function AdminPledgesPage({
             {can(admin, "pledges.create") && (
               <Link
                 href="/admin/pledges/new"
-                className="inline-flex h-9 items-center justify-center rounded-lg bg-campfire px-4 text-sm font-medium text-white transition-colors hover:bg-campfire/90 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                className="btn-primary inline-flex h-9 items-center justify-center bg-campfire px-4 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               >
                 Record a pledge
               </Link>
@@ -179,7 +179,7 @@ export default async function AdminPledgesPage({
               {page.nextCursor && (
                 <Link
                   href={nextHref()}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 text-sm font-medium text-navy transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   Older pledges
                 </Link>

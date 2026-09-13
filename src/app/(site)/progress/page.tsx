@@ -291,7 +291,7 @@ export default async function ProgressPage() {
             </p>
             <Link
               href="/pledge"
-              className="mt-6 inline-flex h-13 items-center justify-center rounded-xl bg-campfire px-9 text-base font-semibold text-white transition-colors hover:bg-[#ef7433] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+              className="btn-primary mt-6 inline-flex h-13 items-center justify-center bg-campfire px-9 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
             >
               Make a pledge
             </Link>
