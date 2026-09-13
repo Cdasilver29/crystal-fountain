@@ -97,6 +97,44 @@ export async function recordLoginLocked(
   });
 }
 
+/**
+ * A Google account turned away at the callback.
+ *
+ * actor_type is public, the same as a rejected password. Google has vouched
+ * that whoever this is controls that mailbox, which is more than a wrong
+ * password proves, but it is still not evidence that they are an administrator
+ * here, and that is the only identity this table is willing to write down as
+ * admin.
+ *
+ * The attempted email is recorded deliberately, for the same reason it is on
+ * admin.login_failed: without it the row cannot answer which address was
+ * knocking, which is the only question anyone asks of these rows. The reason
+ * separates a stranger from a retired administrator, a distinction the person
+ * refused is deliberately not given.
+ *
+ * entity_id is the admin_users row when there is one, which is the retired
+ * case, and null when the address has never been an administrator.
+ */
+export async function recordGoogleRejected(
+  db: Db,
+  input: AuditContext & {
+    email: string;
+    reason: "not_an_admin" | "deactivated";
+    adminUserId: string | null;
+  },
+): Promise<void> {
+  await db.insert(auditLog).values({
+    actorType: "public",
+    actorId: null,
+    action: "admin.google_rejected",
+    entity: "admin_users",
+    entityId: input.adminUserId,
+    after: { email: input.email, reason: input.reason },
+    ip: input.ip,
+    userAgent: input.userAgent,
+  });
+}
+
 export async function recordLogout(
   db: Db,
   input: AuditContext & { adminUserId: string; email: string },

@@ -84,6 +84,12 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "admin.login_failed": "red",
   "admin.login_locked": "red",
   "admin.forbidden": "red",
+  /*
+   * Red, and worth looking at. Google let this person in and this portal did
+   * not, which is either somebody who should be asking for an account or
+   * somebody probing for one.
+   */
+  "admin.google_rejected": "red",
 
   // Grey: neutral.
   "admin.login": "grey",

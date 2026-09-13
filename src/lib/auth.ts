@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
 import { db } from "@/db";
@@ -8,6 +9,7 @@ import { env } from "@/env";
 import { clientIp } from "@/lib/api";
 import { AUTH_SESSION_COOKIE } from "@/lib/auth-cookies";
 import * as audit from "@/server/services/admin-audit";
+import * as google from "@/server/services/admin-google";
 
 /**
  * The caller IP for an audit row, reusing the same parser the route handlers
@@ -16,6 +18,67 @@ import * as audit from "@/server/services/admin-audit";
  */
 function requestIp(context: { request?: Request } | null): string | null {
   return context?.request ? clientIp(context.request) : null;
+}
+
+/** The shape of the endpoint context Better Auth hands a database hook. */
+type HookContext = {
+  request?: Request;
+  path?: string;
+  headers?: Headers;
+} | null;
+
+/**
+ * Whether this hook is firing inside a social sign in.
+ *
+ * Better Auth registers the handler as "/callback/:id" and the generic OAuth
+ * one as "/oauth2/callback/:id", so both the pattern and a resolved
+ * "/callback/google" are matched rather than betting on which form the context
+ * carries.
+ *
+ * Everything below is scoped to this on purpose. The password flow already has
+ * its own gate in /api/admin/login, which refuses a retired account after the
+ * password and before the portal, and the provisioning calls in
+ * admin-users.ts and admin-setup.ts create a Better Auth user deliberately,
+ * from our own code, with no endpoint context at all. Gating those here would
+ * refuse the super administrator creating somebody, because at that moment the
+ * admin_users row this asks for does not exist yet.
+ */
+function isSocialCallback(context: HookContext): boolean {
+  const path = context?.path ?? "";
+  return path.startsWith("/callback/") || path.startsWith("/oauth2/callback/");
+}
+
+/**
+ * Turns a refused Google sign in into an audit row and an error the callback
+ * can redirect on.
+ *
+ * The audit write goes through our own db handle rather than the library's, so
+ * it is outside whatever transaction Better Auth has open and survives the
+ * abort this throw causes. Unlike the audit hooks further down, a failure here
+ * is not swallowed: those protect a good login from a bad audit insert, but
+ * this one is the refusal itself, and a refusal that cannot be recorded must
+ * still be a refusal.
+ */
+async function refuseGoogle(
+  result: Extract<google.GoogleGateResult, { allowed: false }>,
+  context: HookContext,
+): Promise<never> {
+  try {
+    await audit.recordGoogleRejected(db, {
+      email: result.email,
+      reason: result.reason,
+      adminUserId: result.adminUserId,
+      ip: requestIp(context),
+      userAgent: context?.request?.headers.get("user-agent") ?? null,
+    });
+  } catch (error) {
+    console.error("audit admin.google_rejected failed", error);
+  }
+
+  throw new APIError("FORBIDDEN", {
+    code: google.GOOGLE_REJECTED_CODE,
+    message: google.GOOGLE_REJECTED_MESSAGE,
+  });
 }
 
 /**
@@ -47,6 +110,17 @@ function createAuth() {
   const baseURL = env.BETTER_AUTH_URL ?? env.NEXT_PUBLIC_SITE_URL;
   const isSecureOrigin = baseURL.startsWith("https://");
 
+  /*
+   * Google is optional. With no keys the provider is simply not registered, so
+   * /api/auth/sign-in/social has nothing to offer and the login page renders
+   * no button, while email and password carries on exactly as before. A half
+   * configured pair throws rather than guessing.
+   */
+  const googleEnabled = google.isGoogleConfigured({
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+  });
+
   return betterAuth({
     appName: "Crystal Fountain",
     secret: env.BETTER_AUTH_SECRET,
@@ -73,6 +147,58 @@ function createAuth() {
       // Better Auth's default hasher is scrypt, which CLAUDE.md permits.
       minPasswordLength: 12,
       requireEmailVerification: false,
+    },
+
+    /*
+     * Google, when it is configured at all.
+     *
+     * The redirect URI is spelled out rather than left to the default so that
+     * the value registered in the Google console and the value sent in the
+     * authorisation request are visibly the same string. Google refuses the
+     * whole exchange on a mismatch, and it is derived from the same baseURL
+     * the cookies are, so a local run and production stay consistent.
+     *
+     * Registering the provider is not permission to use it. Every sign in
+     * through it still has to pass the allowlist in the hooks below.
+     */
+    socialProviders: googleEnabled
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID ?? "",
+            clientSecret: env.GOOGLE_CLIENT_SECRET ?? "",
+            redirectURI: `${baseURL}/api/auth/callback/google`,
+          },
+        }
+      : undefined,
+
+    /*
+     * Account linking, so an administrator who already has a password and then
+     * signs in with Google lands on the row they already have instead of a
+     * second one.
+     *
+     * Both settings are load bearing and neither is the default:
+     *
+     * trustedProviders names Google as an identity we accept an address from.
+     * Default is an empty list, and without it linking depends on Google
+     * having said email_verified, which is not something to leave to chance
+     * for the account that opens the pledge ledger.
+     *
+     * requireLocalEmailVerified defaults to true, and every administrator here
+     * is created with emailVerified false, because there is no mail round trip
+     * in this portal and nothing has ever set it. Left at the default, linking
+     * refuses for every existing administrator and Better Auth answers
+     * "account not linked", which reads as a broken button rather than a
+     * policy. Turning it off is safe here precisely because the allowlist
+     * below is the real gate: the address has to already be an active
+     * administrator, put there by a super administrator, before any of this is
+     * reached.
+     */
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: ["google"],
+        requireLocalEmailVerified: false,
+      },
     },
 
     session: {
@@ -150,6 +276,31 @@ function createAuth() {
     databaseHooks: {
       session: {
         create: {
+          /*
+           * The allowlist, for an address that already has a Better Auth user.
+           *
+           * This is the retired administrator and the linking case: the user
+           * row is already committed, so the address is read back from it and
+           * put to the gate. Better Auth creates the user inside a transaction
+           * and the session outside it, which is what makes reading through
+           * our own handle here safe.
+           *
+           * Scoped to the social callback. A password sign in reaches this
+           * same hook, and gating it here would be a second, differently
+           * worded refusal for a case /api/admin/login already handles, and
+           * would fire during /admin/setup before the admin_users row exists.
+           */
+          before: async (session, context) => {
+            if (!isSocialCallback(context)) return;
+
+            const email = await google.emailForAuthUser(db, session.userId);
+            const gate = await google.checkGoogleSignIn(db, {
+              email: email ?? "",
+            });
+
+            if (!gate.allowed) await refuseGoogle(gate, context);
+          },
+
           after: async (session, context) => {
             try {
               const admin = await audit.findAdminByAuthUserId(
@@ -171,6 +322,54 @@ function createAuth() {
         },
       },
       user: {
+        create: {
+          /*
+           * The allowlist, for an address Better Auth has never seen.
+           *
+           * This is the stranger: a Google account with no user row here at
+           * all. Refusing at session creation would work, but it would work
+           * one row too late, leaving an auth_users row behind for every
+           * passer by who ever pressed the button. Refusing here means nothing
+           * is written at all.
+           *
+           * An authorised address with no user row is allowed through and
+           * linked in the after hook below, which is the only way an
+           * administrator can reach this branch.
+           */
+          before: async (user, context) => {
+            if (!isSocialCallback(context)) return;
+
+            const gate = await google.checkGoogleSignIn(db, {
+              email: typeof user.email === "string" ? user.email : "",
+            });
+
+            if (!gate.allowed) await refuseGoogle(gate, context);
+          },
+
+          after: async (user, context) => {
+            if (!isSocialCallback(context)) return;
+
+            /*
+             * Fills auth_user_id when the admin_users row was somehow made
+             * without one. Guarded inside the service so an existing link is
+             * never overwritten, and a no op for every account created the
+             * ordinary way, which already has its credential and its link.
+             */
+            try {
+              const gate = await google.checkGoogleSignIn(db, {
+                email: typeof user.email === "string" ? user.email : "",
+              });
+              if (!gate.allowed) return;
+
+              await google.linkAuthUser(db, {
+                adminUserId: gate.adminUserId,
+                authUserId: user.id,
+              });
+            } catch (error) {
+              console.error("linking admin_users.auth_user_id failed", error);
+            }
+          },
+        },
         update: {
           after: async (user, context) => {
             // Only the enrolment transition is interesting, and the recorder

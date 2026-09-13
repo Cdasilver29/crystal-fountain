@@ -67,6 +67,27 @@ const serverSchema = z.object({
   TURNSTILE_SITE_KEY: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
   /*
+   * Google, the second way into the admin portal.
+   *
+   * Both are optional and both are read together, the same shape as the
+   * Turnstile pair above. Set, the sign in page offers a Google button and the
+   * callback is gated by the allowlist in admin-google.ts. Unset, the button
+   * does not render and email and password carries on unchanged, which is what
+   * a laptop with no Google project wants.
+   *
+   * Unlike Turnstile there is no production requirement here, because absence
+   * closes a door rather than opening one. A deploy that forgets these has one
+   * working sign in method instead of two. A half configured pair is still an
+   * error: see isGoogleConfigured, which refuses to guess which half was meant.
+   *
+   * These are server keys, not NEXT_PUBLIC_ ones. Neither is inlined into the
+   * browser bundle: the client id travels in the redirect Better Auth builds on
+   * the server, and the login page is told only whether the button should
+   * render, never the value.
+   */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /*
    * The ceiling for approving a pledge without a person looking at it, in whole
    * shillings. A pledge whose total lands under this is verified on submission.
    * Anything at or above it waits for the treasurer.
@@ -171,6 +192,8 @@ function getServerEnv(): ServerEnv {
       CRON_SECRET: process.env.CRON_SECRET,
       TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
       PLEDGE_AUTO_APPROVE_LIMIT_KES: process.env.PLEDGE_AUTO_APPROVE_LIMIT_KES,
       SENTRY_DSN: process.env.SENTRY_DSN,
       RESEND_API_KEY: process.env.RESEND_API_KEY,
