@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { FadeImage } from "@/components/media/fade-image";
 
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,7 @@ export function SectionBackground({
 }) {
   return (
     <>
-      <Image
+      <FadeImage
         src={src}
         alt=""
         fill

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { FadeImage } from "@/components/media/fade-image";
 
 import { CONTACT } from "@/content/campaign";
 import { ACCOUNTABILITY } from "@/content/project";
@@ -25,8 +25,8 @@ export function Accountability() {
             and the space the picture will occupy is still known before it
             loads, which is the point of stating a ratio at all.
           */}
-          <div className="relative aspect-[1312/1199] w-full overflow-hidden rounded-2xl shadow-sm ring-1 ring-black/5">
-            <Image
+          <div className="relative aspect-[1312/1199] w-full overflow-hidden rounded-2xl shadow-elevate ring-1 ring-black/5">
+            <FadeImage
               src="/images/gallery/accountability.jpg"
               alt="The scale model seen from one corner, the twin towers and the domed centre inside the tree lined perimeter"
               fill

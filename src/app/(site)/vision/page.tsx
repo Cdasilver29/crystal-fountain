@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { FadeImage } from "@/components/media/fade-image";
 import Link from "next/link";
 
 import { YouTubeEmbed } from "@/components/media/youtube-embed";
@@ -85,14 +85,14 @@ export default function VisionPage() {
               </div>
 
               {brochure && (
-                <Image
+                <FadeImage
                   src={brochure.src}
                   alt={brochure.alt}
                   width={BROCHURE_WIDTH}
                   height={BROCHURE_HEIGHT}
                   loading="lazy"
                   sizes="(min-width: 768px) 320px, 100vw"
-                  className="h-auto w-full rounded-2xl border border-black/5 shadow-sm"
+                  className="h-auto w-full rounded-2xl border border-black/5 shadow-elevate"
                 />
               )}
             </div>

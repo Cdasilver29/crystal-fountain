@@ -149,6 +149,14 @@
   --color-emperor: #4b207f;
   --color-earth: #5e3929;
   --color-treefrog: #448d21;
+
+  /*
+   * The elevation under an inline content image, and the slightly deeper one
+   * a brochure card takes under the cursor. Soft and wide rather than dark and
+   * tight: these lift a photograph off a white page, they are not a border.
+   */
+  --shadow-elevate: 0 4px 20px rgb(0 0 0 / 0.08);
+  --shadow-elevate-lg: 0 8px 28px rgb(0 0 0 / 0.12);
 }
 
 @layer base {
@@ -927,6 +935,57 @@
 
 @media (prefers-reduced-motion: reduce) {
   .select-field-chevron {
+    transition: none;
+  }
+}
+
+/*
+ * An image arriving.
+ *
+ * Four hundred milliseconds from transparent, started by the data-loaded
+ * attribute that FadeImage sets when the file has decoded, so the fade is the
+ * picture appearing rather than a box animating while the network is still
+ * working. No fill-mode and no opacity on the element itself: an image that
+ * never gets the attribute is an image at full opacity, which is the state
+ * that matters. See the note in fade-image.tsx.
+ */
+@keyframes img-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.img-fade[data-loaded] {
+  animation: img-fade-in 400ms ease-out;
+}
+
+/*
+ * The brochure cards lift a little under the cursor. They open a lightbox, so
+ * they have to read as something to press, and the strip is the one place on
+ * the page where several of them sit in a row and a small scale is legible.
+ */
+.brochure-card {
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brochure-card:hover {
+    transform: scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * Switched off outright rather than left to the duration collapse, which
+   * would strand an image on its first frame at zero opacity.
+   */
+  .img-fade[data-loaded] {
+    animation: none !important;
+  }
+
+  .brochure-card {
     transition: none;
   }
 }

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { FadeImage } from "@/components/media/fade-image";
 
 import { TIMELINE } from "@/content/project";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export function JourneyTimeline() {
             of the plinth, so the model sits on its own base.
           */}
           <div className="relative aspect-[1254/1028] w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/10">
-            <Image
+            <FadeImage
               src="/images/gallery/vision-reality.jpg"
               alt="The scale model of the Crystal Fountain Cathedral and Centre, the sanctuary in front of the tower, on its plinth in the church lobby"
               fill

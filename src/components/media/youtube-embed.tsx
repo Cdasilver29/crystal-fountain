@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { FadeImage } from "@/components/media/fade-image";
 import { useState } from "react";
 
 /**
@@ -57,7 +57,7 @@ export function YouTubeEmbed({
           aria-label={`Play the video: ${title}`}
           className="group absolute inset-0 size-full cursor-pointer focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
         >
-          <Image
+          <FadeImage
             src={posterUrl(id, quality)}
             onError={() => setQuality("hqdefault")}
             alt=""

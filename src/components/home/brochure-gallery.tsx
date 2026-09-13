@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { FadeImage } from "@/components/media/fade-image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -65,9 +65,9 @@ export function BrochureGallery() {
                   type="button"
                   onClick={() => setOpenAt(index)}
                   aria-label={`Open ${page.alt} larger`}
-                  className="block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="brochure-card block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-black/5 bg-white shadow-elevate hover:shadow-elevate-lg focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
-                  <Image
+                  <FadeImage
                     src={page.src}
                     alt={page.alt}
                     width={BROCHURE_WIDTH}
@@ -200,7 +200,7 @@ function Lightbox({
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 focus:outline-none"
     >
-      <Image
+      <FadeImage
         src={page.src}
         alt={page.alt}
         width={BROCHURE_WIDTH}
