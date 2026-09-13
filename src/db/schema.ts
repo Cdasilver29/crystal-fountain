@@ -164,7 +164,6 @@ export const adminUsers = pgTable(
     email: citext("email").notNull().unique(),
     fullName: text("full_name").notNull(),
     role: text("role").notNull(),
-    totpSecret: bytea("totp_secret"),
     isActive: boolean("is_active").notNull().default(true),
     /*
      * The first administrator, created through /admin/setup.
@@ -190,8 +189,8 @@ export const adminUsers = pgTable(
      * The Better Auth user this admin signs in as, once they have one.
      *
      * Nullable on purpose, so an admin_users row can be created before its
-     * credential exists. Role, totp_secret and is_active stay here rather than
-     * moving into the library's tables.
+     * credential exists. Role and is_active stay here rather than moving into
+     * the library's tables.
      */
     authUserId: text("auth_user_id")
       .unique()
@@ -532,11 +531,10 @@ export const auditLog = pgTable(
 // reserved word in Postgres and because it should be obvious at a glance which
 // tables this project owns and which the library does.
 //
-// admin_users is untouched apart from one new nullable column. Better Auth does
-// not adopt it as its user table: admin_users.id is a uuid, its totp_secret
-// predates the two factor plugin and means something different from the
-// plugin's secret, and adopting it would put role and is_active under the
-// library's lifecycle.
+// admin_users gains one nullable column and loses the totp_secret that
+// predated the plugin. Better Auth does not adopt it as its user table:
+// admin_users.id is a uuid, and adopting it would put role and is_active under
+// the library's lifecycle.
 
 export const authUsers = pgTable("auth_users", {
   id: text("id").primaryKey(),

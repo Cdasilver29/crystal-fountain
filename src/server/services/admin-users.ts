@@ -77,12 +77,12 @@ type ListRow = {
  * against: a row in auth_two_factors, reached through auth_user_id. Never the
  * secret itself, which does not leave the database.
  *
- * Not admin_users.totp_secret, which this used to read. That column predates
- * the two factor plugin and means something different from the plugin's own
- * secret, so nothing has written it since Better Auth arrived: every account
+ * Not admin_users.totp_secret, which this used to read. That column predated
+ * the two factor plugin and meant something different from the plugin's own
+ * secret, so nothing had written it since Better Auth arrived: every account
  * enrolled through the login screen showed as not enrolled, and an account
  * whose enrolment was deleted by a lockout reset would have gone on showing as
- * enrolled. The column is left where it is, unread.
+ * enrolled. Migration 0011 dropped it.
  *
  * auth_users.two_factor_enabled is deliberately not the source either. It is
  * the flag, not the enrolment, and the two can drift: it is what a lockout

@@ -28,12 +28,12 @@ function requestIp(context: { request?: Request } | null): string | null {
  * call instead and cached from then on, exactly like getDb().
  *
  * Better Auth owns its own tables. It deliberately does not adopt admin_users
- * as its user table: admin_users.id is a uuid, its totp_secret column predates
- * the two factor plugin and means something different from the plugin's own
- * secret, and mapping the two would put role, is_active and totp_secret under
- * Better Auth's lifecycle. admin_users instead gains one nullable column,
- * auth_user_id, pointing at the Better Auth user. Role, permissions and the
- * treasurer's existing rows stay exactly where they are.
+ * as its user table: admin_users.id is a uuid, and mapping the two would put
+ * role and is_active under Better Auth's lifecycle. admin_users instead gains
+ * one nullable column, auth_user_id, pointing at the Better Auth user. Role,
+ * permissions and the treasurer's existing rows stay exactly where they are.
+ * The second factor lives entirely in the plugin's own table now; the
+ * totp_secret column that predated it is gone.
  */
 
 function createAuth() {

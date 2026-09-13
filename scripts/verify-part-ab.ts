@@ -8,14 +8,15 @@ config({ path: ".env.local" });
 /**
  * The enrolment column on the administrators screen.
  *
- * It used to read admin_users.totp_secret, a column that predates the two
- * factor plugin and that nothing has written since Better Auth arrived. So it
+ * It used to read admin_users.totp_secret, a column that predated the two
+ * factor plugin and that nothing had written since Better Auth arrived. So it
  * was wrong in both directions: an account enrolled through the login screen
  * read as not enrolled, and an account whose enrolment had been deleted by a
  * lockout reset would have read as enrolled, which is exactly the account
- * somebody looking at that screen needs to find.
+ * somebody looking at that screen needs to find. That column has since been
+ * dropped, in migration 0011, and its absence is checked here too.
  *
- * Four accounts are set up here, one for each state the column has to tell
+ * Three accounts are set up here, one for each state the column has to tell
  * apart, and list() is asked what it says about them. No HTTP: this is a
  * service function taking a db handle, so it is called directly.
  *
@@ -29,7 +30,6 @@ const PASSWORD = "correct-horse-battery-staple";
 const ENROLLED = "verify-part-ab-enrolled@example.test";
 const HALF = "verify-part-ab-half@example.test";
 const STALE = "verify-part-ab-stale@example.test";
-const LEGACY = "verify-part-ab-legacy@example.test";
 
 function heading(text: string) {
   console.log(`\n== ${text} ==`);
@@ -65,13 +65,12 @@ async function main() {
   await removeVerificationAdmins(db);
 
   try {
-    heading("four accounts, four states");
+    heading("three accounts, three states");
 
     for (const [email, name] of [
       [ENROLLED, "Enrolled"],
       [HALF, "Half enrolled"],
       [STALE, "Reset"],
-      [LEGACY, "Legacy secret"],
     ]) {
       await provisionAdmin(db, {
         email,
@@ -108,15 +107,9 @@ async function main() {
       update auth_users set two_factor_enabled = true where email = ${STALE}
     `);
 
-    // The old source of truth, written by nothing since Better Auth arrived.
-    await db.execute(sql`
-      update admin_users set totp_secret = '\\x00'::bytea where email = ${LEGACY}
-    `);
-
     const raw = (
       await db.execute(sql`
         select a.email,
-               a.totp_secret is not null as legacy_secret,
                u.two_factor_enabled as flag,
                count(t.id)::int as enrolments,
                bool_or(t.verified) as verified
@@ -124,7 +117,7 @@ async function main() {
         join auth_users u on u.id = a.auth_user_id
         left join auth_two_factors t on t.user_id = u.id
         where a.email like 'verify-part-ab-%@example.test'
-        group by a.email, a.totp_secret, u.two_factor_enabled
+        group by a.email, u.two_factor_enabled
         order by a.email
       `)
     ).rows as Record<string, unknown>[];
@@ -155,9 +148,17 @@ async function main() {
       "and neither does an account whose enrolment was reset away",
       byEmail.get(STALE)?.twoFactorEnabled === false,
     );
+    const column = (
+      await db.execute(sql`
+        select count(*)::int as n
+        from information_schema.columns
+        where table_name = 'admin_users' and column_name = 'totp_secret'
+      `)
+    ).rows as { n: number }[];
     check(
-      "the legacy totp_secret column is no longer believed",
-      byEmail.get(LEGACY)?.twoFactorEnabled === false,
+      "and the legacy totp_secret column is not there to be believed",
+      column[0]?.n === 0,
+      `${column[0]?.n} column(s)`,
     );
 
     heading("and the rest of the row still arrives");
