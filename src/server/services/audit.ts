@@ -143,6 +143,14 @@ export function summarise(
       return email ? `email: ${email}` : "";
     }
 
+    case "admin.totp_enrolment_reset": {
+      // The reason is the whole point of the row: the flag was cleared because
+      // the enrolment it pointed at was not there.
+      const email = str(a.email);
+      const reason = str(a.reason);
+      return [email && `email: ${email}`, reason].filter(Boolean).join(", ");
+    }
+
     case "admin.login_locked": {
       const email = str(a.email);
       const retry = a.retryAfterSeconds;

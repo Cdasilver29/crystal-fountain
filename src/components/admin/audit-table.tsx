@@ -67,6 +67,13 @@ export const AUDIT_TONES: Record<string, Tone> = {
    * congregation sees or where their money goes.
    */
   "campaign.updated": "amber",
+  /*
+   * Amber rather than grey, for the same reason as a password reset. Enrolling
+   * is routine and the owner chose it; having the second factor cleared away
+   * underneath them is a change to how an account is protected that nobody
+   * asked for, and it is worth seeing on the page.
+   */
+  "admin.totp_enrolment_reset": "amber",
 
   // Red: destructive, reversed or refused.
   "pledge.voided": "red",

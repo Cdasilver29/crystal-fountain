@@ -320,6 +320,13 @@ async function main() {
       broken.flag === true && broken.enrolments === 0,
     );
 
+    /*
+     * The journal is append only and the sweep at the top of this script does
+     * not touch it, so rows from every previous run of this suite are still
+     * there under the same address. Only what this run writes is counted.
+     */
+    const since = new Date().toISOString();
+
     const recovered = await login();
     check(
       "logging in now returns a session instead of a code prompt",
@@ -342,15 +349,16 @@ async function main() {
         from audit_log
         where action = 'admin.totp_enrolment_reset'
           and after->>'email' = ${EMAIL}
+          and at >= ${since}::timestamptz
         order by at desc
         limit 5
       `)
     ).rows as Record<string, unknown>[];
     show(audit);
     check(
-      "the repair is in the journal",
+      "the repair is in the journal, once",
       audit.length === 1 && audit[0].actor_type === "system",
-      `${audit.length} row(s)`,
+      `${audit.length} row(s) since this run started`,
     );
 
     const again = await twoFactorCall("enable", recovered.cookies, {
