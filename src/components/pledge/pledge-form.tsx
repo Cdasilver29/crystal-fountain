@@ -857,8 +857,16 @@ export function PledgeForm({
             </Button>
           )}
 
+          {/*
+            The one button carries Continue on the first two steps and the
+            pledge itself on the last, so the size is conditional rather than
+            set once: the step that records a pledge is the step that gets the
+            larger target. Below the sm breakpoint both are already 44px from
+            the min-height on .btn-primary, so this only changes the desktop.
+          */}
           <Button
             type="button"
+            size={step === 2 ? "lg" : "default"}
             onClick={step === 2 ? submit : next}
             disabled={submitting}
             className="ml-auto min-w-36 bg-campfire text-white hover:bg-campfire/90"
