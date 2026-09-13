@@ -859,17 +859,23 @@ export function PledgeForm({
 
           {/*
             The one button carries Continue on the first two steps and the
-            pledge itself on the last, so the size is conditional rather than
-            set once: the step that records a pledge is the step that gets the
-            larger target. Below the sm breakpoint both are already 44px from
-            the min-height on .btn-primary, so this only changes the desktop.
+            pledge itself on the last, so the size is set per step rather than
+            once: the step that records a pledge gets the larger target.
+
+            48px and 16px type, which sits between the ordinary form button and
+            the 56px hero call to action. The shadcn size variants do not reach
+            it, since lg is 36px, so the height is set on the element and
+            tailwind-merge drops the h-8 the default variant would have given.
           */}
           <Button
             type="button"
-            size={step === 2 ? "lg" : "default"}
             onClick={step === 2 ? submit : next}
             disabled={submitting}
-            className="ml-auto min-w-36 bg-campfire text-white hover:bg-campfire/90"
+            className={
+              step === 2
+                ? "ml-auto h-12 min-w-36 px-8 text-base bg-campfire text-white hover:bg-campfire/90"
+                : "ml-auto min-w-36 bg-campfire text-white hover:bg-campfire/90"
+            }
           >
             {step === 2
               ? submitting
