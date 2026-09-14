@@ -92,6 +92,22 @@ Architecture:
 4. Committed and pushed.
 5. A three line summary of what changed and what the next session should pick up.
 
+## Migrations
+
+A migration that passes on a Neon branch is not applied to production. Production is a
+separate step and it has been missed twice, both times shipping a feature that 500s for
+every user.
+
+When a session creates a migration:
+
+- Say so explicitly in the session summary, naming the file and what it changes.
+- End the summary with the line: "PENDING: run pnpm db:migrate against production before
+  this feature is announced."
+- Do not describe the feature as working or deployed until that has happened.
+
+Never run pnpm db:migrate against production yourself unless explicitly asked in that
+session. The user runs it.
+
 ## Not in v1
 
 Do not build these unless explicitly asked, even if they seem useful:
