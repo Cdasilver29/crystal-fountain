@@ -12,6 +12,12 @@ import { authClient } from "@/lib/auth-client";
  * field. Enrolment is not optional for an admin, so there is no way past it:
  * the only route out of the enrol step is a verified code.
  *
+ * Google leads and the password form is folded behind a link, because Google
+ * is one tap and recovers itself while the password path wants a password and
+ * a code and is where administrators lock themselves out. Nothing is removed:
+ * the link opens the same form, and with no Google keys configured it is open
+ * from the start.
+ *
  * The password stage posts to /api/admin/login rather than to Better Auth, so
  * the per email lockout wraps it. The two factor steps talk to Better Auth
  * directly, where the plugin's own account lockout applies.
@@ -47,6 +53,12 @@ export function AdminLogin({
   // this form rather than as a page that silently forgot what happened.
   const [error, setError] = useState<string | null>(rejection);
   const [busy, setBusy] = useState(false);
+  /*
+   * Whether the email and password form is showing. Folded away when Google is
+   * on offer, open from the start when it is not, since there would be nothing
+   * to fold it behind.
+   */
+  const [emailOpen, setEmailOpen] = useState(!googleEnabled);
 
   // Enrolment material, held only for the life of this form.
   const [totpUri, setTotpUri] = useState<string | null>(null);
@@ -240,12 +252,50 @@ export function AdminLogin({
 
       {step === "password" && googleEnabled && (
         <>
-          <GoogleButton next={next} onFailure={setError} />
+          <p
+            id="google-recommended"
+            className="mt-6 text-sm font-medium text-neutral-600"
+          >
+            Recommended
+          </p>
+          <GoogleButton
+            next={next}
+            onFailure={setError}
+            describedBy="google-recommended"
+          />
+
+          {/*
+            A refused Google sign in comes back to this page with the form
+            still folded away, so the sentence needs somewhere to land up here.
+            Once the form is open it carries its own copy of this.
+          */}
+          {!emailOpen && (
+            <div className="mt-4">
+              <Problem message={error} />
+            </div>
+          )}
+
           <Divider />
         </>
       )}
 
-      {step === "password" && (
+      {/*
+        The way in to the quiet path. It gives way to the form rather than
+        sitting above it, and the email field takes focus as it arrives, so a
+        keyboard lands in the first field rather than on a control that has
+        just disappeared.
+      */}
+      {step === "password" && !emailOpen && (
+        <button
+          type="button"
+          onClick={() => setEmailOpen(true)}
+          className="mt-5 w-full cursor-pointer rounded py-1 text-center text-sm font-medium text-denim underline underline-offset-4 hover:text-campfire focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+          Sign in with email and password instead
+        </button>
+      )}
+
+      {step === "password" && emailOpen && (
         <form onSubmit={submitPassword} className="mt-6 space-y-4">
           <Field
             id="email"
@@ -397,7 +447,13 @@ function GoogleLogo() {
 }
 
 /**
- * The Google option, offered above the password form.
+ * The Google option, and the one the card leads with.
+ *
+ * 48px tall, semibold and raised, so it reads as the primary action while
+ * keeping Google's white ground rather than the campfire fill the site gives
+ * its own primary buttons. The shadow is a Tailwind utility on purpose: those
+ * compose the ring variables, where a hand written box-shadow here would
+ * outrank the focus ring and quietly delete it.
  *
  * The whole exchange is a full page navigation to Google and back, so there is
  * no success path to handle here. Only the failure to leave at all is caught:
@@ -411,9 +467,12 @@ function GoogleLogo() {
 function GoogleButton({
   next,
   onFailure,
+  describedBy,
 }: {
   next: string;
   onFailure: (message: string) => void;
+  /** Id of the "Recommended" line, read out along with the button's own text. */
+  describedBy?: string;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -447,7 +506,8 @@ function GoogleButton({
       type="button"
       onClick={start}
       disabled={busy}
-      className="btn-secondary mt-6 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-3 border border-neutral-300 bg-white px-6 text-base font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+      aria-describedby={describedBy}
+      className="btn-secondary mt-2 inline-flex h-12 w-full cursor-pointer items-center justify-center gap-3 border border-neutral-400 bg-white px-6 text-base font-semibold text-navy shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       <GoogleLogo />
       {busy ? "Taking you to Google" : "Continue with Google"}
