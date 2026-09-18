@@ -79,6 +79,12 @@ Architecture:
   one commit.
 - Verify against the database with SQL, not application logs. After any change that affects
   totals, run the verification query and show the output.
+- Before running any write command against a database, prove which database you are connected
+  to by reading a value back from it, not by comparing connection strings. A string check can
+  pass while the connection goes somewhere else entirely. Read the migration count, or set a
+  sentinel and read it back.
+- Never source an env file containing a Neon connection string. The unquoted & backgrounds the
+  assignment and the variable silently never gets set. Export the value quoted instead.
 - Do not install a dependency without saying why and pinning the exact version.
 - Do not refactor code you were not asked to touch.
 - If something is ambiguous, ask one question and wait. Do not guess and build.
