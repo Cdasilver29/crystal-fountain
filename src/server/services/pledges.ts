@@ -854,7 +854,7 @@ type SearchRow = {
  * contact detail. CLAUDE.md keeps whole numbers off public surfaces; a viewer
  * is not the public, but they also have no task that needs one.
  */
-function maskPhone(e164: string): string {
+export function maskPhone(e164: string): string {
   const last = e164.slice(-3);
   const prefix = e164.startsWith("+254") ? "+254" : "";
   return `${prefix} ••• ••• ${last}`.trim();
