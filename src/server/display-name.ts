@@ -29,7 +29,7 @@
  * not a name and "Mr. S." tells nobody anything, so "Mr. Steve Mogere" has to
  * reach the page as "Steve M.".
  */
-const TITLES: ReadonlySet<string> = new Set([
+export const TITLE_WORDS: readonly string[] = [
   "mr",
   "mrs",
   "ms",
@@ -43,7 +43,17 @@ const TITLES: ReadonlySet<string> = new Set([
   "rev",
   "sr",
   "br",
-]);
+];
+
+/**
+ * The same list as a set, for the checks below.
+ *
+ * The array is what is exported, because the public list service builds a
+ * Postgres regex from it to strip the same titles when deciding what a search
+ * term may match. One list, so the name people see and the name they can search
+ * for cannot drift apart.
+ */
+const TITLES: ReadonlySet<string> = new Set(TITLE_WORDS);
 
 /**
  * A joint pledge, split on the first joiner.

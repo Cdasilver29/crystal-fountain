@@ -708,3 +708,30 @@ export const pledgeLookups = pgTable(
   },
   (t) => [index("pledge_lookups_ip_at_idx").on(t.ip, t.at)],
 );
+
+/*
+ * Every request to the public pledgers list.
+ *
+ * A table of its own rather than a column on pledge_lookups. That table records
+ * attempts to find one specific pledge from a reference and a phone number, and
+ * its `found` flag is a security signal: somebody walking references shows up
+ * there as a run of misses. Browsing a public page is neither of those things,
+ * and mixing the two would put noise through a signal the treasurer relies on.
+ *
+ * Counted from here rather than from memory for the same reason as the lookup
+ * limit: it has to hold across every serverless instance and survive a
+ * redeploy, which an in process counter on Vercel does not.
+ *
+ * The IP is nullable because clientIp() returns null for anything that is not
+ * plausibly an address, and a request with no usable address still has to be
+ * counted somewhere rather than silently exempted.
+ */
+export const publicListRequests = pgTable(
+  "public_list_requests",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    ip: inet("ip"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("public_list_requests_ip_at_idx").on(t.ip, t.at)],
+);

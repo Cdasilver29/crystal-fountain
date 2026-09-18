@@ -92,6 +92,13 @@
       "when": 1789289995722,
       "tag": "0012_session_sign_in_method",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789741083551,
+      "tag": "0013_public_list_requests",
+      "breakpoints": true
     }
   ]
 }
