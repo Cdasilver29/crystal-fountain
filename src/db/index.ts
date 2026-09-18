@@ -110,3 +110,14 @@ export type Db = DrizzleDb;
 
 /** The handle handed to the callback inside db.transaction(). */
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/**
+ * Either handle.
+ *
+ * A service that one other service has to call from inside its own transaction
+ * takes this rather than Db, so the two commit or roll back together. Drizzle
+ * turns a transaction opened on a Tx into a savepoint, so the inner service
+ * keeps its own boundary without starting a second transaction that could
+ * commit on its own.
+ */
+export type DbHandle = Db | Tx;

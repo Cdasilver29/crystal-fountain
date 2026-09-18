@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import type { Db } from "@/db";
+import type { Db, DbHandle } from "@/db";
 import {
   auditLog,
   campaigns,
@@ -19,6 +19,10 @@ import {
   tooManyRequests,
 } from "@/server/errors";
 import { displayName } from "@/server/display-name";
+import {
+  closeForPledge,
+  closureFor,
+} from "@/server/services/change-request-closure";
 import { kesToMinor } from "@/server/money";
 import {
   isTurnstileConfigured,
@@ -1505,7 +1509,13 @@ const COUNTED_STATUSES: readonly string[] = ["verified", "fulfilled"];
  * later write to that pledge, which is a strange way to find out.
  */
 export async function edit(
-  db: Db,
+  /*
+   * A handle rather than Db, because approving a change request calls this
+   * from inside the transaction that records the decision. The two have to
+   * commit together: a reduction applied without its decision recorded, or the
+   * other way round, is a pledge nobody can reconcile against the queue.
+   */
+  db: DbHandle,
   args: EditPledgeArgs,
 ): Promise<EditPledgeResult> {
   const { pledgeId, input, adminId, request } = args;
@@ -1661,6 +1671,28 @@ export async function edit(
       ip: request?.ip ?? null,
       userAgent: request?.userAgent ?? null,
     });
+
+    /*
+     * A pledge that has just stopped being a promise cannot answer anybody's
+     * request to change it. Closing it here rather than leaving it pending
+     * keeps it out of the treasurer's queue and stops it holding the partial
+     * unique index against a pledge nobody can act on.
+     *
+     * Approving a cancellation marks its own request approved before it calls
+     * this, so there is nothing pending left for this to find and the request
+     * that caused the cancellation is not closed by it.
+     */
+    const closure = closureFor(status);
+
+    if (closure && status !== before.status) {
+      await closeForPledge(tx, {
+        pledgeId,
+        because: closure,
+        adminId,
+        ip: request?.ip ?? null,
+        userAgent: request?.userAgent ?? null,
+      });
+    }
 
     /*
      * Whether the public figure moved. A correction to a pledge nobody was
@@ -1842,6 +1874,20 @@ export async function remove(
         reason,
         allocationsReversed: live.length,
       },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    /*
+     * A pledge nobody can see any more cannot have a change request answered
+     * against it. Same reasoning as the void path in edit(), and in the same
+     * transaction, so a pledge is never removed with a request still waiting
+     * on it.
+     */
+    await closeForPledge(tx, {
+      pledgeId,
+      because: "pledge_deleted",
+      adminId,
       ip: request?.ip ?? null,
       userAgent: request?.userAgent ?? null,
     });
