@@ -63,9 +63,8 @@ export const getCampaignTotals = unstable_cache(
  */
 export type RecentPledgeDto = {
   id: string;
-  firstName: string;
-  /** The surname's first letter, or null when the pledger gave one name. */
-  lastInitial: string | null;
+  /** Already rendered for public display. See src/server/display-name.ts. */
+  displayName: string;
   amountMinor: string;
   createdAt: string;
 };
@@ -83,8 +82,7 @@ export const getRecentPledges = unstable_cache(
     const rows = await pledges.recent(db, { campaignSlug: CAMPAIGN_SLUG });
     return rows.map((row) => ({
       id: row.id,
-      firstName: row.firstName,
-      lastInitial: row.lastInitial,
+      displayName: row.displayName,
       amountMinor: row.amountMinor.toString(),
       createdAt: row.createdAt.toISOString(),
     }));

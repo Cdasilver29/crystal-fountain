@@ -180,25 +180,30 @@ async function main() {
   const feed = await pledgeService.recent(db, { campaignSlug: CAMPAIGN_SLUG });
   show(
     feed.map((entry) => ({
-      firstName: entry.firstName,
+      displayName: entry.displayName,
       amount: entry.amountMinor,
       when: formatRelativeTime(entry.createdAt),
     })),
   );
 
-  const names = feed.map((entry) => entry.firstName);
+  const names = feed.map((entry) => entry.displayName);
   check("the three consenting pledgers are in the feed",
-    names.includes("Grace") && names.includes("Peter") && names.includes("Mary"),
+    names.includes("Grace W.") &&
+      names.includes("Peter O.") &&
+      names.includes("Mary K."),
     names.join(", "),
   );
   check(
-    "first names only, never the full name",
-    !names.some((n) => n.includes(" ")) && !names.includes("Njeri"),
+    // Mary is stored as "Mary Njeri Kamau", so this also proves the initial
+    // comes from the last word rather than from the middle name.
+    "a given name and one initial, never the full name",
+    names.every((n) => /^\p{Lu}[^\s]*( & \p{Lu}[^\s]*)?( \p{Lu}\.)?$/u.test(n)) &&
+      !names.some((n) => /Wanjiru|Njeri|Kamau|Otieno/.test(n)),
     names.join(", "),
   );
   check(
     "the pledger who declined is absent entirely",
-    !names.includes("Silent") &&
+    !names.some((n) => n.startsWith("Silent")) &&
       !feed.some((entry) => entry.amountMinor === 940_000_000n),
   );
   const times = feed.map((entry) => entry.createdAt.getTime());
@@ -212,11 +217,11 @@ async function main() {
     pledgeService.RECENT_PLEDGE_LIMIT === 30 && feed.length <= 30,
     `${feed.length}`,
   );
-  const initials = feed.map((entry) => entry.lastInitial);
+  const tails = names.map((n) => n.split(" ").at(-1) ?? "");
   check(
     "a surname reaches the feed as one upper case letter or not at all",
-    initials.every((i) => i === null || /^\p{Lu}$/u.test(i)),
-    initials.map((i) => i ?? "none").join(", "),
+    tails.every((t) => /^\p{Lu}\.$/u.test(t) || /^\p{L}{2,}$/u.test(t)),
+    tails.join(", "),
   );
 
   // 4. The endpoint the poll uses.
@@ -227,9 +232,8 @@ async function main() {
   show(payload.slice(0, 4));
   const fields = new Set(payload.flatMap((entry) => Object.keys(entry)));
   check(
-    "it carries an id, a first name, an initial, an amount and a time, and nothing else",
-    [...fields].sort().join(",") ===
-      "amountMinor,createdAt,firstName,id,lastInitial",
+    "it carries an id, a rendered name, an amount and a time, and nothing else",
+    [...fields].sort().join(",") === "amountMinor,createdAt,displayName,id",
     [...fields].sort().join(","),
   );
   for (const phone of phones) {

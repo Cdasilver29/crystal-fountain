@@ -12,8 +12,9 @@ import { formatKES, formatRelativeTime } from "@/lib/format";
  * may appear here. Nobody else is in it, in any form: an amount with a
  * timestamp and no name attached is still that person's pledge amount on a
  * public page, and the consent they gave or withheld was about exactly that.
- * What appears is a first name and a surname initial, which is enough to tell
- * two Marys apart and not enough to identify either to a stranger.
+ * What appears is a given name and at most one letter of a surname, rendered by
+ * src/server/display-name.ts before it ever reaches this component. Enough to
+ * tell two Marys apart, not enough to identify either to a stranger.
  *
  * It sits on the same navy as the hero and shows three rows, so it reads as the
  * tracker's last line rather than as a section arguing with it. The column
@@ -362,8 +363,7 @@ export function RecentPledges({
     >
       <p className="min-w-0 truncate whitespace-nowrap">
         <span className="text-sm font-medium text-white sm:text-base">
-          {entry.firstName}
-          {entry.lastInitial ? ` ${entry.lastInitial}.` : ""}
+          {entry.displayName}
         </span>
         <span className="ml-2 text-xs text-white/45">
           {formatRelativeTime(entry.createdAt, now)}

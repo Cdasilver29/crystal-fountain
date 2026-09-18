@@ -18,6 +18,7 @@ import {
   ServiceError,
   tooManyRequests,
 } from "@/server/errors";
+import { displayName } from "@/server/display-name";
 import { kesToMinor } from "@/server/money";
 import {
   isTurnstileConfigured,
@@ -1009,15 +1010,16 @@ export async function search(
 export type RecentPledge = {
   /** Stable per pledge, so the feed can tell a new entry from a moved one. */
   id: string;
-  /** First name only. Never the full name, and never anybody who declined. */
-  firstName: string;
   /**
-   * The first letter of the surname, upper case, or null when the pledger gave
-   * one name. A letter, never the word: "Mary A." tells two Marys apart in a
-   * congregation without publishing either surname, which is the most the
-   * display consent covers.
+   * The name as it appears on a public page, already rendered.
+   *
+   * One string rather than a first name and an initial to be assembled by
+   * whatever is drawing it, because a joint pledge is "Melanie & Victor O." and
+   * that does not decompose into the two. src/server/display-name.ts owns the
+   * rule, so the band and /pledgers cannot drift apart. Never the full name,
+   * and never anybody who declined.
    */
-  lastInitial: string | null;
+  displayName: string;
   amountMinor: bigint;
   createdAt: Date;
 };
@@ -1053,10 +1055,10 @@ type RecentRow = {
  * The status filter is the one v_campaign_totals uses, so this feed and the
  * figure above it can never disagree about whether a pledge counts.
  *
- * Only the first word of the display name is returned, plus the first letter of
- * the second word. The column holds the full name because that is what the
- * pledger typed and what the treasurer needs on the admin screen, and cutting
- * it down here rather than in the caller means a full name has no route to a
+ * The name is rendered here, by src/server/display-name.ts, rather than handed
+ * out whole for a caller to cut down. The column holds the full name because
+ * that is what the pledger typed and what the treasurer needs on the admin
+ * screen, and reducing it at this boundary means a full name has no route to a
  * public surface at all. The surname leaves this function as a single character
  * and cannot be reassembled from it.
  */
@@ -1084,26 +1086,12 @@ export async function recent(
     limit ${limit}
   `);
 
-  return (result.rows as RecentRow[]).map((row) => {
-    const words = row.display_name.trim().split(/\s+/);
-    const second = words[1] ?? "";
-
-    return {
-      id: row.id,
-      firstName: words[0],
-      /*
-       * One character, upper cased, and only when the second word starts with
-       * a letter. Plenty of real display names in this campaign are not "First
-       * Last": joint pledges are written "Melanie & Dan", which would otherwise
-       * put a bare "&" on the home page where an initial belongs. A name whose
-       * second word is punctuation gets no initial at all, which reads as a
-       * pledger who gave one name rather than as something broken.
-       */
-      lastInitial: /^\p{L}/u.test(second) ? second[0].toUpperCase() : null,
-      amountMinor: BigInt(row.amount_minor),
-      createdAt: new Date(row.created_at),
-    };
-  });
+  return (result.rows as RecentRow[]).map((row) => ({
+    id: row.id,
+    displayName: displayName(row.display_name),
+    amountMinor: BigInt(row.amount_minor),
+    createdAt: new Date(row.created_at),
+  }));
 }
 
 /* ---------------------------------------------------------------------------

@@ -377,7 +377,7 @@ async function main() {
   const feed = await pledges.recent(db, { campaignSlug: CAMPAIGN_SLUG });
   check(
     "it is out of the public feed",
-    !feed.some((e) => e.firstName === "Doomed"),
+    !feed.some((e) => e.displayName.startsWith("Doomed")),
   );
 
   const lookedUp = await pledges.lookup(db, {
