@@ -224,6 +224,34 @@ export type ReduceAmountInput = Extract<
 >;
 
 /* ---------------------------------------------------------------------------
+ * Reading the queue.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * What the queue screen filters on.
+ *
+ * Everything is caught rather than refused, because these come off a query
+ * string. A hand edited or stale filter in a bookmarked URL should quietly
+ * show the default view, not a 500 on the screen the treasurer opens first.
+ *
+ * Pending is the default and not "all". This is a work queue: what it is for
+ * is the things nobody has answered yet, and a screen that opened on a year of
+ * history with the eleven live ones somewhere inside it would be a report
+ * rather than a queue. The filter offers the rest.
+ */
+export const changeRequestListFilters = z.object({
+  status: z.enum(["all", ...CHANGE_REQUEST_STATUSES]).catch("pending"),
+  kind: z.enum(["all", ...CHANGE_REQUEST_KINDS]).catch("all"),
+  cursor: z
+    .string()
+    .max(512)
+    .catch("")
+    .transform((value) => value || null),
+});
+
+export type ChangeRequestListFilters = z.infer<typeof changeRequestListFilters>;
+
+/* ---------------------------------------------------------------------------
  * Answering one.
  * ------------------------------------------------------------------------- */
 
@@ -255,8 +283,14 @@ export const decideChangeRequestInput = z.discriminatedUnion("decision", [
   }),
   z.object({
     decision: z.literal("decline"),
+    /*
+     * The message is on the type as well as the length. Without it, a decline
+     * posted with no note at all falls to zod's own wording, and the form
+     * would show the pledger's treasurer "expected string, received
+     * undefined" where a sentence should be.
+     */
     note: z
-      .string()
+      .string("Say why you are declining, so the pledger knows what to do next.")
       .trim()
       .min(
         MIN_DECISION_NOTE_LENGTH,
