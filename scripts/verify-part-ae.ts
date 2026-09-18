@@ -31,6 +31,9 @@ const CAMPAIGN_SLUG = "crystal-fountain";
 // so a failed run never leaves rows that look like a real pledger.
 const TEST_PHONE = "0799900051";
 const OTHER_PHONE = "0799900052";
+// A third pledger with no requests of its own, so the address limit can be
+// reached without the per pledge limit firing first and answering instead.
+const THIRD_PHONE = "0799900053";
 // TEST-NET-2, which is reserved for documentation and can never be a real
 // visitor. Every row this suite writes carries one, so the sweep at the end
 // can find them by address as well as by pledge.
@@ -103,6 +106,7 @@ async function main() {
 
   const phone = normalizeKenyanPhone(TEST_PHONE)!;
   const otherPhone = normalizeKenyanPhone(OTHER_PHONE)!;
+  const thirdPhone = normalizeKenyanPhone(THIRD_PHONE)!;
 
   /*
    * A sweep at the start as well as the end. The per pledge limit is three a
@@ -116,17 +120,17 @@ async function main() {
          or pledge_id in (
            select p.id from pledges p
            join pledgers g on g.id = p.pledger_id
-           where g.phone_e164 in (${phone}, ${otherPhone})
+           where g.phone_e164 in (${phone}, ${otherPhone}, ${thirdPhone})
          )
     `);
     await db.execute(sql`
       delete from pledges
       where pledger_id in (
-        select id from pledgers where phone_e164 in (${phone}, ${otherPhone})
+        select id from pledgers where phone_e164 in (${phone}, ${otherPhone}, ${thirdPhone})
       )
     `);
     await db.execute(sql`
-      delete from pledgers where phone_e164 in (${phone}, ${otherPhone})
+      delete from pledgers where phone_e164 in (${phone}, ${otherPhone}, ${thirdPhone})
     `);
   };
 
@@ -675,36 +679,75 @@ async function main() {
   );
 
   /*
-   * The address limit. Ten rows already on the same address, planted directly
-   * so the pledge limit does not fire first, and then one attempt through the
-   * service from a pledge that has none of its own.
+   * The address limit.
+   *
+   * Ten rows already on the same address, planted directly, and then one
+   * attempt through the service. The ten are spread across the two pledges
+   * that already have requests, and the attempt comes from a third pledger who
+   * has none, because the per pledge limit is checked first and would
+   * otherwise be the one answering. That is the right order for a real
+   * pledger, who should be told about their own pledge rather than about the
+   * connection they are sitting on, and it is what makes this setup fiddly.
    */
   await db.execute(sql`
     update pledges set status = 'pending', cancelled_at = null
     where id = ${other.pledgeId}::uuid
   `);
 
-  await db.execute(sql`
-    insert into pledge_change_requests
-      (pledge_id, kind, reason, contact_phone_e164, status, decided_at,
-       decided_by, source_ip)
-    select ${other.pledgeId}::uuid,
-           'cancel_pledge',
-           ${REASON},
-           ${otherPhone},
-           'declined',
-           now(),
-           (select id from admin_users order by created_at limit 1),
-           ${IP_LIMIT_IP}::inet
-    from generate_series(1, ${requests.CHANGE_REQUEST_IP_LIMIT})
+  const thirdPledge = await pledges.create(db, {
+    input: {
+      fullName: "Third Requester",
+      phone: thirdPhone,
+      intent: "one_off" as const,
+      amountKes: 150_000,
+      recordConsent: true as const,
+      contactConsent: false,
+      displayConsent: false,
+    },
+    campaignSlug: CAMPAIGN_SLUG,
+  });
+
+  const half = requests.CHANGE_REQUEST_IP_LIMIT / 2;
+
+  for (const [target, contact, count] of [
+    [pledge.pledgeId, phone, half],
+    [other.pledgeId, otherPhone, requests.CHANGE_REQUEST_IP_LIMIT - half],
+  ] as const) {
+    await db.execute(sql`
+      insert into pledge_change_requests
+        (pledge_id, kind, reason, contact_phone_e164, status, decided_at,
+         decided_by, source_ip)
+      select ${target}::uuid,
+             'cancel_pledge',
+             ${REASON},
+             ${contact},
+             'declined',
+             now(),
+             (select id from admin_users order by created_at limit 1),
+             ${IP_LIMIT_IP}::inet
+      from generate_series(1, ${count})
+    `);
+  }
+
+  const onAddress = await db.execute(sql`
+    select count(*)::int as n
+    from pledge_change_requests
+    where source_ip = ${IP_LIMIT_IP}::inet
+      and created_at > now() - make_interval(secs => 3600)
   `);
+  check(
+    "ten rows now sit on the one address",
+    (onAddress.rows[0] as { n: number }).n ===
+      requests.CHANGE_REQUEST_IP_LIMIT,
+    `${(onAddress.rows[0] as { n: number }).n} rows`,
+  );
 
   try {
     await requests.create(db, {
       input: changeRequestInput.parse({
         kind: "cancel_pledge",
-        reference: other.reference,
-        contactPhoneE164: OTHER_PHONE,
+        reference: thirdPledge.reference,
+        contactPhoneE164: THIRD_PHONE,
         reason: "One more from an address that has had its ten already.",
       }),
       campaignSlug: CAMPAIGN_SLUG,
@@ -720,6 +763,26 @@ async function main() {
     );
   }
 
+  /*
+   * And the same pledger from a different address gets through, so what was
+   * just proved is the address limit and not simply that the third pledge was
+   * unable to ask for anything.
+   */
+  const elsewhere = await requests.create(db, {
+    input: changeRequestInput.parse({
+      kind: "cancel_pledge",
+      reference: thirdPledge.reference,
+      contactPhoneE164: THIRD_PHONE,
+      reason: "The same request again, from a different connection.",
+    }),
+    campaignSlug: CAMPAIGN_SLUG,
+    request: { ip: OTHER_IP, userAgent: "verify-part-ae" },
+  });
+  check(
+    "the same pledger from another address is let through",
+    elsewhere.outcome === "created",
+  );
+
   /* -----------------------------------------------------------------------
    * 9. The admin queue.
    * --------------------------------------------------------------------- */
@@ -732,7 +795,10 @@ async function main() {
     limit: 50,
   });
   const mine = queue.items.filter(
-    (row) => row.pledgeId === pledge.pledgeId || row.pledgeId === other.pledgeId,
+    (row) =>
+      row.pledgeId === pledge.pledgeId ||
+      row.pledgeId === other.pledgeId ||
+      row.pledgeId === thirdPledge.pledgeId,
   );
   show(
     mine.slice(0, 5).map((row) => ({
@@ -765,7 +831,10 @@ async function main() {
     limit: 50,
   });
   const maskedMine = masked.items.filter(
-    (row) => row.pledgeId === pledge.pledgeId || row.pledgeId === other.pledgeId,
+    (row) =>
+      row.pledgeId === pledge.pledgeId ||
+      row.pledgeId === other.pledgeId ||
+      row.pledgeId === thirdPledge.pledgeId,
   );
   check(
     "a viewer sees it masked to the last three digits",
