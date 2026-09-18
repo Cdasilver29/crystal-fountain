@@ -18,6 +18,7 @@ import {
   ServiceError,
   tooManyRequests,
 } from "@/server/errors";
+import type { ChangeRequestKind } from "@/server/contracts/change-requests";
 import { displayName } from "@/server/display-name";
 import {
   closeForPledge,
@@ -1141,6 +1142,17 @@ export type PledgeRedemptionView = {
    * returned only to somebody who has already proved the pledge is theirs.
    */
   displayConsent: boolean;
+  /**
+   * The change request already waiting on this pledge, if there is one.
+   *
+   * Here so the page can replace the form with the state of what is already
+   * open rather than letting somebody fill in a second request the partial
+   * unique index would refuse. Only the kind and when it was raised: the
+   * pledger wrote the reason and does not need it read back, and the decision
+   * note is the treasurer's words and belongs in the email, not on a page
+   * anybody with the pair can open.
+   */
+  openRequest: { kind: ChangeRequestKind; createdAt: Date } | null;
   createdAt: Date;
 };
 
@@ -1156,6 +1168,8 @@ type LookupRow = {
   installment_frequency: string | null;
   installment_amount_minor: string | null;
   display_consent: boolean;
+  open_request_kind: string | null;
+  open_request_at: string | null;
   created_at: string;
 };
 
@@ -1230,11 +1244,21 @@ export async function lookup(
            p.installment_frequency,
            p.installment_amount_minor,
            g.display_consent,
+           /*
+            * The open request, joined here rather than fetched afterwards, so
+            * the page cannot render a form against a pledge that acquired one
+            * between the two reads. At most one exists, which the partial
+            * unique index guarantees rather than this query hoping.
+            */
+           r.kind as open_request_kind,
+           r.created_at as open_request_at,
            p.created_at
     from pledges p
     join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
     join v_pledge_balances b on b.pledge_id = p.id
+    left join pledge_change_requests r
+      on r.pledge_id = p.id and r.status = 'pending'
     where c.slug = ${campaignSlug}
       and p.deleted_at is null
       and p.reference = ${input.reference}
@@ -1266,6 +1290,12 @@ export async function lookup(
         ? null
         : BigInt(row.installment_amount_minor),
     displayConsent: row.display_consent,
+    openRequest: row.open_request_kind
+      ? {
+          kind: row.open_request_kind as ChangeRequestKind,
+          createdAt: new Date(row.open_request_at!),
+        }
+      : null,
     createdAt: new Date(row.created_at),
   };
 }

@@ -73,6 +73,17 @@ export async function POST(request: Request) {
          * name itself crosses: only whether one is published.
          */
         displayConsent: pledge.displayConsent,
+        /*
+         * So the page can show what is already waiting instead of a form that
+         * would be refused. The kind and the date only: the pledger wrote the
+         * reason themselves and does not need it read back to them.
+         */
+        openRequest: pledge.openRequest
+          ? {
+              kind: pledge.openRequest.kind,
+              createdAt: pledge.openRequest.createdAt.toISOString(),
+            }
+          : null,
         createdAt: pledge.createdAt.toISOString(),
       },
     });
