@@ -1,8 +1,15 @@
 import { Resend } from "resend";
 
 import {
+  renderChangeRequestAcknowledgement,
+  renderChangeRequestDecision,
+  type ChangeRequestAcknowledgementEmail,
+  type ChangeRequestDecisionEmail,
+} from "@/server/email/change-request";
+import {
   renderPledgeConfirmationEmail,
   type PledgeConfirmationEmail,
+  type RenderedEmail,
 } from "@/server/email/pledge-confirmation";
 
 /**
@@ -120,4 +127,86 @@ export async function sendPledgeConfirmation(
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Change requests.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Acknowledging a request, and telling somebody what was decided.
+ *
+ * The same shape as the confirmation above and for the same reasons: the
+ * configuration arrives as data, nothing throws, and every outcome comes back
+ * as a value the caller can log. A request is recorded in the database and on
+ * the pledger's screen before either of these runs, so there is no failure
+ * here worth turning into a failed request.
+ *
+ * The recipient is the address on the pledger record, which is optional and
+ * which most pledgers leave blank. "skipped" with no_recipient is therefore
+ * the ordinary case rather than an error, and the admin queue shows the
+ * treasurer which requests those are so somebody can ring instead.
+ */
+
+async function deliver(
+  config: EmailConfig,
+  args: { to: string | null | undefined; message: RenderedEmail; tag: string },
+): Promise<SendResult> {
+  const to = args.to?.trim();
+  const apiKey = config.apiKey?.trim();
+
+  if (!to) return { status: "skipped", reason: "no_recipient" };
+  if (!apiKey) return { status: "skipped", reason: "not_configured" };
+
+  try {
+    const { data, error } = await client(apiKey).emails.send({
+      from: config.from,
+      to,
+      subject: args.message.subject,
+      html: args.message.html,
+      text: args.message.text,
+      // Somebody who replies is answered by the development office rather
+      // than by a noreply address nobody reads.
+      replyTo: "churchdevelopment@newlifesdanairobi.org",
+      tags: [{ name: "kind", value: args.tag }],
+    });
+
+    if (error) {
+      return {
+        status: "failed",
+        error: new Error(`Resend refused the send: ${error.message}`),
+      };
+    }
+
+    return { status: "sent", id: data?.id ?? null };
+  } catch (error) {
+    return {
+      status: "failed",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
+export async function sendChangeRequestAcknowledgement(
+  config: EmailConfig,
+  args: { to: string | null | undefined; request: ChangeRequestAcknowledgementEmail },
+): Promise<SendResult> {
+  return deliver(config, {
+    to: args.to,
+    message: renderChangeRequestAcknowledgement(args.request),
+    tag: "change_requested",
+  });
+}
+
+export async function sendChangeRequestDecision(
+  config: EmailConfig,
+  args: { to: string | null | undefined; decision: ChangeRequestDecisionEmail },
+): Promise<SendResult> {
+  return deliver(config, {
+    to: args.to,
+    message: renderChangeRequestDecision(args.decision),
+    // Separated in the Resend dashboard, because "how many declines went out
+    // last month" is a question somebody will ask.
+    tag: `change_${args.decision.decision}`,
+  });
 }
