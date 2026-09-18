@@ -1,4 +1,8 @@
+import * as Sentry from "@sentry/nextjs";
+import { after } from "next/server";
+
 import { db } from "@/db";
+import { env } from "@/env";
 import {
   clientIp,
   problem,
@@ -9,8 +13,59 @@ import {
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { changeRequestInput } from "@/server/contracts/change-requests";
 import * as changeRequests from "@/server/services/change-requests";
+import { sendChangeRequestAcknowledgement } from "@/server/services/email";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Acknowledges the request, without the pledger waiting for it.
+ *
+ * Scheduled with after(), the same way the pledge confirmation is: the
+ * response goes back the moment the row is committed and the send runs after
+ * it. Nothing in here can fail a request, which is already recorded and
+ * already on the pledger's screen by the time this runs.
+ *
+ * Only for a request that was actually created. Somebody who submits twice
+ * gets the one they already have and should not be written to again for it.
+ */
+function acknowledge(result: changeRequests.CreateChangeRequestResult) {
+  if (result.outcome !== "created") return;
+
+  // No address, no email. The pledge form's email field is optional and most
+  // pledgers leave it blank, so this is the ordinary case and not a failure.
+  if (!result.pledger.email) return;
+
+  const task = async () => {
+    const outcome = await sendChangeRequestAcknowledgement(
+      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      {
+        to: result.pledger.email,
+        request: {
+          fullName: result.pledger.name,
+          reference: result.reference,
+          change: result.request,
+          siteUrl: env.NEXT_PUBLIC_SITE_URL,
+        },
+      },
+    );
+
+    if (outcome.status === "failed") {
+      // The reference identifies which request went unacknowledged without
+      // naming anybody. Sentry is scrubbed of personal detail.
+      Sentry.captureException(outcome.error, {
+        tags: { area: "change_request_acknowledgement" },
+        extra: { reference: result.reference },
+      });
+    }
+  };
+
+  try {
+    after(() => task().catch(() => {}));
+  } catch {
+    // A runtime with no request context to hang the task on must not turn a
+    // recorded request into a 500.
+  }
+}
 
 /**
  * POST /api/redeem/change-requests
@@ -59,6 +114,8 @@ export async function POST(request: Request) {
       campaignSlug: CAMPAIGN_SLUG,
       request: { ip: clientIp(request), userAgent: userAgent(request) },
     });
+
+    acknowledge(result);
 
     /*
      * What goes back is what the page needs to show the pending state, and no

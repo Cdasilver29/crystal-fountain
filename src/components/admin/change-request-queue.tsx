@@ -53,6 +53,8 @@ export type ChangeRequestDto = {
   decidedAt: string | null;
   decidedByName: string | null;
   decisionNote: string | null;
+  /** Whether there is an address to tell them the answer at. */
+  canEmail: boolean;
 };
 
 /**
@@ -329,6 +331,20 @@ export function ChangeRequestQueue({
               <span className="text-neutral-500">They said: </span>
               {row.reason}
             </p>
+
+            {/*
+              Most pledgers have no address on file: the pledge form's email
+              field is optional and most leave it blank. Whatever is decided
+              here, they will not be told by email, and the only way they find
+              out is somebody ringing the number above. Saying so on the card
+              is the difference between a silent gap and a task.
+            */}
+            {!row.canEmail && (
+              <p className="mt-2 text-sm text-neutral-600">
+                No email address on file, so they will not be told
+                automatically. Ring them on the number above.
+              </p>
+            )}
 
             {row.status !== "pending" && (
               <p className="mt-3 border-t border-neutral-100 pt-3 text-sm text-neutral-600">

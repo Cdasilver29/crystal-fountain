@@ -1,7 +1,10 @@
+import * as Sentry from "@sentry/nextjs";
 import { revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/db";
+import { env } from "@/env";
 import { requirePermission } from "@/lib/admin-guard";
 import {
   clientIp,
@@ -16,10 +19,64 @@ import { decideChangeRequestInput } from "@/server/contracts/change-requests";
 import { isServiceError } from "@/server/errors";
 import * as adminAudit from "@/server/services/admin-audit";
 import * as changeRequests from "@/server/services/change-requests";
+import { sendChangeRequestDecision } from "@/server/services/email";
 
 export const dynamic = "force-dynamic";
 
 const target = z.object({ requestId: z.uuid("That is not a request id.") });
+
+/**
+ * Tells the pledger what was decided, without the treasurer waiting for it.
+ *
+ * Scheduled with after(), like every other message this platform sends: the
+ * decision is committed and the queue has already moved on by the time this
+ * runs, so nothing in here can fail a decision.
+ *
+ * Most pledgers have no address on file, because the pledge form's email field
+ * is optional and most leave it blank. That is why the queue card says so:
+ * somebody has to ring them, and a silent skip with nothing on the screen
+ * would mean nobody knew to.
+ */
+function tell(result: changeRequests.DecideChangeRequestResult) {
+  if (!result.pledger.email) return;
+
+  const task = async () => {
+    const outcome = await sendChangeRequestDecision(
+      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      {
+        to: result.pledger.email,
+        decision: {
+          fullName: result.pledger.name,
+          reference: result.reference,
+          change: result.request,
+          decision: result.status,
+          /*
+           * The treasurer's own words on a decline, which the contract will
+           * not let them skip. On an approval there is usually nothing to add
+           * and the note is absent.
+           */
+          note: result.request.decisionNote ?? null,
+          amountMinor: result.amountMinor,
+          siteUrl: env.NEXT_PUBLIC_SITE_URL,
+        },
+      },
+    );
+
+    if (outcome.status === "failed") {
+      Sentry.captureException(outcome.error, {
+        tags: { area: "change_request_decision" },
+        extra: { reference: result.reference, decision: result.status },
+      });
+    }
+  };
+
+  try {
+    after(() => task().catch(() => {}));
+  } catch {
+    // A runtime with no request context must not turn a recorded decision
+    // into a 500.
+  }
+}
 
 /**
  * POST /api/admin/change-requests/:id/decide
@@ -99,6 +156,8 @@ export async function POST(
     if (result.revalidatePublic) {
       revalidateTag(CAMPAIGN_TOTALS_TAG);
     }
+
+    tell(result);
 
     return Response.json({
       requestId: result.requestId,

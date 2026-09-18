@@ -115,6 +115,7 @@ export default async function AdminChangeRequestsPage({
     decidedAt: row.decidedAt?.toISOString() ?? null,
     decidedByName: row.decidedByName,
     decisionNote: row.decisionNote,
+    canEmail: row.canEmail,
   }));
 
   return (
