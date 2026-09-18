@@ -282,7 +282,7 @@ export type ApprovePledgeInput = z.infer<typeof approvePledgeInput>;
  */
 export const PLEDGE_REFERENCE_PATTERN = /^CF26-\d{6}$/;
 
-const pledgeReference = z
+export const pledgeReference = z
   .string()
   .trim()
   .min(1, "Enter your pledge reference.")
