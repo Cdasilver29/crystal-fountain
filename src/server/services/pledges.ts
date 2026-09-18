@@ -1086,14 +1086,20 @@ export async function recent(
 
   return (result.rows as RecentRow[]).map((row) => {
     const words = row.display_name.trim().split(/\s+/);
-    const surname = words[1] ?? "";
+    const second = words[1] ?? "";
 
     return {
       id: row.id,
       firstName: words[0],
-      // One character, upper cased, and only when there is a second word to
-      // take it from. Somebody who gave a single name keeps a single name.
-      lastInitial: surname ? surname[0].toUpperCase() : null,
+      /*
+       * One character, upper cased, and only when the second word starts with
+       * a letter. Plenty of real display names in this campaign are not "First
+       * Last": joint pledges are written "Melanie & Dan", which would otherwise
+       * put a bare "&" on the home page where an initial belongs. A name whose
+       * second word is punctuation gets no initial at all, which reads as a
+       * pledger who gave one name rather than as something broken.
+       */
+      lastInitial: /^\p{L}/u.test(second) ? second[0].toUpperCase() : null,
       amountMinor: BigInt(row.amount_minor),
       createdAt: new Date(row.created_at),
     };

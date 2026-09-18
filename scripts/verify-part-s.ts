@@ -215,7 +215,7 @@ async function main() {
   const initials = feed.map((entry) => entry.lastInitial);
   check(
     "a surname reaches the feed as one upper case letter or not at all",
-    initials.every((i) => i === null || /^[A-Z]$/.test(i)),
+    initials.every((i) => i === null || /^\p{Lu}$/u.test(i)),
     initials.map((i) => i ?? "none").join(", "),
   );
 
