@@ -208,9 +208,15 @@ async function main() {
     times.map((t) => new Date(t).toISOString().slice(11, 19)).join(" > "),
   );
   check(
-    "and never more than ten",
-    pledgeService.RECENT_PLEDGE_LIMIT === 10 && feed.length <= 10,
+    "and never more than thirty",
+    pledgeService.RECENT_PLEDGE_LIMIT === 30 && feed.length <= 30,
     `${feed.length}`,
+  );
+  const initials = feed.map((entry) => entry.lastInitial);
+  check(
+    "a surname reaches the feed as one upper case letter or not at all",
+    initials.every((i) => i === null || /^[A-Z]$/.test(i)),
+    initials.map((i) => i ?? "none").join(", "),
   );
 
   // 4. The endpoint the poll uses.
@@ -221,8 +227,9 @@ async function main() {
   show(payload.slice(0, 4));
   const fields = new Set(payload.flatMap((entry) => Object.keys(entry)));
   check(
-    "it carries an id, a first name, an amount and a time, and nothing else",
-    [...fields].sort().join(",") === "amountMinor,createdAt,firstName,id",
+    "it carries an id, a first name, an initial, an amount and a time, and nothing else",
+    [...fields].sort().join(",") ===
+      "amountMinor,createdAt,firstName,id,lastInitial",
     [...fields].sort().join(","),
   );
   for (const phone of phones) {

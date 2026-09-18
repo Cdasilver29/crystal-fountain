@@ -64,6 +64,8 @@ export const getCampaignTotals = unstable_cache(
 export type RecentPledgeDto = {
   id: string;
   firstName: string;
+  /** The surname's first letter, or null when the pledger gave one name. */
+  lastInitial: string | null;
   amountMinor: string;
   createdAt: string;
 };
@@ -82,6 +84,7 @@ export const getRecentPledges = unstable_cache(
     return rows.map((row) => ({
       id: row.id,
       firstName: row.firstName,
+      lastInitial: row.lastInitial,
       amountMinor: row.amountMinor.toString(),
       createdAt: row.createdAt.toISOString(),
     }));

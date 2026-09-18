@@ -1011,11 +1011,27 @@ export type RecentPledge = {
   id: string;
   /** First name only. Never the full name, and never anybody who declined. */
   firstName: string;
+  /**
+   * The first letter of the surname, upper case, or null when the pledger gave
+   * one name. A letter, never the word: "Mary A." tells two Marys apart in a
+   * congregation without publishing either surname, which is the most the
+   * display consent covers.
+   */
+  lastInitial: string | null;
   amountMinor: bigint;
   createdAt: Date;
 };
 
-export const RECENT_PLEDGE_LIMIT = 10;
+/**
+ * How many entries the feed returns.
+ *
+ * Thirty rather than ten because the home page scroller loops through them
+ * continuously, and a short list makes the loop obvious: the same four names
+ * coming round every few seconds reads as a broken animation rather than as a
+ * congregation. The shape of an entry is unchanged, so this is a bigger page of
+ * the same feed and nothing that reads it needs to know.
+ */
+export const RECENT_PLEDGE_LIMIT = 30;
 
 type RecentRow = {
   id: string;
@@ -1037,10 +1053,12 @@ type RecentRow = {
  * The status filter is the one v_campaign_totals uses, so this feed and the
  * figure above it can never disagree about whether a pledge counts.
  *
- * Only the first word of the display name is returned. The column holds the
- * full name because that is what the pledger typed and what the treasurer needs
- * on the admin screen, and cutting it down here rather than in the caller means
- * a full name has no route to a public surface at all.
+ * Only the first word of the display name is returned, plus the first letter of
+ * the second word. The column holds the full name because that is what the
+ * pledger typed and what the treasurer needs on the admin screen, and cutting
+ * it down here rather than in the caller means a full name has no route to a
+ * public surface at all. The surname leaves this function as a single character
+ * and cannot be reassembled from it.
  */
 export async function recent(
   db: Db,
@@ -1066,12 +1084,20 @@ export async function recent(
     limit ${limit}
   `);
 
-  return (result.rows as RecentRow[]).map((row) => ({
-    id: row.id,
-    firstName: row.display_name.trim().split(/\s+/)[0],
-    amountMinor: BigInt(row.amount_minor),
-    createdAt: new Date(row.created_at),
-  }));
+  return (result.rows as RecentRow[]).map((row) => {
+    const words = row.display_name.trim().split(/\s+/);
+    const surname = words[1] ?? "";
+
+    return {
+      id: row.id,
+      firstName: words[0],
+      // One character, upper cased, and only when there is a second word to
+      // take it from. Somebody who gave a single name keeps a single name.
+      lastInitial: surname ? surname[0].toUpperCase() : null,
+      amountMinor: BigInt(row.amount_minor),
+      createdAt: new Date(row.created_at),
+    };
+  });
 }
 
 /* ---------------------------------------------------------------------------
