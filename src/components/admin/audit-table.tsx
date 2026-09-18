@@ -115,6 +115,13 @@ export const AUDIT_TONES: Record<string, Tone> = {
    */
   "pledge.change_requested": "grey",
   /*
+   * A member exercising a right, which is neither an administrator's doing nor
+   * anything anybody approved. Grey says the portal did not decide this. The
+   * row matters all the same: it is the evidence that the withdrawal was
+   * honoured, and when.
+   */
+  "pledgers.display_consent_withdrawn": "grey",
+  /*
    * Nobody decided this. The pledge went away and the request went with it, so
    * it is a fact with no weight either way, and the row that voided or removed
    * the pledge is the one carrying the colour.

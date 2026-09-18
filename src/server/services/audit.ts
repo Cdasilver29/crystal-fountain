@@ -169,6 +169,15 @@ export function summarise(
     case "pledge.change_closed":
       return `${changePhrase(a)} closed, ${CLOSURES[str(a.because) ?? ""] ?? "the pledge went away"}`;
 
+    case "pledgers.display_consent_withdrawn": {
+      // The reference and nothing else. The name is deliberately not in the
+      // payload, so there is nothing here to print even if somebody wanted to.
+      const ref = str(a.reference);
+      return ref
+        ? `${ref}, name removed from the public list`
+        : "name removed from the public list";
+    }
+
     case "pledgers.organisation_flagged": {
       // Which way it was set is the whole content of the row, because the two
       // directions publish different amounts of somebody's name.
