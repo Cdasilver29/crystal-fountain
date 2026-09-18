@@ -6,10 +6,10 @@ import { provisionAdmin, removeVerificationAdmins } from "./verification-admin";
 config({ path: ".env.local" });
 
 /**
- * The change request queue and its route, session C2b.
+ * The change request queue, its route, the nav badge and the payment routing.
  *
- * C2a proved the decisions against the database by calling the services. This
- * proves the screen in front of them: that the route refuses the roles it
+ * Sessions C2b and C2c. C2a proved the decisions by calling the services;
+ * this proves the screen in front of them: that the route refuses the roles it
  * should, that a refused cancellation lands in the journal as an attempt, that
  * the note rule is enforced server side and not only by the textarea, and that
  * the page itself renders what it is supposed to for each role.
@@ -29,6 +29,7 @@ const CAMPAIGN_SLUG = "crystal-fountain";
 const PASSWORD = "correct-horse-battery-staple";
 const PHONES = {
   reduce: "0799900071",
+  payment: "0799900074",
   cancel: "0799900072",
   decline: "0799900073",
 };
@@ -477,10 +478,151 @@ async function main() {
   );
 
   /* -----------------------------------------------------------------------
-   * 6. Cleanup.
+   * 6. The badge on the nav.
    * --------------------------------------------------------------------- */
 
-  heading("6. cleanup");
+  heading("6. the pending count on the nav");
+
+  const counted = await requests.countPending(db, {
+    campaignSlug: CAMPAIGN_SLUG,
+  });
+  const bySql = (
+    await db.execute(sql`
+      select count(*)::int as n
+      from pledge_change_requests r
+      join pledges p on p.id = r.pledge_id
+      join campaigns c on c.id = p.campaign_id
+      where c.slug = ${CAMPAIGN_SLUG} and r.status = 'pending'
+    `)
+  ).rows[0] as { n: number };
+  check(
+    "the count agrees with the database",
+    counted === bySql.n,
+    `${counted} = ${bySql.n}`,
+  );
+  check("and this run left something waiting to show", counted > 0);
+
+  /*
+   * The badge is on every admin screen, not only its own, because it exists to
+   * be noticed by somebody who came to do something else. There is no admin
+   * layout, so each page passes it separately and each page can forget it.
+   */
+  const badgePages = [
+    "/admin/pledges",
+    "/admin/payments",
+    "/admin/analytics",
+    "/admin/change-requests",
+    "/admin/users",
+  ];
+
+  const badgeResults: Record<string, unknown>[] = [];
+
+  for (const path of badgePages) {
+    const response = await fetch(`${BASE}${path}`, {
+      headers: { cookie: cookies.admin },
+    });
+    const html = await response.text();
+    const hasLink = html.includes("/admin/change-requests");
+    const hasCount = html.includes("waiting for an answer");
+    badgeResults.push({ path, status: response.status, hasLink, hasCount });
+    check(`${path} carries the badge`, response.status === 200 && hasCount);
+  }
+
+  show(badgeResults);
+
+  const viewerBadge = await fetch(`${BASE}/admin/pledges`, {
+    headers: { cookie: cookies.viewer },
+  });
+  const viewerHtml = await viewerBadge.text();
+  check(
+    "a viewer sees it too, since they may read the queue",
+    viewerHtml.includes("waiting for an answer"),
+  );
+
+  /* -----------------------------------------------------------------------
+   * 7. An approved payment report routes into the payment flow.
+   * --------------------------------------------------------------------- */
+
+  heading("7. routing a reported payment");
+
+  const reporter = await makePledge(e164.payment, 400_000);
+  const report = await raise(reporter.reference, PHONES.payment, {
+    kind: "payment_missing",
+    paymentReference: "QVERIFYAG1",
+    paymentAmountMinor: "5000000",
+    paymentPaidOn: "2026-09-01",
+  });
+
+  const paymentsBefore = (
+    await db.execute(sql`select count(*)::int as n from payments`)
+  ).rows[0] as { n: number };
+
+  const routed = await decide("treasurer", report.id, { decision: "approve" });
+  const paymentsAfter = (
+    await db.execute(sql`select count(*)::int as n from payments`)
+  ).rows[0] as { n: number };
+
+  show([
+    {
+      status: routed.status,
+      paymentReference: routed.body?.payment?.paymentReference,
+      amountMinor: routed.body?.payment?.amountMinor,
+      existingPaymentId: routed.body?.payment?.existingPaymentId,
+    },
+  ]);
+  check("approving it records no payment", paymentsAfter.n === paymentsBefore.n);
+  check(
+    "and the route hands back what the payment flow needs",
+    routed.body?.payment?.paymentReference === "QVERIFYAG1" &&
+      routed.body?.payment?.amountMinor === "5000000" &&
+      routed.body?.payment?.paidOn === "2026-09-01",
+  );
+
+  const approvedPage = await pageFor("treasurer", "?status=approved");
+  check(
+    "the card says approving it recorded nothing",
+    approvedPage.html.includes("Approving this recorded nothing"),
+  );
+  check(
+    "and links into the existing recording flow, prefilled",
+    approvedPage.html.includes("QVERIFYAG1") &&
+      approvedPage.html.includes("amountMinor=5000000") &&
+      approvedPage.html.includes(`accountRef=${reporter.reference}`),
+  );
+
+  /* The form on the other end actually reads those. */
+  const prefilled = await fetch(
+    `${BASE}/admin/payments/new?ref=QVERIFYAG1&amountMinor=5000000&paidOn=2026-09-01&accountRef=${reporter.reference}`,
+    { headers: { cookie: cookies.treasurer } },
+  );
+  const prefilledHtml = await prefilled.text();
+  check("the payment form opens prefilled", prefilled.status === 200);
+  check(
+    "with the code, the amount in shillings and the date",
+    prefilledHtml.includes("QVERIFYAG1") &&
+      prefilledHtml.includes("50,000") &&
+      prefilledHtml.includes("2026-09-01"),
+  );
+  check(
+    "and the pledge reference as the account the payer quoted",
+    prefilledHtml.includes(reporter.reference),
+  );
+
+  /*
+   * A mangled link is an empty form, not a 500. These come off a query string
+   * that anybody can edit.
+   */
+  const mangled = await fetch(
+    `${BASE}/admin/payments/new?amountMinor=not-a-number&paidOn=last-tuesday`,
+    { headers: { cookie: cookies.treasurer } },
+  );
+  check("a mangled prefill is ignored rather than fatal", mangled.status === 200);
+
+  /* -----------------------------------------------------------------------
+   * 8. Cleanup.
+   * --------------------------------------------------------------------- */
+
+  heading("8. cleanup");
 
   void waiting;
   await cleanup();
