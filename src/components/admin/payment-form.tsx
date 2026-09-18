@@ -39,14 +39,32 @@ function today(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
 }
 
-export function PaymentForm() {
+/**
+ * What a pledger reported, when the treasurer arrived here from an approved
+ * change request.
+ *
+ * Every field is what they said, not what is true. The treasurer is recording
+ * money they have seen arrive, and this only saves them retyping a receipt
+ * number off another screen. The method is deliberately not among them: the
+ * pledger was never asked for one, and guessing M-Pesa because the code looks
+ * like an M-Pesa code is how a bank slip is recorded as something it is not.
+ */
+export type ReportedPayment = {
+  externalRef?: string;
+  /** Whole shillings as digits, the shape the amount field holds. */
+  amountDigits?: string;
+  paidAt?: string;
+  accountRef?: string;
+};
+
+export function PaymentForm({ reported }: { reported?: ReportedPayment } = {}) {
   const [method, setMethod] = useState<PaymentMethod>("mpesa");
-  const [externalRef, setExternalRef] = useState("");
-  const [amountDigits, setAmountDigits] = useState("");
+  const [externalRef, setExternalRef] = useState(reported?.externalRef ?? "");
+  const [amountDigits, setAmountDigits] = useState(reported?.amountDigits ?? "");
   const [payerName, setPayerName] = useState("");
   const [payerPhone, setPayerPhone] = useState("");
-  const [accountRef, setAccountRef] = useState("");
-  const [paidAt, setPaidAt] = useState(today());
+  const [accountRef, setAccountRef] = useState(reported?.accountRef ?? "");
+  const [paidAt, setPaidAt] = useState(reported?.paidAt ?? today());
   const [note, setNote] = useState("");
 
   const [errors, setErrors] = useState<Errors>({});
@@ -59,6 +77,13 @@ export function PaymentForm() {
 
   const refRequired = METHODS_REQUIRING_REFERENCE.includes(method);
 
+  /*
+   * Back to blank, deliberately not back to the reported values. Whatever was
+   * prefilled has just been recorded, and re-filling the form with the same
+   * receipt number is an invitation to record it twice, which the unique index
+   * on (method, external_ref) would refuse and the treasurer would have to
+   * puzzle out.
+   */
   function reset() {
     setMethod("mpesa");
     setExternalRef("");

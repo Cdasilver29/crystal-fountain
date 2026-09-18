@@ -55,6 +55,35 @@ export type ChangeRequestDto = {
   decisionNote: string | null;
 };
 
+/**
+ * Where a reported payment goes next.
+ *
+ * Approving a payment_missing records nothing, and cannot: a payments row
+ * needs a method the pledger was never asked for, and the money is often
+ * already in the books and merely unallocated. So the treasurer is handed
+ * across to the recording flow that already exists, carrying what was
+ * reported, rather than a second one built into this screen.
+ *
+ * Built from the row alone, so it is there on a request approved last week as
+ * well as on one approved a moment ago. A fresh approval can improve on it:
+ * the route looks for a payment already under that code, and when there is one
+ * the treasurer belongs on that payment matching it, not on a blank form
+ * recording it again.
+ */
+function paymentHref(row: ChangeRequestDto, existingPaymentId?: string): string {
+  if (existingPaymentId) return `/admin/payments/${existingPaymentId}`;
+
+  const params = new URLSearchParams();
+  if (row.paymentReference) params.set("ref", row.paymentReference);
+  if (row.paymentAmountMinor) params.set("amountMinor", row.paymentAmountMinor);
+  if (row.paymentPaidOn) params.set("paidOn", row.paymentPaidOn);
+  // What the payer typed as the account number is what the matching engine
+  // reads, and for this campaign that is the pledge reference.
+  params.set("accountRef", row.reference);
+
+  return `/admin/payments/new?${params}`;
+}
+
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-900",
   approved: "bg-emerald-100 text-emerald-900",
@@ -174,6 +203,13 @@ export function ChangeRequestQueue({
   const [decliningId, setDecliningId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /*
+   * What the route told us about a payment already recorded under the code a
+   * pledger reported, keyed by request. Survives the router.refresh() below,
+   * because refreshing re-renders the server components and leaves client
+   * state alone, so the treasurer keeps the better of the two links.
+   */
+  const [recorded, setRecorded] = useState<Record<string, string>>({});
 
   async function decide(
     row: ChangeRequestDto,
@@ -208,6 +244,13 @@ export function ChangeRequestQueue({
         }));
         setBusyId(null);
         return;
+      }
+
+      if (body?.payment?.existingPaymentId) {
+        setRecorded((current) => ({
+          ...current,
+          [row.id]: body.payment.existingPaymentId,
+        }));
       }
 
       /*
@@ -300,6 +343,29 @@ export function ChangeRequestQueue({
                   </span>
                 ) : null}
               </p>
+            )}
+
+            {/*
+              An approved report of a missing payment is not finished. Nothing
+              was recorded by approving it, and this is the only thing on the
+              screen that says what still has to happen.
+            */}
+            {row.kind === "payment_missing" && row.status === "approved" && (
+              <div className="mt-3 rounded-xl border border-denim/20 bg-denim/5 px-4 py-3">
+                <p className="text-sm text-neutral-700">
+                  {recorded[row.id]
+                    ? "A payment is already recorded under that code. It still has to be matched to this pledge."
+                    : "Approving this recorded nothing. The money still has to be entered and matched to this pledge."}
+                </p>
+                <Link
+                  href={paymentHref(row, recorded[row.id])}
+                  className="mt-2 inline-block rounded text-sm font-medium text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                >
+                  {recorded[row.id]
+                    ? "Match that payment"
+                    : "Record this payment"}
+                </Link>
+              </div>
             )}
 
             {error && (

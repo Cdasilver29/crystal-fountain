@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { z } from "zod";
 import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { PaymentForm } from "@/components/admin/payment-form";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { can } from "@/lib/permissions";
@@ -22,7 +24,26 @@ export const dynamic = "force-dynamic";
  * them: the endpoint behind it enforces the same rule and writes an
  * admin.forbidden row if anyone posts at it directly.
  */
-export default async function NewPaymentPage() {
+/**
+ * What an approved change request hands this page.
+ *
+ * Caught rather than refused throughout, because it comes off a query string
+ * and a treasurer arriving with a mangled link should get an empty form rather
+ * than an error. Minor units cross as digits and are divided down here, so
+ * nothing turns money into a JavaScript number on the way.
+ */
+const reportedParams = z.object({
+  ref: z.string().trim().max(64).catch(""),
+  amountMinor: z.string().trim().regex(/^\d{1,19}$/).catch(""),
+  paidOn: z.iso.date().catch(""),
+  accountRef: z.string().trim().max(64).catch(""),
+});
+
+export default async function NewPaymentPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await getCurrentAdmin();
 
   if (!admin) redirect("/admin/login?next=/admin/payments/new");
@@ -32,6 +53,29 @@ export default async function NewPaymentPage() {
   if (admin.mustChangePassword) redirect("/admin/change-password");
   if (!can(admin, "payments.record")) redirect("/admin/pledges");
 
+  const raw = await searchParams;
+  const one = (key: string) =>
+    typeof raw[key] === "string" ? (raw[key] as string) : "";
+
+  const reported = reportedParams.parse({
+    ref: one("ref"),
+    amountMinor: one("amountMinor"),
+    paidOn: one("paidOn"),
+    accountRef: one("accountRef"),
+  });
+
+  const prefill =
+    reported.ref || reported.amountMinor || reported.paidOn
+      ? {
+          externalRef: reported.ref || undefined,
+          amountDigits: reported.amountMinor
+            ? (BigInt(reported.amountMinor) / 100n).toString()
+            : undefined,
+          paidAt: reported.paidOn || undefined,
+          accountRef: reported.accountRef || undefined,
+        }
+      : undefined;
+
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy px-4 py-8 sm:px-6">
@@ -40,6 +84,7 @@ export default async function NewPaymentPage() {
             name={admin.name}
             role={admin.role}
             isSuper={admin.isSuper}
+            pendingChangeRequests={await pendingChangeRequestCount(admin)}
           />
 
           <h1 className="mt-6 text-2xl font-semibold tracking-tight text-white">
@@ -54,7 +99,7 @@ export default async function NewPaymentPage() {
 
       <main className="px-4 py-8 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-2xl">
-          <PaymentForm />
+          <PaymentForm reported={prefill} />
         </div>
       </main>
     </div>
