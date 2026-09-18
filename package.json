@@ -44,7 +44,8 @@
     "db:verify:google": "tsx scripts/verify-part-ac.ts",
     "db:verify:linking": "tsx scripts/verify-part-ad.ts",
     "db:verify:change-requests": "tsx scripts/verify-part-ae.ts",
-    "db:verify:change-decisions": "tsx scripts/verify-part-af.ts"
+    "db:verify:change-decisions": "tsx scripts/verify-part-af.ts",
+    "db:verify:change-queue": "tsx scripts/verify-part-ag.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",
