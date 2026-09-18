@@ -5,6 +5,10 @@ import Link from "next/link";
 
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
 import { CopyButton } from "@/components/pledge/copy-button";
+import {
+  ChangeRequestForm,
+  ChangeRequestPending,
+} from "@/components/pledge/change-request-form";
 import { WithdrawDisplayConsent } from "@/components/pledge/withdraw-display-consent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +17,7 @@ import { CONTACT } from "@/content/campaign";
 import { formatDate, formatKES } from "@/lib/format";
 import type { ResolvedPaymentDetails } from "@/lib/payment-details";
 import { redemptionSummary } from "@/lib/redemption";
+import type { ChangeRequestKind } from "@/server/contracts/change-requests";
 import { lookupPledgeInput, REDEMPTION_PLANS } from "@/server/contracts/pledges";
 
 /**
@@ -40,6 +45,8 @@ type Found = {
   installmentFrequency: keyof typeof REDEMPTION_PLANS | null;
   /** Whether this pledger's name is on the public list right now. */
   displayConsent: boolean;
+  /** What is already waiting for the treasurer, if anything. */
+  openRequest: { kind: ChangeRequestKind; createdAt: string } | null;
   createdAt: string;
 };
 
@@ -259,6 +266,31 @@ export function RedeemLookup({
                 Open my pledge page
               </Link>
             </div>
+
+            {/*
+              One or the other, never both. A pledge with something already in
+              the queue cannot take a second request, which the partial unique
+              index enforces, so offering a form here could only ever produce a
+              refusal.
+            */}
+            {found.openRequest ? (
+              <ChangeRequestPending request={found.openRequest} />
+            ) : (
+              <ChangeRequestForm
+                pledge={{
+                  reference: found.reference,
+                  amountMinor: found.amountMinor,
+                  installmentFrequency: found.installmentFrequency,
+                }}
+                phone={phone}
+                onRaised={(raised) =>
+                  setState({
+                    kind: "found",
+                    pledge: { ...found, openRequest: raised },
+                  })
+                }
+              />
+            )}
 
             {/*
               Offered only to somebody whose name is actually published, and
