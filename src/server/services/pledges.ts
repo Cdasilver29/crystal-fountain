@@ -50,6 +50,7 @@ import {
   type PledgeStatus,
   type RedemptionChoice,
   type SetOrganisationInput,
+  type WithdrawDisplayConsentInput,
 } from "@/server/contracts/pledges";
 
 /**
@@ -1132,6 +1133,14 @@ export type PledgeRedemptionView = {
   intent: PledgeIntent;
   installmentFrequency: PledgeFrequency | null;
   installmentAmountMinor: bigint | null;
+  /**
+   * Whether this pledger's name is on the public list.
+   *
+   * Here so the page can offer to take it off, and offer that only to somebody
+   * whose name is actually on there. It is a fact about the person asking,
+   * returned only to somebody who has already proved the pledge is theirs.
+   */
+  displayConsent: boolean;
   createdAt: Date;
 };
 
@@ -1146,6 +1155,7 @@ type LookupRow = {
   intent: string;
   installment_frequency: string | null;
   installment_amount_minor: string | null;
+  display_consent: boolean;
   created_at: string;
 };
 
@@ -1154,6 +1164,34 @@ export type LookupPledgeArgs = {
   campaignSlug: string;
   request?: RequestContext;
 };
+
+/**
+ * The limit on resolving a reference and a phone number to a pledge.
+ *
+ * Shared by the lookup and by withdrawing display consent, because the two are
+ * the same attack from the outside: somebody who does not know the pair
+ * guessing at it. One implementation, so the two can never end up enforcing
+ * different limits on the same guess.
+ *
+ * Counted from pledge_lookups rather than from memory, so it holds across every
+ * serverless instance and survives a redeploy. Each caller records its own
+ * attempt afterwards, because only the caller knows whether the pair matched.
+ */
+async function enforceLookupLimit(db: Db, ip: string | null): Promise<void> {
+  const recent = await db.execute(sql`
+    select count(*)::int as attempts
+    from pledge_lookups
+    where at > now() - make_interval(secs => ${LOOKUP_RATE_WINDOW_SECONDS})
+      and ip is not distinct from ${ip}::inet
+  `);
+
+  if ((recent.rows[0] as { attempts: number }).attempts >= LOOKUP_RATE_LIMIT) {
+    throw tooManyRequests(
+      "lookup_rate_limited",
+      "Too many lookups from this connection. Please wait a minute and try again.",
+    );
+  }
+}
 
 /**
  * Finds one pledge from a reference and a phone number that both match it.
@@ -1178,19 +1216,7 @@ export async function lookup(
   const { input, campaignSlug, request } = args;
   const ip = request?.ip ?? null;
 
-  const recent = await db.execute(sql`
-    select count(*)::int as attempts
-    from pledge_lookups
-    where at > now() - make_interval(secs => ${LOOKUP_RATE_WINDOW_SECONDS})
-      and ip is not distinct from ${ip}::inet
-  `);
-
-  if ((recent.rows[0] as { attempts: number }).attempts >= LOOKUP_RATE_LIMIT) {
-    throw tooManyRequests(
-      "lookup_rate_limited",
-      "Too many lookups from this connection. Please wait a minute and try again.",
-    );
-  }
+  await enforceLookupLimit(db, ip);
 
   const result = await db.execute(sql`
     select p.reference,
@@ -1203,6 +1229,7 @@ export async function lookup(
            p.intent,
            p.installment_frequency,
            p.installment_amount_minor,
+           g.display_consent,
            p.created_at
     from pledges p
     join pledgers g on g.id = p.pledger_id
@@ -1238,8 +1265,126 @@ export async function lookup(
       row.installment_amount_minor === null
         ? null
         : BigInt(row.installment_amount_minor),
+    displayConsent: row.display_consent,
     createdAt: new Date(row.created_at),
   };
+}
+
+/* ---------------------------------------------------------------------------
+ * Taking a name back off the public list.
+ * ------------------------------------------------------------------------- */
+
+export type WithdrawDisplayConsentArgs = {
+  input: WithdrawDisplayConsentInput;
+  campaignSlug: string;
+  request?: RequestContext;
+};
+
+export type WithdrawDisplayConsentResult = {
+  /** Whether the pair matched a pledge at all. */
+  found: boolean;
+  /** True when this call turned it off. False when it was already off. */
+  changed: boolean;
+};
+
+/**
+ * Takes a pledger's name off the public list, on the spot.
+ *
+ * The one thing in this whole feature that does not wait for an administrator.
+ * Under the Data Protection Act withdrawing consent has to be as easy as
+ * giving it, and giving it was one unticked checkbox on the pledge form, so
+ * putting this in a queue behind somebody's approval would fail that plainly.
+ * Nobody has to agree. It happens.
+ *
+ * Granting consent deliberately stays where it is, on the pledge form. The two
+ * directions are not symmetrical: taking a name off a public page needs no
+ * gatekeeper, and putting one on it needs the person's deliberate act.
+ *
+ * The display name is cleared as well as the flag, so the row ends up
+ * indistinguishable from a pledger who never consented at all. Leaving the
+ * name in a column whose only purpose is publication would be keeping a copy
+ * of exactly the thing they asked to have removed.
+ *
+ * Authenticated by the /redeem pair and rate limited by the same counter,
+ * because from the outside this and a lookup are the same guess.
+ */
+export async function withdrawDisplayConsent(
+  db: Db,
+  args: WithdrawDisplayConsentArgs,
+): Promise<WithdrawDisplayConsentResult> {
+  const { input, campaignSlug, request } = args;
+  const ip = request?.ip ?? null;
+
+  await enforceLookupLimit(db, ip);
+
+  return db.transaction(async (tx) => {
+    const found = await tx.execute(sql`
+      select p.id::text as pledge_id,
+             p.reference,
+             g.id::text as pledger_id,
+             g.display_consent
+      from pledges p
+      join pledgers g on g.id = p.pledger_id
+      join campaigns c on c.id = p.campaign_id
+      where c.slug = ${campaignSlug}
+        and p.deleted_at is null
+        and p.reference = ${input.reference}
+        and g.phone_e164 = ${input.phone}
+      limit 1
+    `);
+
+    const row = found.rows[0] as
+      | {
+          pledge_id: string;
+          reference: string;
+          pledger_id: string;
+          display_consent: boolean;
+        }
+      | undefined;
+
+    // Recorded hit or miss, like a lookup, so a run of misses from one address
+    // still shows up as somebody walking references.
+    await tx.insert(pledgeLookups).values({ ip, found: Boolean(row) });
+
+    if (!row) return { found: false, changed: false };
+
+    /*
+     * Already off. Nothing is written and no audit row is appended: a second
+     * press of the same button, or a link followed twice, is not an event, and
+     * a journal that filled with them would be harder to read for it.
+     */
+    if (!row.display_consent) return { found: true, changed: false };
+
+    await tx
+      .update(pledgers)
+      .set({ displayConsent: false, displayName: null, updatedAt: new Date() })
+      .where(eq(pledgers.id, row.pledger_id));
+
+    /*
+     * The journal records that a name came off and whose pledge it was, and
+     * not the name itself. Every other row in this log names a pledge rather
+     * than a person for the same reason, and copying somebody's name into an
+     * append only record at the moment they ask to stop having it published
+     * would be a strange way to honour the request.
+     */
+    await tx.insert(auditLog).values({
+      actorType: "public",
+      action: "pledgers.display_consent_withdrawn",
+      entity: "pledger",
+      entityId: row.pledger_id,
+      before: { displayConsent: true },
+      after: {
+        displayConsent: false,
+        displayNameCleared: true,
+        reference: row.reference,
+        pledgeId: row.pledge_id,
+      },
+      ip,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    return { found: true, changed: true };
+  });
 }
 
 /* ---------------------------------------------------------------------------

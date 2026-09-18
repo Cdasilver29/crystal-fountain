@@ -313,6 +313,26 @@ export const lookupPledgeInput = z.object({
 export type LookupPledgeInput = z.infer<typeof lookupPledgeInput>;
 
 /**
+ * Taking a name back off the public list.
+ *
+ * The same pair as a lookup, and deliberately nothing else. Withdrawing
+ * consent has to be as easy as giving it, and giving it was one unticked
+ * checkbox on the pledge form, so this cannot be made to cost more than
+ * proving the pledge is yours.
+ *
+ * It is its own contract rather than a reuse of lookupPledgeInput so that the
+ * two can never be confused at a call site: one reads, and this one writes.
+ */
+export const withdrawDisplayConsentInput = z.object({
+  reference: pledgeReference,
+  phone: kenyanPhone,
+});
+
+export type WithdrawDisplayConsentInput = z.infer<
+  typeof withdrawDisplayConsentInput
+>;
+
+/**
  * An administrator correcting a pledge.
  *
  * Every field is optional: the form sends only what changed, and a request that
