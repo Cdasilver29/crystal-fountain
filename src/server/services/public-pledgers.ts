@@ -44,6 +44,7 @@ export const PUBLIC_LIST_RATE_WINDOW_SECONDS = 60;
 type PublicRow = {
   id: string;
   display_name: string;
+  is_organisation: boolean;
   amount_minor: string;
   created_at: string;
 };
@@ -193,6 +194,7 @@ export async function publicList(
   const result = await db.execute(sql`
     select p.id::text as id,
            g.display_name,
+           g.is_organisation,
            p.amount_minor,
            p.created_at
     from pledges p
@@ -214,7 +216,9 @@ export async function publicList(
     id: row.id,
     createdAt: new Date(row.created_at),
     entry: {
-      displayName: displayName(row.display_name),
+      displayName: displayName(row.display_name, {
+        isOrganisation: row.is_organisation,
+      }),
       amountMinor: BigInt(row.amount_minor).toString(),
       createdAt: new Date(row.created_at).toISOString(),
     } satisfies PublicPledgeDto,

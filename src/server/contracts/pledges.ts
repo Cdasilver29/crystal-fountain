@@ -401,6 +401,12 @@ export const adminCreatePledgeInput = z.object({
   ),
   contactConsent: z.boolean().default(false),
   displayConsent: z.boolean().default(false),
+  /*
+   * Not a consent, which is why it sits after the two that are. It records what
+   * the pledger is rather than what they agreed to, and it only changes how an
+   * already consented name is rendered.
+   */
+  isOrganisation: z.boolean().default(false),
 });
 
 export type AdminCreatePledgeInput = z.infer<typeof adminCreatePledgeInput>;
@@ -414,3 +420,16 @@ export const removePledgeInput = z.object({
 });
 
 export type RemovePledgeInput = z.infer<typeof removePledgeInput>;
+
+/**
+ * Marking a pledger an organisation rather than a person.
+ *
+ * Addressed by pledge id, because that is the screen the treasurer is on. The
+ * service resolves it to the pledger, since the flag belongs to the pledger and
+ * one pledger may hold more than one pledge over the life of the campaign.
+ */
+export const setOrganisationInput = z.object({
+  isOrganisation: z.boolean("Say whether this pledger is an organisation."),
+});
+
+export type SetOrganisationInput = z.infer<typeof setOrganisationInput>;

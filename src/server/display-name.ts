@@ -182,9 +182,31 @@ function render({ given, surname }: Parsed): string {
  * rows whose display name is blank, so this is a guard rather than a case any
  * caller is expected to render.
  */
-export function displayName(raw: string): string {
+export function displayName(
+  raw: string,
+  options?: {
+    /**
+     * Whether this pledger is an organisation rather than a person.
+     *
+     * A fund, a ministry or a choir has no surname to protect, so its name is
+     * published exactly as stored: "AMM/AMO Seed Fund", not "AMM/AMO F.". The
+     * flag is set by the treasurer on the pledge screen, never guessed here. A
+     * heuristic over the campaign's real names was tried and rejected: the word
+     * "Family" meant a real family with a real surname five times out of seven,
+     * so inferring it would have published five surnames to tidy up one row.
+     */
+    isOrganisation?: boolean;
+  },
+): string {
   const cleaned = normalise(raw);
   if (!cleaned) return "";
+
+  /*
+   * Nothing to reduce. Whitespace is still collapsed and a glued title still
+   * unstuck, because those are tidying rather than protection, but no word is
+   * dropped and no initial is taken.
+   */
+  if (options?.isOrganisation) return cleaned;
 
   const joint = JOINT.exec(cleaned);
 

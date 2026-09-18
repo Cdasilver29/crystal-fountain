@@ -197,6 +197,37 @@ describe("displayName", () => {
     });
   });
 
+  /*
+   * The flag the treasurer sets on the pledge screen. Both names below are real
+   * organisations in the campaign, and both read oddly without it.
+   */
+  describe("an organisation", () => {
+    it.each([
+      ["AMM/AMO  Seed Fund", "AMM/AMO Seed Fund"],
+      ["Adventist Womens Ministry", "Adventist Womens Ministry"],
+      ["Newlife Sanctuary Choir", "Newlife Sanctuary Choir"],
+      ["The Nzioki's Family", "The Nzioki's Family"],
+    ])("%s renders in full", (stored, expected) => {
+      expect(displayName(stored, { isOrganisation: true })).toBe(expected);
+    });
+
+    it("still collapses whitespace and unsticks a glued title", () => {
+      expect(displayName("  Dr.PAUL   Memorial   Fund  ", { isOrganisation: true }))
+        .toBe("Dr. PAUL Memorial Fund");
+    });
+
+    it("changes nothing when the flag is false or absent", () => {
+      expect(displayName("Grace Kamau", { isOrganisation: false })).toBe("Grace K.");
+      expect(displayName("Grace Kamau", {})).toBe("Grace K.");
+      expect(displayName("Grace Kamau")).toBe("Grace K.");
+    });
+
+    it("an empty name is still empty, flag or no flag", () => {
+      expect(displayName("", { isOrganisation: true })).toBe("");
+      expect(displayName("   ", { isOrganisation: true })).toBe("");
+    });
+  });
+
   describe("degenerate input", () => {
     it.each([
       ["", ""],

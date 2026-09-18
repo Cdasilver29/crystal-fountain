@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { PledgeDelete } from "@/components/admin/pledge-delete";
 import { PledgeEdit } from "@/components/admin/pledge-edit";
+import { PledgerOrganisation } from "@/components/admin/pledger-organisation";
 import { db } from "@/db";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { formatDate, formatKES, formatPhoneForDisplay } from "@/lib/format";
@@ -144,7 +145,26 @@ export default async function AdminPledgeDetailPage({
               <Row label="Shown in the feed">
                 {pledge.displayConsent ? "Yes" : "No"}
               </Row>
+              <Row label="Kind">
+                {pledge.isOrganisation ? "Organisation" : "Individual"}
+              </Row>
             </dl>
+
+            {/*
+              The treasurer sets this, so it sits with the pledger rather than
+              with the pledge. A viewer sees the row above and no control, which
+              is the same answer the route gives them if they ask it directly.
+            */}
+            {can(admin, "pledgers.setOrganisation") && (
+              <div className="mt-5 border-t border-neutral-100 pt-5">
+                <PledgerOrganisation
+                  pledgeId={pledge.id}
+                  storedName={pledge.displayName}
+                  initial={pledge.isOrganisation}
+                  displayConsent={pledge.displayConsent}
+                />
+              </div>
+            )}
           </section>
 
           <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">

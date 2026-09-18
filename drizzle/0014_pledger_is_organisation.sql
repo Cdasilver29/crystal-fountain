@@ -1,0 +1,1 @@
+ALTER TABLE "pledgers" ADD COLUMN "is_organisation" boolean DEFAULT false NOT NULL;

@@ -27,6 +27,7 @@ export const ADMIN_ACTIONS = [
   "pledges.edit",
   "pledges.delete",
   "pledges.create",
+  "pledgers.setOrganisation",
   "payments.view",
   "payments.record",
   "payments.allocate",
@@ -68,6 +69,15 @@ const RULES: Record<AdminAction, Rule> = {
   "pledges.approve": { minRole: "treasurer" },
   "pledges.void": { minRole: "treasurer" },
   "pledges.create": { minRole: "treasurer" },
+
+  /*
+   * Marking a pledger an organisation. The treasurer knows which names are
+   * funds and which are families, and the flag only widens what is already
+   * consented to being public: it publishes the stored name instead of a
+   * shortened one. Getting it wrong on a person would publish their surname,
+   * which is why it is not a viewer action and why every change is audited.
+   */
+  "pledgers.setOrganisation": { minRole: "treasurer" },
   "payments.record": { minRole: "treasurer" },
   "payments.allocate": { minRole: "treasurer" },
   "exports.download": { minRole: "treasurer" },

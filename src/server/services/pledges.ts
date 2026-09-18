@@ -45,6 +45,7 @@ import {
   type PledgeIntent,
   type PledgeStatus,
   type RedemptionChoice,
+  type SetOrganisationInput,
 } from "@/server/contracts/pledges";
 
 /**
@@ -1038,6 +1039,7 @@ export const RECENT_PLEDGE_LIMIT = 30;
 type RecentRow = {
   id: string;
   display_name: string;
+  is_organisation: boolean;
   amount_minor: string;
   created_at: string;
 };
@@ -1071,6 +1073,7 @@ export async function recent(
   const result = await db.execute(sql`
     select p.id,
            g.display_name,
+           g.is_organisation,
            p.amount_minor,
            p.created_at
     from pledges p
@@ -1088,7 +1091,9 @@ export async function recent(
 
   return (result.rows as RecentRow[]).map((row) => ({
     id: row.id,
-    displayName: displayName(row.display_name),
+    displayName: displayName(row.display_name, {
+      isOrganisation: row.is_organisation,
+    }),
     amountMinor: BigInt(row.amount_minor),
     createdAt: new Date(row.created_at),
   }));
@@ -1286,6 +1291,10 @@ export type AdminPledgeDetail = {
   note: string | null;
   displayConsent: boolean;
   contactConsent: boolean;
+  /** Whether the pledger is an organisation, so the name publishes in full. */
+  isOrganisation: boolean;
+  /** The public display name as stored, or null when none was given. */
+  displayName: string | null;
   createdAt: Date;
   updatedAt: Date;
   verifiedAt: Date | null;
@@ -1313,6 +1322,8 @@ type DetailRow = {
   note: string | null;
   display_consent: boolean;
   contact_consent: boolean;
+  is_organisation: boolean;
+  display_name: string | null;
   created_at: string;
   updated_at: string;
   verified_at: string | null;
@@ -1343,6 +1354,8 @@ export async function getForAdmin(
            p.note,
            g.display_consent,
            g.contact_consent,
+           g.is_organisation,
+           g.display_name,
            p.created_at,
            p.updated_at,
            p.verified_at
@@ -1408,6 +1421,8 @@ export async function getForAdmin(
     note: row.note,
     displayConsent: row.display_consent,
     contactConsent: row.contact_consent,
+    isOrganisation: row.is_organisation,
+    displayName: row.display_name,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
@@ -1933,5 +1948,150 @@ export async function createByAdmin(
       .where(eq(pledges.id, result.pledgeId));
   }
 
+  /*
+   * The organisation flag goes through the same service the pledge screen uses,
+   * rather than being set inline here.
+   *
+   * It is deliberately not a field on CreatePledgeInput. That contract is the
+   * public pledge form, and nothing a stranger submits should be able to decide
+   * how its own name is rendered on a public page. Routing it through here also
+   * means the decision gets its own audit row, naming the treasurer who made
+   * it, which is the whole reason the flag is set by hand and not inferred.
+   */
+  if (input.isOrganisation) {
+    await setOrganisation(db, {
+      pledgeId: result.pledgeId,
+      input: { isOrganisation: true },
+      adminId,
+      request,
+    });
+  }
+
   return { ...result, status: "verified" };
+}
+
+/* ---------------------------------------------------------------------------
+ * Marking a pledger an organisation.
+ * ------------------------------------------------------------------------- */
+
+export type SetOrganisationArgs = {
+  /** The pledge the treasurer is looking at. Resolved to its pledger. */
+  pledgeId: string;
+  input: SetOrganisationInput;
+  adminId?: string | null;
+  request?: RequestContext;
+};
+
+export type SetOrganisationResult = {
+  pledgeId: string;
+  pledgerId: string;
+  reference: string;
+  isOrganisation: boolean;
+  /** False when the flag already held that value and nothing was written. */
+  changed: boolean;
+  /** Whether this pledge is consented and counted, so the public list moved. */
+  affectsPublicList: boolean;
+};
+
+/**
+ * Sets or clears the organisation flag on the pledger behind a pledge.
+ *
+ * The flag decides whether the stored name is published whole or reduced to a
+ * given name and an initial, so this is a change to what the congregation can
+ * see about somebody. It is audited like one.
+ *
+ * Addressed by pledge because that is the screen it is set from, but written to
+ * the pledger, which is where the fact belongs. A pledger who later records a
+ * second pledge keeps the flag without anybody having to set it again.
+ *
+ * A no op write is not written. Setting the flag to what it already is would
+ * otherwise append an audit row saying a value was changed to itself, and a
+ * journal padded with those is a journal people stop reading.
+ */
+export async function setOrganisation(
+  db: Db,
+  args: SetOrganisationArgs,
+): Promise<SetOrganisationResult> {
+  const { pledgeId, input, adminId = null, request } = args;
+
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        pledgeId: pledges.id,
+        reference: pledges.reference,
+        status: pledges.status,
+        pledgerId: pledgers.id,
+        displayName: pledgers.displayName,
+        displayConsent: pledgers.displayConsent,
+        isOrganisation: pledgers.isOrganisation,
+      })
+      .from(pledges)
+      .innerJoin(pledgers, eq(pledgers.id, pledges.pledgerId))
+      .where(and(eq(pledges.id, pledgeId), isNull(pledges.deletedAt)))
+      .for("update")
+      .limit(1);
+
+    if (!current) {
+      throw notFound("pledge_not_found", "That pledge does not exist.");
+    }
+
+    /*
+     * Whether anybody would see the difference. A pledge that is not consented,
+     * or not counted, renders nowhere public, so flipping the flag on it should
+     * not throw away a warm cache for every visitor.
+     */
+    const affectsPublicList =
+      current.displayConsent &&
+      (current.status === "verified" || current.status === "fulfilled");
+
+    if (current.isOrganisation === input.isOrganisation) {
+      return {
+        pledgeId: current.pledgeId,
+        pledgerId: current.pledgerId,
+        reference: current.reference,
+        isOrganisation: current.isOrganisation,
+        changed: false,
+        affectsPublicList: false,
+      };
+    }
+
+    const now = new Date();
+
+    await tx
+      .update(pledgers)
+      .set({ isOrganisation: input.isOrganisation, updatedAt: now })
+      .where(eq(pledgers.id, current.pledgerId));
+
+    /*
+     * The stored display name goes on the row on purpose. Whether it was right
+     * to call this an organisation is a judgement about that exact string, and
+     * a journal entry that records the decision without recording what it was
+     * made about cannot be reviewed later. It is a consented public name, so it
+     * is already the least sensitive thing on the pledger.
+     */
+    await tx.insert(auditLog).values({
+      actorType: "admin",
+      actorId: adminId,
+      action: "pledgers.organisation_flagged",
+      entity: "pledger",
+      entityId: current.pledgerId,
+      before: { isOrganisation: current.isOrganisation },
+      after: {
+        isOrganisation: input.isOrganisation,
+        displayName: current.displayName,
+        reference: current.reference,
+      },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    return {
+      pledgeId: current.pledgeId,
+      pledgerId: current.pledgerId,
+      reference: current.reference,
+      isOrganisation: input.isOrganisation,
+      changed: true,
+      affectsPublicList,
+    };
+  });
 }

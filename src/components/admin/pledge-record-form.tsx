@@ -51,6 +51,7 @@ export function PledgeRecordForm() {
   const [note, setNote] = useState("");
   const [contactConsent, setContactConsent] = useState(false);
   const [displayConsent, setDisplayConsent] = useState(false);
+  const [isOrganisation, setIsOrganisation] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -77,6 +78,7 @@ export function PledgeRecordForm() {
     setNote("");
     setContactConsent(false);
     setDisplayConsent(false);
+    setIsOrganisation(false);
     setErrors({});
   }
 
@@ -96,6 +98,7 @@ export function PledgeRecordForm() {
       note,
       contactConsent,
       displayConsent,
+      isOrganisation,
     });
 
     if (!parsed.success) {
@@ -331,6 +334,23 @@ export function PledgeRecordForm() {
           />
           Their first name and pledge amount may appear in the recent pledges
           feed on the website.
+        </label>
+
+        {/*
+          Separate from the consent boxes above, because it is not a consent.
+          The two boxes record what the pledger said; this records what they
+          are, and it only changes how the name is rendered once they have
+          already agreed to it appearing.
+        */}
+        <label className="mt-2.5 flex items-start gap-3 text-sm text-neutral-800">
+          <input
+            type="checkbox"
+            checked={isOrganisation}
+            onChange={(e) => setIsOrganisation(e.target.checked)}
+            className="mt-0.5 size-4 rounded border-neutral-300"
+          />
+          This pledger is an organisation, not an individual. Its name is shown
+          in full rather than as a first name and an initial.
         </label>
       </fieldset>
 

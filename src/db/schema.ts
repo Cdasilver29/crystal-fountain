@@ -134,6 +134,21 @@ export const pledgers = pgTable(
     displayName: text("display_name"),
     displayConsent: boolean("display_consent").notNull().default(false),
     contactConsent: boolean("contact_consent").notNull().default(false),
+    /*
+     * Whether this pledger is an organisation rather than a person.
+     *
+     * A fund, a ministry or a choir has no surname to protect, so its stored
+     * name is published in full. An individual's is reduced to a given name and
+     * an initial. Nothing infers this: a heuristic over the real display names
+     * was tried and "Family" turned out to mean a real family with a real
+     * surname five times out of seven, so the flag is set deliberately by the
+     * treasurer on the pledge screen and the audit log records who decided.
+     *
+     * Defaults to false, which is the safe answer for a row nobody has looked
+     * at yet: a person's name rendered as an organisation's would publish their
+     * surname, and an organisation rendered as a person only reads oddly.
+     */
+    isOrganisation: boolean("is_organisation").notNull().default(false),
     privacyVersion: text("privacy_version").notNull(),
     consentedAt: timestamp("consented_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })

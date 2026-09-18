@@ -85,7 +85,10 @@ export type AuditFilter = (typeof AUDIT_FILTERS)[number];
  */
 export const AUDIT_FILTER_PREFIXES: Record<AuditFilter, readonly string[]> = {
   all: [],
-  pledges: ["pledge."],
+  // Both prefixes. The organisation flag is recorded against the pledger
+  // rather than the pledge, so "pledge." alone would hide it from the one
+  // filter anybody would look under for it.
+  pledges: ["pledge.", "pledgers."],
   payments: ["payment."],
   auth: ["admin.login", "admin.logout", "admin.totp"],
   exports: ["admin.export"],
