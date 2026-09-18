@@ -32,6 +32,17 @@ const LINKS: readonly NavLink[] = [
   // The book itself, not the form. Every role may read it, and the button to
   // record one lives on the page, where only a treasurer sees it.
   { href: "/admin/payments", label: "Payments", needs: "payments.view" },
+  /*
+   * What pledgers have asked to have changed. Every role may read the queue;
+   * the buttons on it are what a viewer will not be given. The pending count
+   * that belongs on this item is the next session's, because no admin layout
+   * exists and every page renders this nav itself.
+   */
+  {
+    href: "/admin/change-requests",
+    label: "Change requests",
+    needs: "changeRequests.view",
+  },
   // Counts and totals only, nothing to act on and nobody named, so a viewer
   // sees the same page a treasurer does.
   { href: "/admin/analytics", label: "Analytics", needs: "analytics.view" },
