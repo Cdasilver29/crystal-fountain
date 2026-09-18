@@ -32,6 +32,37 @@ describe("pledgers.setOrganisation", () => {
   });
 });
 
+describe("change requests", () => {
+  it("are visible to everybody who can see the books", () => {
+    expect(can(viewer, "changeRequests.view")).toBe(true);
+    expect(can(treasurer, "changeRequests.view")).toBe(true);
+    expect(can(admin, "changeRequests.view")).toBe(true);
+  });
+
+  it("are decided by the treasurer and not by a viewer", () => {
+    expect(can(viewer, "changeRequests.decide")).toBe(false);
+    expect(can(treasurer, "changeRequests.decide")).toBe(true);
+    expect(can(admin, "changeRequests.decide")).toBe(true);
+  });
+
+  /*
+   * Cancelling takes a pledge off the figure the congregation is watching, so
+   * it sits with deletion rather than with routine corrections. A treasurer
+   * sees the request and can decline it; approving it is an administrator's.
+   */
+  it("are cancelled only by an administrator", () => {
+    expect(can(viewer, "changeRequests.decideCancellation")).toBe(false);
+    expect(can(treasurer, "changeRequests.decideCancellation")).toBe(false);
+    expect(can(admin, "changeRequests.decideCancellation")).toBe(true);
+    expect(can(superAdmin, "changeRequests.decideCancellation")).toBe(true);
+  });
+
+  it("separate deciding a cancellation from deciding anything else", () => {
+    expect(can(treasurer, "changeRequests.decide")).toBe(true);
+    expect(can(treasurer, "changeRequests.decideCancellation")).toBe(false);
+  });
+});
+
 describe("the table as a whole", () => {
   it("every action has a rule, so none falls through to allowed", () => {
     for (const action of ADMIN_ACTIONS) {
@@ -43,6 +74,7 @@ describe("the table as a whole", () => {
     const allowed = ADMIN_ACTIONS.filter((a) => can(viewer, a));
     expect([...allowed].sort()).toEqual([
       "analytics.view",
+      "changeRequests.view",
       "payments.view",
       "pledges.view",
     ]);

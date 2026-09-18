@@ -32,6 +32,9 @@ export const ADMIN_ACTIONS = [
   "payments.record",
   "payments.allocate",
   "payments.deallocate",
+  "changeRequests.view",
+  "changeRequests.decide",
+  "changeRequests.decideCancellation",
   "exports.download",
   "analytics.view",
   "audit.view",
@@ -59,6 +62,13 @@ const RULES: Record<AdminAction, Rule> = {
   "analytics.view": { minRole: "viewer" },
 
   /*
+   * The queue of what pledgers have asked to have changed. Reading it is
+   * reading the books, so everybody signed in can. Phone numbers on it are
+   * masked for a viewer by the same rule as everywhere else.
+   */
+  "changeRequests.view": { minRole: "viewer" },
+
+  /*
    * A whole phone number, rather than the masked one every screen shows.
    * A treasurer reconciling an M-Pesa receipt against a pledge needs it; a
    * viewer has no task that does, so they keep seeing the last three digits.
@@ -78,6 +88,14 @@ const RULES: Record<AdminAction, Rule> = {
    * which is why it is not a viewer action and why every change is audited.
    */
   "pledgers.setOrganisation": { minRole: "treasurer" },
+  /*
+   * Answering a request. Reducing an amount, correcting a name, re-planning
+   * instalments and chasing a payment that never appeared are all the
+   * treasurer's ordinary work, and each of them ends in a write the treasurer
+   * is already trusted to make directly.
+   */
+  "changeRequests.decide": { minRole: "treasurer" },
+
   "payments.record": { minRole: "treasurer" },
   "payments.allocate": { minRole: "treasurer" },
   "exports.download": { minRole: "treasurer" },
@@ -88,6 +106,14 @@ const RULES: Record<AdminAction, Rule> = {
    */
   "payments.deallocate": { minRole: "admin" },
   "pledges.edit": { minRole: "admin" },
+
+  /*
+   * Cancelling somebody's pledge is the one decision in the queue that takes
+   * money off the figure the congregation is watching, so it sits beside
+   * deleting a pledge rather than beside correcting one. A treasurer can see
+   * the request and can decline it; only an administrator can approve it.
+   */
+  "changeRequests.decideCancellation": { minRole: "admin" },
 
   /*
    * The journal records what the treasurer did, and a record its own subjects

@@ -98,6 +98,46 @@ export function summarise(
         .join(", ");
     }
 
+    case "pledge.change_requested": {
+      /*
+       * What was asked for, in the words the queue uses. Read from named
+       * fields per kind rather than dumped, so the pledger's own reason and
+       * their contact number stay off a screen that is read whole.
+       *
+       * A kind nobody has taught this about says only that something was
+       * asked, which is still true and still useful, rather than nothing.
+       */
+      const kind = str(a.kind);
+
+      switch (kind) {
+        case "reduce_amount": {
+          const amount = kes(a.requestedAmountMinor);
+          return amount ? `reduce to ${amount}` : "reduce the amount";
+        }
+        case "change_plan": {
+          const frequency = str(a.requestedFrequency);
+          return frequency
+            ? `change plan to ${frequency.replace(/_/g, " ")}`
+            : "change the plan";
+        }
+        case "correct_name": {
+          const name = str(a.requestedName);
+          return name ? `correct the name to ${name}` : "correct the name";
+        }
+        case "payment_missing": {
+          const ref = str(a.paymentReference);
+          const amount = kes(a.paymentAmountMinor);
+          if (ref && amount) return `${amount} paid as ${ref} not reflected`;
+          if (ref) return `payment ${ref} not reflected`;
+          return "a payment is not reflected";
+        }
+        case "cancel_pledge":
+          return "cancel the pledge";
+        default:
+          return "a change was requested";
+      }
+    }
+
     case "payment.recorded": {
       const amount = kes(a.amountMinor);
       const method = str(a.method);

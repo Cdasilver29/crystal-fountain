@@ -92,6 +92,12 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "admin.google_rejected": "red",
 
   // Grey: neutral.
+  /*
+   * A member asking for something, which is not an administrator doing
+   * anything. Nothing has changed when this row is written, and the colour
+   * says so: the decision is a separate row and carries its own weight.
+   */
+  "pledge.change_requested": "grey",
   "admin.login": "grey",
   "admin.logout": "grey",
   "admin.totp_enrolled": "grey",
