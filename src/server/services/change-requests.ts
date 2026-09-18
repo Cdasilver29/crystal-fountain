@@ -1,11 +1,17 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import type { Db, Tx } from "@/db";
-import { auditLog, pledgeChangeRequests } from "@/db/schema";
+import {
+  auditLog,
+  pledgeChangeRequests,
+  pledgers,
+  pledges as pledgesTable,
+} from "@/db/schema";
 import {
   type ChangeRequestInput,
   type ChangeRequestKind,
   type ChangeRequestStatus,
+  type DecideChangeRequestInput,
   reduceAmountRefusal,
 } from "@/server/contracts/change-requests";
 import type {
@@ -14,13 +20,21 @@ import type {
   PledgeStatus,
   RedemptionChoice,
 } from "@/server/contracts/pledges";
-import { notFound, rejected, tooManyRequests } from "@/server/errors";
+import {
+  conflict,
+  forbidden,
+  notFound,
+  rejected,
+  tooManyRequests,
+} from "@/server/errors";
+import { formatKes } from "@/server/money";
 import {
   type Page,
   decodeCursor,
   pageSize,
   toPage,
 } from "@/server/pagination";
+import * as pledgesService from "@/server/services/pledges";
 import { maskPhone, type RequestContext } from "@/server/services/pledges";
 
 /**
@@ -30,11 +44,11 @@ import { maskPhone, type RequestContext } from "@/server/services/pledges";
  * Request or Response, or reads cookies.
  *
  * The shape of the feature is that a pledger can ask and only an administrator
- * can answer. Every function in this file either records what was asked or
- * reads the queue of what is waiting. None of them writes to a pledge. The two
- * that will, approve and decline, are stubs at the bottom: they belong with the
- * transaction and the increment ledger, and writing them here without those in
- * view is how a reduction ends up as a bare UPDATE on amount_minor.
+ * can answer. Raising a request writes one row in one table and touches no
+ * pledge at all. Answering one is the other half, and every change it makes to
+ * a pledge goes through the pledge service rather than through anything
+ * written here, so a reduction lands in the increment ledger with a reason
+ * attached exactly as it does when a treasurer types it in by hand.
  *
  * Authentication is the /redeem pairing and nothing else. A request is resolved
  * from a reference and the phone number that matches it, both of which the
@@ -603,50 +617,500 @@ export async function listForAdmin(
 }
 
 /* ---------------------------------------------------------------------------
- * Deciding. C2.
+ * Answering one.
  * ------------------------------------------------------------------------- */
-
-/**
- * Approving and declining are deliberately not written yet.
- *
- * Approving a reduction has to go through the increment ledger, in the same
- * transaction as the decision and the audit row, and then revalidate the
- * campaign totals; approving a missing payment has to route into the payment
- * recording flow that already exists rather than a second one written beside
- * it; approving a cancellation takes money off the figure the congregation is
- * watching and is the super administrator's alone. Each of those is a decision
- * about a transaction boundary, and the way to get them wrong is to sketch
- * them now and fill them in later.
- *
- * They throw rather than returning, so nothing can call them believing a
- * request was answered.
- */
 
 export type DecideChangeRequestArgs = {
   requestId: string;
+  campaignSlug: string;
+  input: DecideChangeRequestInput;
   adminId: string;
-  /** Required on a decline, and at least ten characters. Checked in C2. */
-  note?: string | null;
+  /**
+   * Whether this administrator may approve a cancellation.
+   *
+   * Decided by role in the route handler and passed in, the same way
+   * revealPhone is, because a service knows nothing about roles. The route has
+   * already refused a treasurer through requirePermission by the time this is
+   * called; this is the second lock on the same door, so that the one decision
+   * that takes money off the public figure cannot be reached by a caller that
+   * forgot to ask.
+   */
+  canDecideCancellation: boolean;
   request?: RequestContext;
 };
 
-/*
- * The arguments are named and unused on purpose: the signature is the part of
- * these two that C2 inherits, and a stub taking nothing would be a stub whose
- * callers all have to change the day it works.
+/**
+ * Where the treasurer goes next after approving a reported payment.
+ *
+ * Approving a payment_missing request records no payment. A payments row needs
+ * a method, which the pledger was never asked for, and payments_channel_ref_uq
+ * is unique on (method, external_ref), so recording one here would either
+ * guess at the method or collide with the money if it turns out to be already
+ * in the books. The commonest case by far is that the payment is recorded and
+ * simply unallocated.
+ *
+ * So approving says "yes, chase this", and hands back what the existing
+ * payment flow needs: the code, the amount, the date, and the payment already
+ * carrying that reference if there is one, so the screen can send somebody to
+ * allocate rather than to record. One recording flow, in one place.
  */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+export type PaymentRouting = {
+  paymentReference: string;
+  amountMinor: bigint;
+  paidOn: string;
+  /** The payment already under that reference, or null if there is none. */
+  existingPaymentId: string | null;
+};
 
-export async function approve(
-  _db: Db,
-  _args: DecideChangeRequestArgs,
-): Promise<never> {
-  throw new Error("not implemented in C1");
+export type DecideChangeRequestResult = {
+  requestId: string;
+  pledgeId: string;
+  reference: string;
+  kind: ChangeRequestKind;
+  status: "approved" | "declined";
+  /**
+   * Whether anything the public can see moved, so the caller knows to
+   * revalidate. One flag for both the figure and the feed, because they share
+   * a cache tag: a corrected name on a consented pledger changes the list of
+   * pledgers exactly as an approved reduction changes the total.
+   */
+  revalidatePublic: boolean;
+  /** Set only for an approved payment_missing. */
+  payment: PaymentRouting | null;
+};
+
+/** The request and its pledge, locked, ready to be decided. */
+type PendingDecision = {
+  request: ChangeRequestRow;
+  pledge: {
+    id: string;
+    reference: string;
+    status: PledgeStatus;
+    amountMinor: bigint;
+    pledgerId: string;
+  };
+};
+
+/**
+ * Reads the request and its pledge under a lock, or refuses.
+ *
+ * Both rows are locked because both are about to be written and because two
+ * administrators clicking approve at the same moment is not a hypothetical on
+ * a queue that everybody in the office can see. The second one waits here and
+ * then finds the request is no longer pending, which is the correct answer
+ * rather than a second reduction applied to the same pledge.
+ */
+async function loadForDecision(
+  tx: Tx,
+  requestId: string,
+  campaignSlug: string,
+): Promise<PendingDecision> {
+  const found = await tx.execute(sql`
+    select ${REQUEST_COLUMNS},
+           p.id::text as p_id,
+           p.reference as p_reference,
+           p.status as p_status,
+           p.amount_minor as p_amount_minor,
+           p.pledger_id::text as p_pledger_id,
+           p.deleted_at as p_deleted_at
+    from pledge_change_requests r
+    join pledges p on p.id = r.pledge_id
+    join campaigns c on c.id = p.campaign_id
+    where r.id = ${requestId}::uuid
+      and c.slug = ${campaignSlug}
+    for update of r, p
+  `);
+
+  const row = found.rows[0] as
+    | (RawRequestRow & {
+        p_id: string;
+        p_reference: string;
+        p_status: string;
+        p_amount_minor: string;
+        p_pledger_id: string;
+        p_deleted_at: string | null;
+      })
+    | undefined;
+
+  if (!row) {
+    throw notFound("change_request_not_found", "That request does not exist.");
+  }
+
+  if (row.status !== "pending") {
+    throw conflict(
+      "change_request_not_pending",
+      `That request has already been ${row.status}. Reload the queue to see who answered it.`,
+    );
+  }
+
+  /*
+   * A pledge that went away while this waited should already have closed the
+   * request, from the hook in the pledge service. Finding one anyway means
+   * something reached the pledge another way, and answering it would apply a
+   * change to a pledge nobody can see.
+   */
+  if (row.p_deleted_at !== null || !REQUESTABLE_STATUSES.includes(row.p_status)) {
+    throw conflict(
+      "pledge_not_changeable",
+      "That pledge has been closed or removed, so this request cannot be answered. Close it instead.",
+    );
+  }
+
+  return {
+    request: toRow(row),
+    pledge: {
+      id: row.p_id,
+      reference: row.p_reference,
+      status: row.p_status as PledgeStatus,
+      amountMinor: BigInt(row.p_amount_minor),
+      pledgerId: row.p_pledger_id,
+    },
+  };
 }
 
+/** Marks the request answered. Written before the change it authorises. */
+async function settle(
+  tx: Tx,
+  requestId: string,
+  status: "approved" | "declined",
+  adminId: string,
+  note: string | null,
+): Promise<void> {
+  await tx
+    .update(pledgeChangeRequests)
+    .set({
+      status,
+      decidedBy: adminId,
+      decidedAt: new Date(),
+      decisionNote: note,
+    })
+    .where(eq(pledgeChangeRequests.id, requestId));
+}
+
+/**
+ * Approves a request and makes the change it asked for.
+ *
+ * One transaction covering the decision and its consequence. A reduction
+ * applied without its decision recorded, or a decision recorded without the
+ * reduction, are both worse than neither: the first is a figure nobody can
+ * account for and the second is a pledger told yes and left unchanged.
+ *
+ * The amount and the plan go through pledges.edit rather than through anything
+ * written here, which is what puts a reduction into the increment ledger with
+ * a reason attached and leaves the original submissions untouched. CLAUDE.md:
+ * corrections are new rows, not edits. Reusing that service also means the
+ * pledge.edited row, the instalment recalculation and the verified_at rule all
+ * behave exactly as they do when a treasurer makes the same change by hand,
+ * because they are the same code.
+ *
+ * The request is settled before the change is applied, and the order matters:
+ * approving a cancellation moves the pledge to cancelled, and the pledge
+ * service closes any request left pending on a pledge that stops being a
+ * promise. Settling first means the request that asked for the cancellation is
+ * already answered and is not then closed by its own consequence.
+ */
+export async function approve(
+  db: Db,
+  args: DecideChangeRequestArgs,
+): Promise<DecideChangeRequestResult> {
+  const { requestId, campaignSlug, adminId, request } = args;
+
+  if (args.input.decision !== "approve") {
+    throw new TypeError("approve() was handed a decline.");
+  }
+
+  const note = args.input.note ?? null;
+
+  return db.transaction(async (tx) => {
+    const { request: pending, pledge } = await loadForDecision(
+      tx,
+      requestId,
+      campaignSlug,
+    );
+
+    if (pending.kind === "cancel_pledge" && !args.canDecideCancellation) {
+      throw forbidden(
+        "cancellation_needs_admin",
+        "Only an administrator can approve a cancellation, because it takes the pledge off the public total.",
+      );
+    }
+
+    await settle(tx, requestId, "approved", adminId, note);
+
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    let revalidatePublic = false;
+    let payment: PaymentRouting | null = null;
+
+    switch (pending.kind) {
+      case "reduce_amount": {
+        const requested = pending.requestedAmountMinor!;
+
+        /*
+         * Checked again here, against the amount as it stands now. A pledge
+         * can grow between the asking and the answering, because the pledge
+         * form adds to it without anybody's approval, and a reduction agreed
+         * against an older, smaller figure could silently become an increase.
+         */
+        const refusal = reduceAmountRefusal(requested, pledge.amountMinor);
+
+        if (refusal) {
+          throw conflict(
+            "reduction_no_longer_applies",
+            `This pledge now stands at ${formatKes(pledge.amountMinor)}. ${refusal}`,
+          );
+        }
+
+        const result = await pledgesService.edit(tx, {
+          pledgeId: pledge.id,
+          adminId,
+          input: {
+            // Whole shillings, which the contract has already guaranteed.
+            amountKes: Number(requested / 100n),
+            reason: reasonFor(pending),
+          },
+          request,
+        });
+
+        revalidatePublic = result.affectsTotals;
+        before.amountMinor = pledge.amountMinor.toString();
+        after.amountMinor = requested.toString();
+        break;
+      }
+
+      case "change_plan": {
+        const result = await pledgesService.edit(tx, {
+          pledgeId: pledge.id,
+          adminId,
+          input: { installmentFrequency: pending.requestedFrequency! },
+          request,
+        });
+
+        revalidatePublic = result.affectsTotals;
+        after.installmentFrequency = pending.requestedFrequency;
+        break;
+      }
+
+      case "correct_name": {
+        const name = pending.requestedName!;
+
+        const [pledger] = await tx
+          .select({
+            id: pledgers.id,
+            fullName: pledgers.fullName,
+            displayName: pledgers.displayName,
+            displayConsent: pledgers.displayConsent,
+          })
+          .from(pledgers)
+          .where(eq(pledgers.id, pledge.pledgerId))
+          .for("update")
+          .limit(1);
+
+        await tx
+          .update(pledgers)
+          .set({
+            fullName: name,
+            /*
+             * The public name follows the real one, but only where consent
+             * was given. A pledger who never agreed to appear publicly has a
+             * null display_name and keeps it: correcting their name is not an
+             * occasion to start publishing it.
+             */
+            displayName: pledger.displayConsent ? name : pledger.displayName,
+            updatedAt: new Date(),
+          })
+          .where(eq(pledgers.id, pledger.id));
+
+        // The list of pledgers and the feed both render this name.
+        revalidatePublic = pledger.displayConsent;
+        before.fullName = pledger.fullName;
+        after.fullName = name;
+        after.published = pledger.displayConsent;
+        break;
+      }
+
+      case "payment_missing": {
+        /*
+         * Nothing is recorded. See PaymentRouting: the treasurer is sent to
+         * the payment flow that already exists, carrying what the pledger
+         * reported, rather than a second recording path written here.
+         */
+        const reference = pending.paymentReference!;
+
+        const existing = await tx.execute(sql`
+          select id::text as id
+          from payments
+          where external_ref = ${reference}
+          limit 1
+        `);
+
+        const found = existing.rows[0] as { id: string } | undefined;
+
+        payment = {
+          paymentReference: reference,
+          amountMinor: pending.paymentAmountMinor!,
+          paidOn: pending.paymentPaidOn!,
+          existingPaymentId: found?.id ?? null,
+        };
+
+        after.paymentReference = reference;
+        after.paymentAmountMinor = pending.paymentAmountMinor!.toString();
+        after.alreadyRecorded = payment.existingPaymentId !== null;
+        break;
+      }
+
+      case "cancel_pledge": {
+        const result = await pledgesService.edit(tx, {
+          pledgeId: pledge.id,
+          adminId,
+          input: { status: "cancelled" },
+          request,
+        });
+
+        /*
+         * edit() moves the status and leaves cancelled_at alone, because the
+         * column is not part of what that screen edits. A pledge cancelled on
+         * somebody's own request should carry the date it happened, so it is
+         * set here. A plain column write and not a money one: the amount and
+         * its increments are untouched, so the deferred trigger has nothing to
+         * object to.
+         */
+        await tx
+          .update(pledgesTable)
+          .set({ cancelledAt: new Date() })
+          .where(eq(pledgesTable.id, pledge.id));
+
+        revalidatePublic = result.affectsTotals;
+        before.status = pledge.status;
+        after.status = "cancelled";
+        break;
+      }
+    }
+
+    await tx.insert(auditLog).values({
+      actorType: "admin",
+      actorId: adminId,
+      action: "pledge.change_approved",
+      entity: "pledge",
+      entityId: pledge.id,
+      before: { requestId, kind: pending.kind, status: "pending", ...before },
+      after: {
+        requestId,
+        kind: pending.kind,
+        status: "approved",
+        reference: pledge.reference,
+        note,
+        ...after,
+      },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    return {
+      requestId,
+      pledgeId: pledge.id,
+      reference: pledge.reference,
+      kind: pending.kind,
+      status: "approved" as const,
+      revalidatePublic,
+      payment,
+    };
+  });
+}
+
+/**
+ * What goes on the adjustment increment when an amount moves.
+ *
+ * The pledger's own words, kept, because a year later the question asked of a
+ * reduction is why it happened and the answer is theirs rather than the
+ * treasurer's. Truncated to the column the increment reason shares with the
+ * edit form, and prefixed so nobody reading the ledger mistakes it for a note
+ * an administrator wrote about their own decision.
+ */
+function reasonFor(request: ChangeRequestRow): string {
+  return `Approved change request: ${request.reason}`.slice(0, 500);
+}
+
+/**
+ * Declines a request.
+ *
+ * Nothing about the pledge moves, so this is one row and its journal entry.
+ * The note is required by the contract and it is the whole point of the
+ * decision: the pledger is told no, and a no with nothing after it leaves them
+ * unable to tell whether to correct something and ask again or to ring the
+ * treasurer.
+ */
 export async function decline(
-  _db: Db,
-  _args: DecideChangeRequestArgs,
-): Promise<never> {
-  throw new Error("not implemented in C1");
+  db: Db,
+  args: DecideChangeRequestArgs,
+): Promise<DecideChangeRequestResult> {
+  const { requestId, campaignSlug, adminId, request } = args;
+
+  if (args.input.decision !== "decline") {
+    throw new TypeError("decline() was handed an approval.");
+  }
+
+  const note = args.input.note;
+
+  return db.transaction(async (tx) => {
+    const { request: pending, pledge } = await loadForDecision(
+      tx,
+      requestId,
+      campaignSlug,
+    );
+
+    await settle(tx, requestId, "declined", adminId, note);
+
+    await tx.insert(auditLog).values({
+      actorType: "admin",
+      actorId: adminId,
+      action: "pledge.change_declined",
+      entity: "pledge",
+      entityId: pledge.id,
+      before: { requestId, kind: pending.kind, status: "pending" },
+      after: {
+        requestId,
+        kind: pending.kind,
+        status: "declined",
+        reference: pledge.reference,
+        note,
+      },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    return {
+      requestId,
+      pledgeId: pledge.id,
+      reference: pledge.reference,
+      kind: pending.kind,
+      status: "declined" as const,
+      // A decline changes nothing anybody outside the portal can see.
+      revalidatePublic: false,
+      payment: null,
+    };
+  });
+}
+
+/**
+ * How many requests are waiting, for the badge on the nav.
+ *
+ * Counted rather than listed, because the nav needs a number and not a page,
+ * and it is read on every admin screen. The partial index on (status,
+ * created_at) covers it.
+ */
+export async function countPending(
+  db: Db,
+  args: { campaignSlug: string },
+): Promise<number> {
+  const result = await db.execute(sql`
+    select count(*)::int as waiting
+    from pledge_change_requests r
+    join pledges p on p.id = r.pledge_id
+    join campaigns c on c.id = p.campaign_id
+    where c.slug = ${args.campaignSlug}
+      and r.status = 'pending'
+  `);
+
+  return (result.rows[0] as { waiting: number }).waiting;
 }
