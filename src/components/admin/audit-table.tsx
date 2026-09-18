@@ -46,6 +46,12 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "payment.recorded": "green",
   "payment.allocated": "green",
   "pledge.admin_created": "green",
+  /*
+   * Green like every other approval. What the approval did to the pledge has
+   * its own row beside this one, in whatever colour that change deserves, so
+   * an approved cancellation still shows red on the line that cancelled it.
+   */
+  "pledge.change_approved": "green",
   "admin.created": "green",
   "admin.reactivated": "green",
 
@@ -54,6 +60,13 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "pledge.edited": "amber",
   "admin.export": "amber",
   "admin.updated": "amber",
+  /*
+   * Amber, and not grey. The flag decides whether a consented name is
+   * published whole or cut down to a given name and an initial, so setting it
+   * on a person publishes their surname. Nothing is destroyed, and what the
+   * congregation sees changes.
+   */
+  "pledgers.organisation_flagged": "amber",
   /*
    * A password reset is amber and a self chosen one is grey, because the two
    * are different events. Somebody resetting their own password is routine;
@@ -81,6 +94,9 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "pledge.unfulfilled": "red",
   "admin.deactivated": "red",
   "payment.deallocated": "red",
+  // A refusal, which is what red is for. Nothing was destroyed, and the
+  // pledger is about to be told no, which is worth seeing at a glance.
+  "pledge.change_declined": "red",
   "admin.login_failed": "red",
   "admin.login_locked": "red",
   "admin.forbidden": "red",
@@ -98,6 +114,12 @@ export const AUDIT_TONES: Record<string, Tone> = {
    * says so: the decision is a separate row and carries its own weight.
    */
   "pledge.change_requested": "grey",
+  /*
+   * Nobody decided this. The pledge went away and the request went with it, so
+   * it is a fact with no weight either way, and the row that voided or removed
+   * the pledge is the one carrying the colour.
+   */
+  "pledge.change_closed": "grey",
   "admin.login": "grey",
   "admin.logout": "grey",
   "admin.totp_enrolled": "grey",

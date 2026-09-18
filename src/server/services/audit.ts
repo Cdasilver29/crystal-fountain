@@ -72,6 +72,65 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
+/** Why a request was closed, in words rather than in a code. */
+const CLOSURES: Record<string, string> = {
+  pledge_voided: "the pledge was voided",
+  pledge_cancelled: "the pledge was cancelled",
+  pledge_deleted: "the pledge was removed",
+};
+
+/**
+ * What a change request asked for, in one phrase.
+ *
+ * Shared by all four of its actions, so the thing being asked for is described
+ * the same way whether it is being requested, approved, declined or closed,
+ * and the four cannot drift into four vocabularies for one event.
+ *
+ * Read from named fields per kind rather than dumped, which is what keeps the
+ * pledger's own reason and their contact number off a screen that is read
+ * whole. The amount is looked for under both names it travels under: the
+ * request carries what was asked for, and the approval carries what the pledge
+ * ended up at, which for a reduction are the same number arriving by different
+ * routes.
+ */
+function changePhrase(a: Record<string, unknown>): string {
+  switch (str(a.kind)) {
+    case "reduce_amount": {
+      const amount = kes(a.requestedAmountMinor) ?? kes(a.amountMinor);
+      return amount ? `reduce to ${amount}` : "reduce the amount";
+    }
+
+    case "change_plan": {
+      const frequency =
+        str(a.requestedFrequency) ?? str(a.installmentFrequency);
+      return frequency
+        ? `change plan to ${frequency.replace(/_/g, " ")}`
+        : "change the plan";
+    }
+
+    case "correct_name": {
+      const name = str(a.requestedName) ?? str(a.fullName);
+      return name ? `correct the name to ${name}` : "correct the name";
+    }
+
+    case "payment_missing": {
+      const ref = str(a.paymentReference);
+      const amount = kes(a.paymentAmountMinor);
+      if (ref && amount) return `${amount} paid as ${ref} not reflected`;
+      if (ref) return `payment ${ref} not reflected`;
+      return "a payment is not reflected";
+    }
+
+    case "cancel_pledge":
+      return "cancel the pledge";
+
+    default:
+      // A kind nobody has taught this about still says that something was
+      // asked, which is true and useful, rather than rendering blank.
+      return "a change";
+  }
+}
+
 /**
  * A one line summary of what changed.
  *
@@ -98,44 +157,25 @@ export function summarise(
         .join(", ");
     }
 
-    case "pledge.change_requested": {
-      /*
-       * What was asked for, in the words the queue uses. Read from named
-       * fields per kind rather than dumped, so the pledger's own reason and
-       * their contact number stay off a screen that is read whole.
-       *
-       * A kind nobody has taught this about says only that something was
-       * asked, which is still true and still useful, rather than nothing.
-       */
-      const kind = str(a.kind);
+    case "pledge.change_requested":
+      return changePhrase(a);
 
-      switch (kind) {
-        case "reduce_amount": {
-          const amount = kes(a.requestedAmountMinor);
-          return amount ? `reduce to ${amount}` : "reduce the amount";
-        }
-        case "change_plan": {
-          const frequency = str(a.requestedFrequency);
-          return frequency
-            ? `change plan to ${frequency.replace(/_/g, " ")}`
-            : "change the plan";
-        }
-        case "correct_name": {
-          const name = str(a.requestedName);
-          return name ? `correct the name to ${name}` : "correct the name";
-        }
-        case "payment_missing": {
-          const ref = str(a.paymentReference);
-          const amount = kes(a.paymentAmountMinor);
-          if (ref && amount) return `${amount} paid as ${ref} not reflected`;
-          if (ref) return `payment ${ref} not reflected`;
-          return "a payment is not reflected";
-        }
-        case "cancel_pledge":
-          return "cancel the pledge";
-        default:
-          return "a change was requested";
-      }
+    case "pledge.change_approved":
+      return `${changePhrase(a)} approved`;
+
+    case "pledge.change_declined":
+      return `${changePhrase(a)} declined`;
+
+    case "pledge.change_closed":
+      return `${changePhrase(a)} closed, ${CLOSURES[str(a.because) ?? ""] ?? "the pledge went away"}`;
+
+    case "pledgers.organisation_flagged": {
+      // Which way it was set is the whole content of the row, because the two
+      // directions publish different amounts of somebody's name.
+      const ref = str(a.reference);
+      const marked = a.isOrganisation === true;
+      const what = marked ? "marked an organisation" : "marked a person";
+      return ref ? `${ref}, ${what}` : what;
     }
 
     case "payment.recorded": {

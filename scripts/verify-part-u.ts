@@ -85,6 +85,18 @@ async function main() {
     "pledges.create": [false, true, true, true],
     "pledges.edit": [false, false, true, true],
     "pledges.delete": [false, false, false, true],
+    // The treasurer knows which names are funds and which are families, and
+    // the flag only widens what is already consented to being public.
+    "pledgers.setOrganisation": [false, true, true, true],
+    /*
+     * The queue of what pledgers have asked to have changed. Reading it is
+     * reading the books. Answering is the treasurer's ordinary work, except
+     * for a cancellation, which takes a pledge off the public total and so
+     * sits with deletion rather than with routine corrections.
+     */
+    "changeRequests.view": [true, true, true, true],
+    "changeRequests.decide": [false, true, true, true],
+    "changeRequests.decideCancellation": [false, false, true, true],
     "payments.view": [true, true, true, true],
     "payments.record": [false, true, true, true],
     "payments.allocate": [false, true, true, true],
