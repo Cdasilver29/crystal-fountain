@@ -375,8 +375,8 @@ async function main() {
 
   heading("6. the form on the page");
 
-  const page = await fetch(`${BASE}/redeem`);
-  check("the redeem page still renders", page.status === 200);
+  const redeemPage = await fetch(`${BASE}/redeem`);
+  check("the redeem page still renders", redeemPage.status === 200);
 
   /*
    * The form renders only once a lookup has found a pledge, so it cannot be in
@@ -410,10 +410,81 @@ async function main() {
   }
 
   /* -----------------------------------------------------------------------
-   * 7. Cleanup.
+   * 7. The acknowledgement.
    * --------------------------------------------------------------------- */
 
-  heading("7. cleanup");
+  heading("7. who can be written to");
+
+  /*
+   * The emails are not sent from here: there is no API key in a verification
+   * run and no inbox to read. What is checked is the thing that decides
+   * whether a message can be sent at all, which is whether the pledger left an
+   * address, and that the service carries it out to the caller who sends.
+   */
+  const withoutAddress = await requests.create(db, {
+    input: (
+      await import("@/server/contracts/change-requests")
+    ).changeRequestInput.parse({
+      kind: "cancel_pledge",
+      reference: clean.reference,
+      contactPhoneE164: PHONES.second,
+      reason: "A second request, to read the recipient off the result.",
+    }),
+    campaignSlug: CAMPAIGN_SLUG,
+    request: { ip: "198.51.100.51", userAgent: "verify-part-ai" },
+  });
+
+  show([
+    {
+      outcome: withoutAddress.outcome,
+      reference: withoutAddress.reference,
+      pledgerName: withoutAddress.pledger.name,
+      hasEmail: withoutAddress.pledger.email !== null,
+    },
+  ]);
+  check(
+    "create hands back the reference for the acknowledgement",
+    withoutAddress.reference === clean.reference,
+  );
+  check(
+    "and who to write to",
+    withoutAddress.pledger.name === "Form Test",
+  );
+  /*
+   * The pledge form's email field is optional and this fixture left it blank,
+   * which is the ordinary case rather than a failure. The caller skips the
+   * send; the admin queue says so on the card.
+   */
+  check(
+    "with a null address where the pledger gave none",
+    withoutAddress.pledger.email === null,
+  );
+
+  const queue = await requests.listForAdmin(db, {
+    campaignSlug: CAMPAIGN_SLUG,
+    revealPhone: false,
+    limit: 100,
+  });
+  const mine = queue.items.filter((r) => r.pledgeId === clean.pledgeId);
+  check(
+    "and the queue shows the treasurer there is nobody to email",
+    mine.length > 0 && mine.every((r) => r.canEmail === false),
+  );
+
+  const page = await fetch(`${BASE}/admin/change-requests`, {
+    redirect: "manual",
+  });
+  check(
+    "the admin queue is still behind a sign in",
+    page.status === 307 || page.status === 302,
+    String(page.status),
+  );
+
+  /* -----------------------------------------------------------------------
+   * 8. Cleanup.
+   * --------------------------------------------------------------------- */
+
+  heading("8. cleanup");
 
   const openBefore = await requests.countPending(db, {
     campaignSlug: CAMPAIGN_SLUG,
