@@ -1001,32 +1001,15 @@ async function main() {
   );
 
   /* -----------------------------------------------------------------------
-   * 12. Deciding is still C2.
+   * 12. Cleanup.
+   *
+   * Deciding a request is proved in verify-part-af, which has its own pledges
+   * and its own addresses. It cannot share these: the sections above
+   * deliberately exhaust this pledge's three a day, so a suite that went on to
+   * approve anything here would be refused before it started.
    * --------------------------------------------------------------------- */
 
-  heading("12. approve and decline are not built yet");
-
-  for (const [name, fn] of [
-    ["approve", requests.approve],
-    ["decline", requests.decline],
-  ] as const) {
-    try {
-      await fn(db, { requestId: created.request.id, adminId: created.request.id });
-      check(`${name} refuses to pretend`, false, "it returned");
-    } catch (error) {
-      check(
-        `${name} refuses to pretend`,
-        (error as Error).message === "not implemented in C1",
-        (error as Error).message,
-      );
-    }
-  }
-
-  /* -----------------------------------------------------------------------
-   * 13. Cleanup.
-   * --------------------------------------------------------------------- */
-
-  heading("13. cleanup");
+  heading("12. cleanup");
 
   await cleanup();
 
