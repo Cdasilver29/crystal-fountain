@@ -191,6 +191,10 @@ export type CreateChangeRequestResult = {
    */
   outcome: "created" | "already_pending";
   request: ChangeRequestRow;
+  /** The pledge's human reference, for the acknowledgement. */
+  reference: string;
+  /** Who to acknowledge to, and what to call them. Null address is ordinary. */
+  pledger: { name: string; email: string | null };
 };
 
 /** The pledge a request is about, as the service needs it. */
@@ -199,6 +203,16 @@ type TargetPledge = {
   reference: string;
   status: PledgeStatus;
   amountMinor: bigint;
+  /**
+   * Who to write to, and what to call them.
+   *
+   * The address is optional, because the pledge form's email field is and most
+   * pledgers leave it blank. Null here is the ordinary case and not a failure:
+   * the caller skips the message and the admin queue shows the treasurer which
+   * requests those are, so somebody can ring instead.
+   */
+  pledgerName: string;
+  pledgerEmail: string | null;
 };
 
 /** The partial unique index that holds one open request per pledge. */
@@ -243,7 +257,14 @@ export async function create(
       const pledge = await findPledge(tx, campaignSlug, input);
 
       const pending = await readPending(tx, pledge.id);
-      if (pending) return { outcome: "already_pending" as const, request: pending };
+      if (pending) {
+        return {
+          outcome: "already_pending" as const,
+          request: pending,
+          reference: pledge.reference,
+          pledger: { name: pledge.pledgerName, email: pledge.pledgerEmail },
+        };
+      }
 
       if (input.kind === "reduce_amount") {
         const refusal = reduceAmountRefusal(
@@ -323,7 +344,12 @@ export async function create(
 
       const row = await readById(tx, inserted.id);
 
-      return { outcome: "created" as const, request: row };
+      return {
+        outcome: "created" as const,
+        request: row,
+        reference: pledge.reference,
+        pledger: { name: pledge.pledgerName, email: pledge.pledgerEmail },
+      };
     });
   } catch (error) {
     if (!isOnePendingViolation(error)) throw error;
@@ -335,7 +361,12 @@ export async function create(
 
     if (!pending) throw error;
 
-    return { outcome: "already_pending", request: pending };
+    return {
+      outcome: "already_pending",
+      request: pending,
+      reference: pledge.reference,
+      pledger: { name: pledge.pledgerName, email: pledge.pledgerEmail },
+    };
   }
 }
 
@@ -360,7 +391,9 @@ async function findPledge(
     select p.id::text as id,
            p.reference,
            p.status,
-           p.amount_minor
+           p.amount_minor,
+           g.full_name,
+           g.email::text as email
     from pledges p
     join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
@@ -372,7 +405,14 @@ async function findPledge(
   `);
 
   const row = result.rows[0] as
-    | { id: string; reference: string; status: string; amount_minor: string }
+    | {
+        id: string;
+        reference: string;
+        status: string;
+        amount_minor: string;
+        full_name: string;
+        email: string | null;
+      }
     | undefined;
 
   if (!row) {
@@ -394,6 +434,8 @@ async function findPledge(
     reference: row.reference,
     status: row.status as PledgeStatus,
     amountMinor: BigInt(row.amount_minor),
+    pledgerName: row.full_name,
+    pledgerEmail: row.email,
   };
 }
 
@@ -506,6 +548,14 @@ export type AdminChangeRequestRow = ChangeRequestRow & {
   currentIntent: PledgeIntent;
   currentFrequency: PledgeFrequency | null;
   currentInstallmentAmountMinor: bigint | null;
+  /**
+   * Whether there is an address to tell them the answer at.
+   *
+   * Not the address itself. The treasurer needs to know whether to ring, and
+   * showing an email on a screen that does not need one would be collecting
+   * an audience for it.
+   */
+  canEmail: boolean;
   /** Who answered it, once somebody has. */
   decidedByName: string | null;
 };
@@ -519,6 +569,7 @@ type RawAdminRow = RawRequestRow & {
   current_intent: string;
   current_frequency: string | null;
   current_installment_amount_minor: string | null;
+  pledger_email: string | null;
   decided_by_name: string | null;
 };
 
@@ -573,6 +624,7 @@ export async function listForAdmin(
            r.contact_phone_e164,
            p.reference,
            g.full_name as pledger_name,
+           g.email::text as pledger_email,
            p.amount_minor as current_amount_minor,
            p.status as current_status,
            p.intent as current_intent,
@@ -596,6 +648,7 @@ export async function listForAdmin(
     ...toRow(row),
     reference: row.reference,
     pledgerName: row.pledger_name,
+    canEmail: row.pledger_email !== null && row.pledger_email.trim() !== "",
     contactPhone: args.revealPhone
       ? row.contact_phone_e164
       : maskPhone(row.contact_phone_e164),
@@ -677,6 +730,19 @@ export type DecideChangeRequestResult = {
   revalidatePublic: boolean;
   /** Set only for an approved payment_missing. */
   payment: PaymentRouting | null;
+  /**
+   * Who to write to and what to call them.
+   *
+   * Carried out of the transaction so the route can send the decision email
+   * after the commit, the way the pledge confirmation is sent. A null address
+   * is the ordinary case and not a failure: the pledge form's email field is
+   * optional and most pledgers leave it blank.
+   */
+  pledger: { name: string; email: string | null };
+  /** The request as it stood when it was decided, for the message. */
+  request: ChangeRequestRow;
+  /** What the pledge says after the decision, so the message can quote it. */
+  amountMinor: bigint;
 };
 
 /** The request and its pledge, locked, ready to be decided. */
@@ -688,6 +754,8 @@ type PendingDecision = {
     status: PledgeStatus;
     amountMinor: bigint;
     pledgerId: string;
+    pledgerName: string;
+    pledgerEmail: string | null;
   };
 };
 
@@ -712,9 +780,12 @@ async function loadForDecision(
            p.status as p_status,
            p.amount_minor as p_amount_minor,
            p.pledger_id::text as p_pledger_id,
+           g.full_name as p_full_name,
+           g.email::text as p_email,
            p.deleted_at as p_deleted_at
     from pledge_change_requests r
     join pledges p on p.id = r.pledge_id
+    join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
     where r.id = ${requestId}::uuid
       and c.slug = ${campaignSlug}
@@ -728,6 +799,8 @@ async function loadForDecision(
         p_status: string;
         p_amount_minor: string;
         p_pledger_id: string;
+        p_full_name: string;
+        p_email: string | null;
         p_deleted_at: string | null;
       })
     | undefined;
@@ -764,6 +837,8 @@ async function loadForDecision(
       status: row.p_status as PledgeStatus,
       amountMinor: BigInt(row.p_amount_minor),
       pledgerId: row.p_pledger_id,
+      pledgerName: row.p_full_name,
+      pledgerEmail: row.p_email,
     },
   };
 }
@@ -841,6 +916,8 @@ export async function approve(
     const after: Record<string, unknown> = {};
     let revalidatePublic = false;
     let payment: PaymentRouting | null = null;
+    /** Set by the branches that move the figure, for the decision email. */
+    let newAmountMinor: bigint | null = null;
 
     switch (pending.kind) {
       case "reduce_amount": {
@@ -873,6 +950,7 @@ export async function approve(
         });
 
         revalidatePublic = result.affectsTotals;
+        newAmountMinor = requested;
         before.amountMinor = pledge.amountMinor.toString();
         after.amountMinor = requested.toString();
         break;
@@ -1014,6 +1092,15 @@ export async function approve(
       status: "approved" as const,
       revalidatePublic,
       payment,
+      pledger: { name: pledge.pledgerName, email: pledge.pledgerEmail },
+      request: pending,
+      /*
+       * What the pledge says after the decision. Read off the result of the
+       * change where there was one, so an approved reduction quotes the new
+       * figure rather than the old, and off the pledge as it stood for the
+       * kinds that do not move it.
+       */
+      amountMinor: newAmountMinor ?? pledge.amountMinor,
     };
   });
 }
@@ -1088,6 +1175,10 @@ export async function decline(
       // A decline changes nothing anybody outside the portal can see.
       revalidatePublic: false,
       payment: null,
+      pledger: { name: pledge.pledgerName, email: pledge.pledgerEmail },
+      request: pending,
+      // Unchanged, which is the point of the message.
+      amountMinor: pledge.amountMinor,
     };
   });
 }
