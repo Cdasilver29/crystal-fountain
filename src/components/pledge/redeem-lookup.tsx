@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
 import { CopyButton } from "@/components/pledge/copy-button";
+import { WithdrawDisplayConsent } from "@/components/pledge/withdraw-display-consent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,8 @@ type Found = {
   outstandingMinor: string;
   status: string;
   installmentFrequency: keyof typeof REDEMPTION_PLANS | null;
+  /** Whether this pledger's name is on the public list right now. */
+  displayConsent: boolean;
   createdAt: string;
 };
 
@@ -256,6 +259,25 @@ export function RedeemLookup({
                 Open my pledge page
               </Link>
             </div>
+
+            {/*
+              Offered only to somebody whose name is actually published, and
+              only here, behind the pair they have just proved. The phone that
+              goes back with it is the one the lookup already matched, so
+              nobody can withdraw consent for a pledge that is not theirs.
+            */}
+            {found.displayConsent && (
+              <WithdrawDisplayConsent
+                reference={found.reference}
+                phone={phone}
+                onWithdrawn={() =>
+                  setState({
+                    kind: "found",
+                    pledge: { ...found, displayConsent: false },
+                  })
+                }
+              />
+            )}
           </div>
         )}
       </section>

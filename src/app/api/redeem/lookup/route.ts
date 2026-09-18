@@ -67,6 +67,12 @@ export async function POST(request: Request) {
         installmentFrequency: pledge.installmentFrequency,
         installmentAmountMinor:
           pledge.installmentAmountMinor?.toString() ?? null,
+        /*
+         * So the page can offer to take the name off the public list, and
+         * offer that only to somebody whose name is on it. Nothing about the
+         * name itself crosses: only whether one is published.
+         */
+        displayConsent: pledge.displayConsent,
         createdAt: pledge.createdAt.toISOString(),
       },
     });
