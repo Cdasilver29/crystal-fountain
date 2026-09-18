@@ -3,6 +3,7 @@ import Link from "next/link";
 import { forbidden, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { ChangeRequestFilters } from "@/components/admin/change-request-filters";
 import { ChangeRequestQueue } from "@/components/admin/change-request-queue";
 import { db } from "@/db";
@@ -124,6 +125,7 @@ export default async function AdminChangeRequestsPage({
             name={admin.name}
             role={admin.role}
             isSuper={admin.isSuper}
+            pendingChangeRequests={await pendingChangeRequestCount(admin)}
           />
 
           <p className="mt-6 text-sm text-white/70">

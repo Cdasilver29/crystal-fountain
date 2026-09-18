@@ -60,11 +60,22 @@ export function AdminNav({
   name,
   role,
   isSuper = false,
+  pendingChangeRequests = 0,
 }: {
   name: string;
   role: AdminRole;
   /** Shown beside the role, because it changes what the portal will allow. */
   isSuper?: boolean;
+  /**
+   * How many change requests are waiting, for the badge.
+   *
+   * Passed in by every page rather than fetched here, because this is a client
+   * component and the count is a database read. Defaulting to zero means a
+   * page that forgets it shows no badge rather than a wrong one, which is the
+   * safe direction: a treasurer who sees nothing goes and looks, and one who
+   * sees a stale number believes it.
+   */
+  pendingChangeRequests?: number;
 }) {
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
@@ -91,14 +102,36 @@ export function AdminNav({
         {visible.map((link) => {
           const current =
             pathname === link.href || pathname.startsWith(`${link.href}/`);
+          const waiting =
+            link.href === "/admin/change-requests" ? pendingChangeRequests : 0;
+
           return (
             <Link
               key={link.href}
               href={link.href}
               aria-current={current ? "page" : undefined}
-              className="rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none aria-[current=page]:font-medium aria-[current=page]:text-campfire"
+              className="inline-flex items-center gap-1.5 rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none aria-[current=page]:font-medium aria-[current=page]:text-campfire"
             >
               {link.label}
+
+              {/*
+                The count is in the link's accessible name rather than only in
+                the badge, because "Change requests 3" read aloud is the whole
+                point of the badge and a bare "3" after the link is not.
+              */}
+              {waiting > 0 && (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex min-w-5 items-center justify-center rounded-full bg-campfire px-1.5 py-0.5 text-xs font-semibold text-white"
+                  >
+                    {waiting > 99 ? "99+" : waiting}
+                  </span>
+                  <span className="sr-only">
+                    , {waiting} waiting for an answer
+                  </span>
+                </>
+              )}
             </Link>
           );
         })}

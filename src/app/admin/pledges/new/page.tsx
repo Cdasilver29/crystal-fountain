@@ -3,6 +3,7 @@ import Link from "next/link";
 import { forbidden, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { PledgeRecordForm } from "@/components/admin/pledge-record-form";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { can } from "@/lib/permissions";
@@ -40,6 +41,7 @@ export default async function AdminNewPledgePage() {
             name={admin.name}
             role={admin.role}
             isSuper={admin.isSuper}
+            pendingChangeRequests={await pendingChangeRequestCount(admin)}
           />
         </div>
       </header>

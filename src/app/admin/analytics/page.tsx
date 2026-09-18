@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { WeeklyTrendsChart } from "@/components/admin/analytics-charts";
 import { AGEING_COLOURS } from "@/components/charts/chart-theme";
 import { CumulativeChart } from "@/components/charts/cumulative-chart";
@@ -177,6 +178,7 @@ export default async function AdminAnalyticsPage() {
             name={admin.name}
             role={admin.role}
             isSuper={admin.isSuper}
+            pendingChangeRequests={await pendingChangeRequestCount(admin)}
           />
 
           <p className="mt-6 text-sm text-white/70">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { ExportButton } from "@/components/admin/export-button";
 import { PaymentTable } from "@/components/admin/payment-table";
 import { db } from "@/db";
@@ -70,6 +71,7 @@ export default async function AdminPaymentsPage({
             name={admin.name}
             role={admin.role}
             isSuper={admin.isSuper}
+            pendingChangeRequests={await pendingChangeRequestCount(admin)}
           />
 
           <p className="mt-6 text-sm text-white/70">

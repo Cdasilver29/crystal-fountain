@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { forbidden, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { db } from "@/db";
 import { getCurrentAdmin } from "@/lib/admin-context";
@@ -52,6 +53,7 @@ export default async function AdminSettingsPage() {
             name={admin.name}
             role={admin.role}
             isSuper={admin.isSuper}
+            pendingChangeRequests={await pendingChangeRequestCount(admin)}
           />
         </div>
       </header>
