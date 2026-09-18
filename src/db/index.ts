@@ -1,5 +1,6 @@
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import * as Sentry from "@sentry/nextjs";
 
 import { env } from "@/env";
 import * as schema from "@/db/schema";
@@ -28,7 +29,46 @@ function createDb() {
     neonConfig.webSocketConstructor = globalThis.WebSocket;
   }
 
-  const pool = new Pool({ connectionString: env.DATABASE_URL });
+  const pool = new Pool({
+    connectionString: env.DATABASE_URL,
+    /*
+     * Two connections. A Vercel function handles one request at a time, so a
+     * single invocation never needs more than one connection plus a little
+     * headroom while one is being replaced. Concurrency across invocations is
+     * Neon's pooler's job, not ours, and a large max here just multiplies idle
+     * connections across every warm instance.
+     */
+    max: 2,
+    /*
+     * Close an idle connection before Neon does. Neon's pooler and the
+     * autosuspend both drop idle connections on their own schedule, and when
+     * they win the race the client errors from under us. Ten seconds is
+     * comfortably under their cutoff, so in the normal case we hang up first
+     * and the error never happens, rather than only being caught below.
+     */
+    idleTimeoutMillis: 10_000,
+    /*
+     * Give up waiting for a connection after ten seconds. A suspended Neon
+     * compute takes a few seconds to wake, which is worth waiting for, but
+     * without a bound a request would hang until the platform killed it and
+     * the visitor would just watch a spinner.
+     */
+    connectionTimeoutMillis: 10_000,
+  });
+
+  /*
+   * An idle client dying is normal for a serverless pool against Neon and must
+   * never crash the process. Without a listener here, node-postgres re-emits
+   * the idle client's error on the pool, and an 'error' event with no listener
+   * is an uncaught exception that takes the whole function down: that is what
+   * Sentry caught on GET / in production. Log it and stop. Do not rethrow, and
+   * do not exit. The pool discards the dead client and the next query opens a
+   * fresh one.
+   */
+  pool.on("error", (error: Error) => {
+    Sentry.captureException(error, { tags: { area: "db_pool_idle_client" } });
+  });
+
   return drizzle(pool, { schema });
 }
 
