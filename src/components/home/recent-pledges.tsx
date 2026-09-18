@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import type { RecentPledgeDto } from "@/lib/campaign";
@@ -382,12 +383,28 @@ export function RecentPledges({
       className="cf-feed bg-navy px-4 pt-2 pb-6 sm:px-6 sm:pb-7"
     >
       <div className="mx-auto w-full max-w-3xl">
-        <h2
-          id="recent-pledges-heading"
-          className="text-[11px] leading-4 font-medium tracking-[0.12em] text-white/45"
-        >
-          Recent pledges
-        </h2>
+        {/*
+          The link sits on the heading's own line rather than under the window.
+          The band is capped at 240px on a desktop and 220px on a phone and it
+          already measures 218 and 202, so a line of its own would not fit
+          without making the window shorter, and three rows is the window. On
+          the heading line it costs nothing.
+        */}
+        <div className="flex items-baseline justify-between gap-4">
+          <h2
+            id="recent-pledges-heading"
+            className="text-[11px] leading-4 font-medium tracking-[0.12em] text-white/45"
+          >
+            Recent pledges
+          </h2>
+
+          <Link
+            href="/pledgers"
+            className="shrink-0 rounded text-[11px] leading-4 font-medium text-white/60 underline-offset-4 transition-colors hover:text-white hover:underline focus-visible:ring-1 focus-visible:ring-white/60 focus-visible:outline-none"
+          >
+            See all pledges
+          </Link>
+        </div>
 
         <div
           ref={viewportRef}
