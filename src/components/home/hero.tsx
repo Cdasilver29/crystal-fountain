@@ -213,12 +213,30 @@ export function Hero({
           </Link>
         </div>
 
-        <blockquote className="mx-auto mt-10 max-w-xl">
-          <p className="text-sm leading-relaxed text-balance text-white/70 italic">
+        {/*
+          The verse, set as a quiet card rather than loose text.
+
+          A hairline rule above it and a soft translucent panel give it an edge
+          to sit against, so it reads as a deliberate closing note instead of a
+          caption that drifted to the bottom of the hero. The reference goes on
+          its own line under a short divider, which is what separates a citation
+          from the sentence it belongs to without needing a heavier weight.
+        */}
+        <blockquote className="relative mx-auto mt-12 max-w-xl rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-7 backdrop-blur-[2px] sm:px-8">
+          <span
+            aria-hidden
+            className="absolute inset-x-0 -top-px mx-auto h-px w-24 bg-gradient-to-r from-transparent via-campfire/70 to-transparent"
+          />
+
+          <p className="text-base leading-relaxed text-balance text-white/85 italic sm:text-lg">
             {SCRIPTURE.text}
           </p>
-          <cite className="mt-1.5 block text-sm text-white/50 not-italic">
+
+          {/* Sentence case, per the copy rules. The spacing does the work. */}
+          <cite className="mt-4 flex items-center justify-center gap-3 text-sm font-medium tracking-[0.12em] text-campfire/90 not-italic">
+            <span aria-hidden className="h-px w-6 bg-campfire/40" />
             {SCRIPTURE.reference}
+            <span aria-hidden className="h-px w-6 bg-campfire/40" />
           </cite>
         </blockquote>
       </div>

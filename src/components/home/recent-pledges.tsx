@@ -390,17 +390,27 @@ export function RecentPledges({
           without making the window shorter, and three rows is the window. On
           the heading line it costs nothing.
         */}
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex items-center justify-between gap-4">
+          {/*
+            Both are pills rather than loose text. At 11px on 45 per cent white
+            they were legible in a screenshot and invisible on a phone in
+            daylight, which is where this page is actually read. A panel gives
+            each an edge of its own against the navy, and the type goes up to
+            12px at full strength.
+
+            The heading stays quiet and the link carries the warm colour,
+            because only one of the two is something to press.
+          */}
           <h2
             id="recent-pledges-heading"
-            className="text-[11px] leading-4 font-medium tracking-[0.12em] text-white/45"
+            className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs leading-4 font-semibold tracking-[0.1em] text-white/90"
           >
             Recent pledges
           </h2>
 
           <Link
             href="/pledgers"
-            className="shrink-0 rounded text-[11px] leading-4 font-medium text-white/60 underline-offset-4 transition-colors hover:text-white hover:underline focus-visible:ring-1 focus-visible:ring-white/60 focus-visible:outline-none"
+            className="inline-flex shrink-0 items-center rounded-full border border-campfire/40 bg-campfire/15 px-3 py-1.5 text-xs leading-4 font-semibold text-apricot transition-colors hover:border-campfire/70 hover:bg-campfire/25 hover:text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             See all pledges
           </Link>
