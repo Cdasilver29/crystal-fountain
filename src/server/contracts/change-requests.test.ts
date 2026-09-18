@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHANGE_REQUEST_KINDS,
   changeRequestInput,
+  decideChangeRequestInput,
   reduceAmountRefusal,
 } from "@/server/contracts/change-requests";
 
@@ -336,5 +337,50 @@ describe("payment_missing", () => {
 
   it("refuses something that is not a date at all", () => {
     expect(payment({ paymentPaidOn: "last Tuesday" }).success).toBe(false);
+  });
+});
+
+describe("deciding one", () => {
+  const decide = (value: unknown) => decideChangeRequestInput.safeParse(value);
+
+  it("approves without a note", () => {
+    expect(decide({ decision: "approve" }).success).toBe(true);
+  });
+
+  it("lets an approval carry one anyway", () => {
+    const parsed = decideChangeRequestInput.parse({
+      decision: "approve",
+      note: "Spoke to them on the phone and they confirmed it.",
+    });
+
+    expect(parsed).toMatchObject({ decision: "approve" });
+  });
+
+  /*
+   * The pledger is told the answer. A no with nothing after it leaves them
+   * unable to tell whether to correct something and ask again or to ring the
+   * treasurer, so the note is the decision as much as the word is.
+   */
+  it("refuses a decline with no note", () => {
+    expect(decide({ decision: "decline" }).success).toBe(false);
+  });
+
+  it("refuses a decline with a note too short to act on", () => {
+    expect(decide({ decision: "decline", note: "no" }).success).toBe(false);
+    expect(decide({ decision: "decline", note: "no thanks" }).success).toBe(false);
+  });
+
+  it("accepts one at exactly ten characters", () => {
+    expect(decide({ decision: "decline", note: "0123456789" }).success).toBe(true);
+  });
+
+  it("counts the note after trimming, not before", () => {
+    expect(decide({ decision: "decline", note: "  no  " }).success).toBe(false);
+  });
+
+  it("refuses a decision nobody has heard of", () => {
+    expect(decide({ decision: "defer", note: "Let us wait a while." }).success).toBe(
+      false,
+    );
   });
 });

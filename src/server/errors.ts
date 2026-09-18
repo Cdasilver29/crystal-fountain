@@ -23,6 +23,17 @@ export const notFound = (code: string, message: string) =>
 export const conflict = (code: string, message: string) =>
   new ServiceError(code, message, 409);
 
+/**
+ * The caller is not allowed to do this.
+ *
+ * Route handlers answer this question first, through requirePermission, and a
+ * service should never be the only thing standing between somebody and an
+ * action. This is for the second lock on the same door: a service that is told
+ * what the caller may do and finds it has been asked for something else.
+ */
+export const forbidden = (code: string, message: string) =>
+  new ServiceError(code, message, 403);
+
 /** The request was understood and refused. A failed bot check lands here. */
 export const rejected = (code: string, message: string) =>
   new ServiceError(code, message, 422);

@@ -223,6 +223,51 @@ export type ReduceAmountInput = Extract<
   { kind: "reduce_amount" }
 >;
 
+/* ---------------------------------------------------------------------------
+ * Answering one.
+ * ------------------------------------------------------------------------- */
+
+/** The shortest decision note that says anything. The same floor as a reason. */
+export const MIN_DECISION_NOTE_LENGTH = 10;
+
+/**
+ * An administrator answering a request.
+ *
+ * A union on the decision rather than one object with an optional note,
+ * because the note is required on one branch and not on the other, and a
+ * single optional field could not express that.
+ *
+ * Declining needs a note. The pledger is told the answer, and "no" with
+ * nothing after it is not an answer anybody can do anything with: they cannot
+ * tell whether to ring the treasurer, correct something and ask again, or let
+ * it go. Approving does not, because what was approved is already on the
+ * record in full, and the change it produced is in the journal beside it.
+ */
+export const decideChangeRequestInput = z.discriminatedUnion("decision", [
+  z.object({
+    decision: z.literal("approve"),
+    note: z
+      .string()
+      .trim()
+      .max(MAX_REASON_LENGTH, "That note is longer than this accepts.")
+      .optional()
+      .transform((value) => (value === "" ? undefined : value)),
+  }),
+  z.object({
+    decision: z.literal("decline"),
+    note: z
+      .string()
+      .trim()
+      .min(
+        MIN_DECISION_NOTE_LENGTH,
+        "Say why you are declining, so the pledger knows what to do next.",
+      )
+      .max(MAX_REASON_LENGTH, "That note is longer than this accepts."),
+  }),
+]);
+
+export type DecideChangeRequestInput = z.infer<typeof decideChangeRequestInput>;
+
 /**
  * Whether a reduction is actually a reduction, and what to say when it is not.
  *
