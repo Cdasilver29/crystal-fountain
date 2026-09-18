@@ -75,9 +75,12 @@ export default async function HomePage() {
         }
       />
       {/*
-        Between the tracker and the vision, because the figure above says what
-        the congregation has done together and this says who is doing it, and
-        both belong before the case for why.
+        Directly under the hero and on the same navy, with no band of its own,
+        because the figure above says what the congregation has done together
+        and this says who is doing it. Given a white background and a section
+        heading it competed with the tracker; kept as three drifting lines on
+        the same colour it reads as the tracker's last line, which is what it
+        is. The case for why still follows both.
       */}
       <RecentPledges
         initial={recentPledges}

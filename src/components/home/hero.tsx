@@ -127,6 +127,24 @@ export function Hero({
         className="hero-wash pointer-events-none absolute inset-0"
       />
 
+      {/*
+        The last stretch of the hero settles onto solid navy.
+
+        The recent pledges band below is flat navy and the photograph under the
+        overlay is not: measured at the join, the picture was still coming
+        through at rgb(54, 77, 116) against the band's rgb(5, 34, 82), which
+        drew a hard line across the page exactly where the two are meant to
+        read as one surface. Fading the last 160px to the same navy the band
+        uses means they meet at the same colour and there is no join to see.
+
+        Interpolated from navy at zero alpha rather than from transparent, so
+        the ramp stays in this hue instead of passing through a muddy grey.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-navy/0 to-navy"
+      />
+
       <div className="hero-lift-soft relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center py-8 text-center">
         <p className="hero-lift text-xl font-extrabold tracking-tight text-balance text-campfire sm:text-3xl">
           {CAMPAIGN.tagline}

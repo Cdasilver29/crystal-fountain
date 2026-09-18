@@ -4,29 +4,59 @@ import { useEffect, useRef, useState } from "react";
 
 import type { RecentPledgeDto } from "@/lib/campaign";
 import { formatKES, formatRelativeTime } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 /**
- * The recent pledges feed on the home page.
+ * The recent pledges scroller, a slim band directly under the hero.
  *
- * Everybody in this list ticked the box that says a first name and a pledge
- * amount may appear here. Nobody else is in it, in any form: an amount with a
+ * Everybody in this list ticked the box that says a name and a pledge amount
+ * may appear here. Nobody else is in it, in any form: an amount with a
  * timestamp and no name attached is still that person's pledge amount on a
  * public page, and the consent they gave or withheld was about exactly that.
+ * What appears is a first name and a surname initial, which is enough to tell
+ * two Marys apart and not enough to identify either to a stranger.
  *
- * The server renders the first list, so the page is right on first paint and
- * with JavaScript switched off. After hydration it polls the same endpoint on
- * the same interval as the tracker above it, and an entry that arrives on a
- * poll fades in. The entries that were already there do not, because they did
- * not just happen, and a list that shimmers every thirty seconds to say nothing
- * changed is worse than a still one.
+ * It sits on the same navy as the hero and shows three rows, so it reads as the
+ * tracker's last line rather than as a section arguing with it. The column
+ * drifts upward at 25 pixels a second, slow enough to read a name as it passes,
+ * and the entries are in the DOM twice so the drift can loop without a seam:
+ * when the first copy has gone fully past, the offset drops by one copy's
+ * height and the second copy is already sitting exactly where the first was.
  *
- * The section removes itself when there is nothing consented to show. An empty
- * "recent pledges" heading on a church home page reads as though nobody has
- * given, which would be both discouraging and untrue.
+ * Under the cursor or a finger it stops being an animation and becomes a list.
+ * The drift pauses and the window turns into an ordinary scrollable element, so
+ * somebody who saw a name go by can go back for it. A minute after they let go
+ * it returns to the newest entry and picks the drift back up.
+ *
+ * The server renders the first thirty entries, so the page is right on first
+ * paint and with JavaScript switched off. After hydration it polls the same
+ * endpoint on the same interval as the tracker above it, and an entry that
+ * arrives on a poll fades in. The entries that were already there do not,
+ * because they did not just happen.
+ *
+ * The section removes itself when there are fewer than four consented entries.
+ * An empty "recent pledges" heading on a church home page reads as though
+ * nobody has given, and three names looping every few seconds reads as a
+ * broken animation. Both are worse than no band at all.
  */
 
 const POLL_INTERVAL_MS = 30_000;
+
+/** Pixels per second the column drifts while nobody is touching it. */
+const DRIFT_PX_PER_SECOND = 25;
+
+/** How long the window stays a plain list after the last interaction. */
+const IDLE_BEFORE_RETURN_MS = 60_000;
+
+/** How long the scroll back to the newest entry takes. */
+const RETURN_MS = 800;
+
+/** Below this many consented entries the band does not render. */
+const MINIMUM_ENTRIES = 4;
+
+/** Ease in out cubic, for the return. Starts and ends still. */
+function ease(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
 
 export function RecentPledges({
   initial,
@@ -57,6 +87,10 @@ export function RecentPledges({
   const [arrived, setArrived] = useState<ReadonlySet<string>>(new Set());
 
   const seen = useRef(new Set(initial.map((entry) => entry.id)));
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,55 +136,281 @@ export function RecentPledges({
     };
   }, []);
 
-  if (entries.length === 0) return null;
+  /*
+   * The drift.
+   *
+   * Everything in here is imperative and works on the two refs directly. None
+   * of it is React state on purpose: a transform that changes sixty times a
+   * second must not put a render through the reconciler sixty times a second,
+   * and nothing above depends on where the column has got to.
+   */
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const track = trackRef.current;
+    if (!viewport || !track) return;
+
+    /*
+     * Reduced motion gets none of this. No drift, no return, and the script
+     * never touches overflow, so the stylesheet's own rule is what makes the
+     * window a plain scrollable list of the same height.
+     */
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    /** How far up the column has drifted, in pixels, always >= 0. */
+    let offset = 0;
+
+    /** The height of one copy of the list. The loop resets on this. */
+    let copyHeight = copyRef.current?.offsetHeight ?? 0;
+
+    /** True while a cursor, finger or focus is on the window. */
+    let engaged = false;
+
+    /** True while the 800ms return is running, which suppresses everything. */
+    let returning = false;
+
+    /** Where the drift was when it paused, to tell a scroll from a hover. */
+    let pausedAt = 0;
+
+    let rafId: number | null = null;
+    let lastTs: number | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function measure() {
+      copyHeight = copyRef.current?.offsetHeight ?? 0;
+    }
+
+    function paint() {
+      if (track) track.style.transform = `translate3d(0, ${-offset}px, 0)`;
+    }
+
+    function frame(ts: number) {
+      rafId = requestAnimationFrame(frame);
+
+      // The first frame after a start only establishes the baseline. Without
+      // this, coming back from a hidden tab would hand the loop the whole time
+      // it was away as one delta and throw the column halfway up the list.
+      if (lastTs === null) {
+        lastTs = ts;
+        return;
+      }
+
+      const elapsed = ts - lastTs;
+      lastTs = ts;
+
+      if (copyHeight <= 0) return;
+
+      offset += (DRIFT_PX_PER_SECOND * elapsed) / 1000;
+      // One copy has gone fully past. The second copy is sitting exactly where
+      // the first was, so dropping a copy's height lands on an identical
+      // picture and there is nothing to see.
+      if (offset >= copyHeight) offset %= copyHeight;
+
+      paint();
+    }
+
+    function start() {
+      if (rafId !== null || engaged || returning) return;
+      lastTs = null;
+      rafId = requestAnimationFrame(frame);
+    }
+
+    function stop() {
+      if (rafId === null) return;
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      lastTs = null;
+    }
+
+    function clearIdle() {
+      if (idleTimer === null) return;
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+
+    function armIdle() {
+      clearIdle();
+      idleTimer = setTimeout(returnToNewest, IDLE_BEFORE_RETURN_MS);
+    }
+
+    /*
+     * Hand the column over to the browser's own scrolling.
+     *
+     * The three writes below happen in one task, so the browser paints once,
+     * after all of them. The transform comes off and the same number goes into
+     * scrollTop, which means the pixel the reader was looking at does not move.
+     */
+    function engage() {
+      clearIdle();
+
+      if (!engaged && !returning && viewport && track) {
+        engaged = true;
+        stop();
+        pausedAt = offset;
+        viewport.style.overflowY = "auto";
+        track.style.transform = "none";
+        viewport.scrollTop = offset;
+      }
+    }
+
+    /** Take it back and resume drifting from wherever `offset` now is. */
+    function release() {
+      if (!viewport || !track) return;
+      engaged = false;
+      returning = false;
+      viewport.scrollTop = 0;
+      paint();
+      // Back to the stylesheet's hidden rather than a second inline value, so
+      // the reduced motion rule is not permanently outranked by this one.
+      viewport.style.overflowY = "";
+      if (document.visibilityState === "visible") start();
+    }
+
+    function returnToNewest() {
+      clearIdle();
+      if (!engaged || returning || !viewport) return;
+
+      const from = viewport.scrollTop;
+
+      // They hovered but never scrolled. There is nothing to animate back
+      // from, so pick the drift up where it stopped rather than yanking the
+      // column to the top for no reason.
+      if (Math.abs(from - pausedAt) < 1) {
+        offset = pausedAt;
+        release();
+        return;
+      }
+
+      returning = true;
+      const startedAt = performance.now();
+
+      function step(ts: number) {
+        if (!viewport) return;
+        const progress = Math.min((ts - startedAt) / RETURN_MS, 1);
+        viewport.scrollTop = from * (1 - ease(progress));
+
+        if (progress < 1) {
+          requestAnimationFrame(step);
+          return;
+        }
+
+        offset = 0;
+        release();
+      }
+
+      requestAnimationFrame(step);
+    }
+
+    function onScroll() {
+      // Our own return writes scrollTop, and that fires this. Re-arming the
+      // idle timer from it would cancel the return halfway through.
+      if (returning) return;
+      if (engaged) armIdle();
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    }
+
+    function onResize() {
+      measure();
+      if (copyHeight > 0 && offset >= copyHeight) offset %= copyHeight;
+      if (!engaged && !returning) paint();
+    }
+
+    // pointerenter and pointerleave cover mouse, pen and touch in one pair.
+    // touchstart is here as well because a tap on a phone engages without ever
+    // producing a pointerenter in some Android browsers.
+    viewport.addEventListener("pointerenter", engage);
+    viewport.addEventListener("pointerleave", armIdle);
+    viewport.addEventListener("touchstart", engage, { passive: true });
+    viewport.addEventListener("touchend", armIdle, { passive: true });
+    viewport.addEventListener("focusin", engage);
+    viewport.addEventListener("focusout", armIdle);
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("resize", onResize);
+
+    measure();
+    start();
+
+    return () => {
+      stop();
+      clearIdle();
+      viewport.removeEventListener("pointerenter", engage);
+      viewport.removeEventListener("pointerleave", armIdle);
+      viewport.removeEventListener("touchstart", engage);
+      viewport.removeEventListener("touchend", armIdle);
+      viewport.removeEventListener("focusin", engage);
+      viewport.removeEventListener("focusout", armIdle);
+      viewport.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("resize", onResize);
+    };
+    // The list length changes what one copy measures, so the loop is rebuilt
+    // when it does. Thirty entries change a few times an hour at most.
+  }, [entries.length]);
+
+  if (entries.length < MINIMUM_ENTRIES) return null;
+
+  const rows = entries.map((entry) => (
+    <li
+      key={entry.id}
+      className={`cf-feed-row flex items-center justify-between gap-4 ${
+        arrived.has(entry.id) ? "feed-in" : ""
+      }`}
+    >
+      <p className="min-w-0 truncate whitespace-nowrap">
+        <span className="text-sm font-medium text-white sm:text-base">
+          {entry.firstName}
+          {entry.lastInitial ? ` ${entry.lastInitial}.` : ""}
+        </span>
+        <span className="ml-2 text-xs text-white/45">
+          {formatRelativeTime(entry.createdAt, now)}
+        </span>
+      </p>
+
+      <p className="tabular shrink-0 text-sm font-semibold text-apricot sm:text-base">
+        {formatKES(entry.amountMinor)}
+      </p>
+    </li>
+  ));
 
   return (
     <section
       aria-labelledby="recent-pledges-heading"
-      className="bg-neutral-50 px-4 py-14 sm:px-6 sm:py-16"
+      className="cf-feed bg-navy px-4 pt-2 pb-6 sm:px-6 sm:pb-7"
     >
       <div className="mx-auto w-full max-w-3xl">
         <h2
           id="recent-pledges-heading"
-          className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl"
+          className="text-[11px] leading-4 font-medium tracking-[0.12em] text-white/45"
         >
           Recent pledges
         </h2>
 
-        <p className="mt-2 text-base text-neutral-600">
-          Members who asked to be named here. A pledge is a promise to give, so
-          these are commitments rather than payments.
-        </p>
-
-        <ul
-          // Announced when a poll brings something new, so a member using a
-          // screen reader is told rather than having to go looking.
-          aria-live="polite"
-          className="mt-6 divide-y divide-neutral-200 border-y border-neutral-200"
+        <div
+          ref={viewportRef}
+          // Focusable because it becomes a scroll container, and a scroll
+          // container a mouse can reach but a keyboard cannot is a trap for
+          // anybody not using one. Focus engages it exactly as hover does.
+          tabIndex={0}
+          className="cf-feed-window mt-2.5 focus-visible:ring-1 focus-visible:ring-white/40 focus-visible:outline-none"
         >
-          {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className={cn(
-                "flex items-baseline justify-between gap-4 py-3.5",
-                arrived.has(entry.id) && "feed-in",
-              )}
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium text-navy">
-                  {entry.firstName}
-                </p>
-                <p className="text-xs text-neutral-500">
-                  {formatRelativeTime(entry.createdAt, now)}
-                </p>
-              </div>
-
-              <p className="tabular shrink-0 font-semibold text-campfire">
-                {formatKES(entry.amountMinor)}
-              </p>
-            </li>
-          ))}
-        </ul>
+          <div ref={trackRef} className="cf-feed-track">
+            {/*
+              Announced when a poll brings something new, so a member using a
+              screen reader is told rather than having to go looking. Only this
+              copy: the duplicate exists for the drift and has nothing to say.
+            */}
+            <ul ref={copyRef} aria-live="polite">
+              {rows}
+            </ul>
+            <ul aria-hidden className="cf-feed-clone">
+              {rows}
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   );

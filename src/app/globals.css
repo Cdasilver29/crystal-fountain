@@ -1106,3 +1106,89 @@
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * The recent pledges scroller under the hero.
+ * ------------------------------------------------------------------------- */
+
+/*
+ * A window exactly three rows tall, with the column drifting upward inside it.
+ *
+ * The height is a variable rather than a utility because three things have to
+ * agree on it: the window, the rAF loop that decides when a copy has gone past,
+ * and the 800ms return. One number, read from the element, keeps them together.
+ */
+.cf-feed {
+  --cf-feed-row: 48px;
+}
+
+@media (min-width: 640px) {
+  .cf-feed {
+    --cf-feed-row: 52px;
+  }
+}
+
+.cf-feed-window {
+  height: calc(var(--cf-feed-row) * 3);
+  overflow-y: hidden;
+  /*
+   * Fade the top and bottom edges rather than cutting them. A three row window
+   * with hard edges reads as a list that has been truncated; the same window
+   * with entries dissolving at both ends reads as a column that continues past
+   * what is shown, which is what it is. The stops are a hair under a row, so a
+   * name is legible for most of its travel and only softens as it leaves.
+   */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 40px,
+    #000 calc(100% - 40px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 40px,
+    #000 calc(100% - 40px),
+    transparent 100%
+  );
+  /*
+   * Momentum scrolling on iOS once the window becomes scrollable on touch, and
+   * a scrollbar that does not appear over the navy on Windows until it is used.
+   */
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  overscroll-behavior: contain;
+}
+
+/*
+ * The compositor does the drift. transform and nothing else changes, so no
+ * frame costs a layout or a paint, which is what keeps 25px per second smooth
+ * on the mid range Android phones most of this congregation reads the site on.
+ */
+.cf-feed-track {
+  will-change: transform;
+}
+
+.cf-feed-row {
+  height: var(--cf-feed-row);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * No drift and no return, so the second copy would just be every name listed
+   * twice. Hidden here rather than dropped from the markup, so the server and
+   * the client render the same tree and there is no hydration mismatch.
+   */
+  .cf-feed-clone {
+    display: none;
+  }
+
+  /*
+   * The same window, the same height, scrollable by hand. The script leaves
+   * overflow alone in this mode, so nothing inline overrides this.
+   */
+  .cf-feed-window {
+    overflow-y: auto;
+  }
+}
