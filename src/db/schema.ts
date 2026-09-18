@@ -750,3 +750,183 @@ export const publicListRequests = pgTable(
   },
   (t) => [index("public_list_requests_ip_at_idx").on(t.ip, t.at)],
 );
+
+/*
+ * What a pledger has asked to have changed about their pledge.
+ *
+ * Everything that is not an increase. Increasing is already the pledge form's
+ * job: it recognises the phone number and adds to the pledge that is there, so
+ * it needs no review and has no row here. Reducing, re-planning, correcting a
+ * name, reporting a payment that never showed up and cancelling all do need
+ * one, because each of them either moves a figure the congregation is watching
+ * or changes what is published about a person.
+ *
+ * The authentication behind a row here is the /redeem pairing: a reference and
+ * the phone number that matches it. That is enough to ask, and deliberately not
+ * enough to change anything. Nothing in this table touches a pledge on its own.
+ * An administrator decides, and the decision is a separate write.
+ *
+ * The kind columns are one table rather than five, because the queue the
+ * treasurer works through is one list. What keeps that honest is a check
+ * constraint per kind: a reduce_amount with no amount, or a correct_name
+ * carrying a payment reference, is refused by the database and not only by the
+ * contract in front of it.
+ */
+export const pledgeChangeRequests = pgTable(
+  "pledge_change_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /*
+     * Not cascading, unlike pledge_increments. An increment is part of a
+     * pledge; a request is a thing a person did, and it stays readable after
+     * the pledge it was about is gone. A pledge is soft deleted anyway, so the
+     * reference never dangles in practice.
+     */
+    pledgeId: uuid("pledge_id")
+      .notNull()
+      .references(() => pledges.id),
+    kind: text("kind").notNull(),
+    /** reduce_amount only. Minor units, like every other amount here. */
+    requestedAmountMinor: minor("requested_amount_minor"),
+    /** change_plan only. one_off, or one of the instalment frequencies. */
+    requestedFrequency: text("requested_frequency"),
+    /** correct_name only. */
+    requestedName: text("requested_name"),
+    /** payment_missing only. The M-Pesa code or bank slip they paid with. */
+    paymentReference: text("payment_reference"),
+    /** payment_missing only. What they say they paid. */
+    paymentAmountMinor: minor("payment_amount_minor"),
+    /** payment_missing only. */
+    paymentPaidOn: date("payment_paid_on"),
+    /** Why, in their own words. Required whatever the kind. */
+    reason: text("reason").notNull(),
+    contactPhoneE164: text("contact_phone_e164").notNull(),
+    status: text("status").notNull().default("pending"),
+    decidedBy: uuid("decided_by").references(() => adminUsers.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    sourceIp: inet("source_ip"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    /*
+     * One open request per pledge.
+     *
+     * Somebody who has asked for their pledge to be reduced and then asks for
+     * it to be cancelled has given the treasurer two answers to act on, and
+     * acting on both is how a pledge ends up reduced and then cancelled at the
+     * wrong figure. The partial index says so where nothing can bypass it: a
+     * decided or closed request is finished and does not stand in the way of a
+     * fresh one.
+     */
+    uniqueIndex("pledge_change_requests_one_pending_idx")
+      .on(t.pledgeId)
+      .where(sql`status = 'pending'`),
+
+    /** The admin queue reads one status at a time, newest first. */
+    index("pledge_change_requests_status_created_idx").on(
+      t.status,
+      t.createdAt.desc(),
+    ),
+
+    check(
+      "pledge_change_requests_kind_check",
+      sql`${t.kind} in ('reduce_amount','change_plan','correct_name','payment_missing','cancel_pledge')`,
+    ),
+    check(
+      "pledge_change_requests_status_check",
+      sql`${t.status} in ('pending','approved','declined','closed')`,
+    ),
+    /* The same floor the contract keeps, so neither can be the soft one. */
+    check(
+      "pledge_change_requests_reason_check",
+      sql`length(trim(${t.reason})) >= 10`,
+    ),
+    check(
+      "pledge_change_requests_frequency_check",
+      sql`${t.requestedFrequency} is null
+          or ${t.requestedFrequency} in ('one_off','monthly','quarterly','semi_annually','annually')`,
+    ),
+    check(
+      "pledge_change_requests_amounts_check",
+      sql`(${t.requestedAmountMinor} is null or ${t.requestedAmountMinor} > 0)
+          and (${t.paymentAmountMinor} is null or ${t.paymentAmountMinor} > 0)`,
+    ),
+
+    /*
+     * One check per kind, each naming every column: the ones that kind needs,
+     * and the ones it must not carry. Five checks rather than one expression
+     * over all of them, so a refusal names the kind it was refused for and
+     * whoever reads the error knows which rule they broke.
+     */
+    check(
+      "pledge_change_requests_reduce_amount_check",
+      sql`${t.kind} <> 'reduce_amount'
+          or (${t.requestedAmountMinor} is not null
+              and ${t.requestedFrequency} is null
+              and ${t.requestedName} is null
+              and ${t.paymentReference} is null
+              and ${t.paymentAmountMinor} is null
+              and ${t.paymentPaidOn} is null)`,
+    ),
+    check(
+      "pledge_change_requests_change_plan_check",
+      sql`${t.kind} <> 'change_plan'
+          or (${t.requestedFrequency} is not null
+              and ${t.requestedAmountMinor} is null
+              and ${t.requestedName} is null
+              and ${t.paymentReference} is null
+              and ${t.paymentAmountMinor} is null
+              and ${t.paymentPaidOn} is null)`,
+    ),
+    check(
+      "pledge_change_requests_correct_name_check",
+      sql`${t.kind} <> 'correct_name'
+          or (${t.requestedName} is not null
+              and length(trim(${t.requestedName})) >= 2
+              and ${t.requestedAmountMinor} is null
+              and ${t.requestedFrequency} is null
+              and ${t.paymentReference} is null
+              and ${t.paymentAmountMinor} is null
+              and ${t.paymentPaidOn} is null)`,
+    ),
+    check(
+      "pledge_change_requests_payment_missing_check",
+      sql`${t.kind} <> 'payment_missing'
+          or (${t.paymentReference} is not null
+              and length(trim(${t.paymentReference})) > 0
+              and ${t.paymentAmountMinor} is not null
+              and ${t.paymentPaidOn} is not null
+              and ${t.requestedAmountMinor} is null
+              and ${t.requestedFrequency} is null
+              and ${t.requestedName} is null)`,
+    ),
+    check(
+      "pledge_change_requests_cancel_pledge_check",
+      sql`${t.kind} <> 'cancel_pledge'
+          or (${t.requestedAmountMinor} is null
+              and ${t.requestedFrequency} is null
+              and ${t.requestedName} is null
+              and ${t.paymentReference} is null
+              and ${t.paymentAmountMinor} is null
+              and ${t.paymentPaidOn} is null)`,
+    ),
+
+    /*
+     * A pending request has not been decided, and a decided one has a date on
+     * it. Closed is the exception on the actor: a request whose pledge was
+     * voided underneath it is closed by the system, and there is no
+     * administrator to attribute that to.
+     */
+    check(
+      "pledge_change_requests_decision_check",
+      sql`case ${t.status}
+            when 'pending' then ${t.decidedAt} is null and ${t.decidedBy} is null
+            when 'closed' then ${t.decidedAt} is not null
+            else ${t.decidedAt} is not null and ${t.decidedBy} is not null
+          end`,
+    ),
+  ],
+);
