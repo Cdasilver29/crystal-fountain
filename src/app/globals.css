@@ -194,9 +194,14 @@
 }
 
 /*
- * Hero depth. A radial wash of a lighter navy over a faint grid, carried on
- * its own layer inside the hero: it sits above the photograph and the navy
- * overlay, so the picture reads as depth rather than as a flat backdrop.
+ * Hero depth. A radial wash of a lighter navy, carried on its own layer inside
+ * the hero: it sits above the photograph and the navy overlay, so the picture
+ * reads as depth rather than as a flat backdrop.
+ *
+ * There was a faint 40px grid over this as well, two repeating gradients at
+ * 2.4% white. It has been taken out: it read as a blueprint overlay on top of
+ * a photograph of a real building, and the hero is cleaner without it. The
+ * wash alone does the work of lifting the copy off the picture.
  */
 .hero-wash {
   /*
@@ -206,22 +211,11 @@
    * right edge of a phone.
    */
   overflow: hidden;
-  background-image:
-    radial-gradient(
-      ellipse 90% 70% at 50% 40%,
-      rgb(10 50 112 / 0.55),
-      transparent 70%
-    ),
-    repeating-linear-gradient(
-      to right,
-      rgb(255 255 255 / 0.024) 0 1px,
-      transparent 1px 40px
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      rgb(255 255 255 / 0.024) 0 1px,
-      transparent 1px 40px
-    );
+  background-image: radial-gradient(
+    ellipse 90% 70% at 50% 40%,
+    rgb(10 50 112 / 0.55),
+    transparent 70%
+  );
 }
 
 /*
