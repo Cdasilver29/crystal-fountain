@@ -100,7 +100,13 @@ async function main() {
 
   if (verdict) {
     console.log(`\n${verdict}`);
-    if (!verdict.startsWith("all checks passed")) process.exitCode = 1;
+    /*
+     * A failure is a verdict that says so, not merely one that fails to match
+     * a particular wording. verify-guards.sql signs off with "all 6 guards
+     * passed", and testing for "all checks passed" made that file exit non
+     * zero on every successful run.
+     */
+    if (verdict.startsWith("FAILED:")) process.exitCode = 1;
   }
 }
 
