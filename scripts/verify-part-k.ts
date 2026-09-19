@@ -179,9 +179,28 @@ async function main() {
   heading("3. the public nav");
   const labels = NAV_LINKS.map((l) => l.label);
   show([{ order: labels.join(" > ") }]);
-  check("Progress sits between FAQ and Updates",
-    labels.indexOf("Progress") === labels.indexOf("FAQ") + 1 &&
-      labels.indexOf("Updates") === labels.indexOf("Progress") + 1);
+  /*
+   * Relative position, not adjacency.
+   *
+   * This asserted that Updates came immediately after Progress, and broke the
+   * day Pledgers was deliberately inserted between them. What the order
+   * actually has to say is that Progress comes after the explanatory pages and
+   * before the news, which is a fact about the reading order rather than about
+   * how many links happen to sit in the gap. The next insertion will not break
+   * it.
+   */
+  const at = (label: string) => labels.indexOf(label);
+
+  check(
+    "every nav link the order is asserted on is present",
+    ["FAQ", "Progress", "Updates"].every((label) => at(label) !== -1),
+    labels.join(" > "),
+  );
+  check(
+    "Progress sits after FAQ and before Updates",
+    at("FAQ") < at("Progress") && at("Progress") < at("Updates"),
+    labels.join(" > "),
+  );
 
   const homeRes = await fetch(`${BASE}/`);
   const home = await homeRes.text();

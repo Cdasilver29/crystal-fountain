@@ -140,11 +140,31 @@ async function main() {
    * and turns 900ms into .9s. Asserting against the source would prove only
    * that the source says what it says.
    */
-  const cssHref = confirmed.body.match(
-    /\/_next\/static\/(?:css|chunks)\/[^"']+\.css/,
-  )?.[0];
-  check("a stylesheet is linked", Boolean(cssHref), cssHref ?? "(none)");
-  const css = cssHref ? (await get(cssHref)).body : "";
+  /*
+   * Every stylesheet the page links, not the first one.
+   *
+   * This took the first match and asserted against it alone. The page links
+   * more than one chunk, the success mark's rules live in whichever chunk
+   * carries globals.css, and when that was not the first the four checks below
+   * all reported "(none)" while the CSS was sitting there correctly. Reading
+   * them all is the same assertion made against what the browser actually
+   * loads.
+   */
+  const cssHrefs = [
+    ...new Set(
+      confirmed.body.match(/\/_next\/static\/(?:css|chunks)\/[^"']+\.css/g) ??
+        [],
+    ),
+  ];
+  check(
+    "a stylesheet is linked",
+    cssHrefs.length > 0,
+    cssHrefs.join(", ") || "(none)",
+  );
+
+  const css = (
+    await Promise.all(cssHrefs.map(async (href) => (await get(href)).body))
+  ).join("\n");
 
   const declaration = (selector: string) =>
     css.match(new RegExp(`\\.${selector}\\{[^}]*\\}`, "g")) ?? [];
@@ -174,16 +194,29 @@ async function main() {
     Boolean(ring) && Boolean(tick),
   );
 
+  /*
+   * Split on the at-rule rather than trying to match a balanced block.
+   *
+   * The old pattern stopped at the first closing brace, so it only ever saw
+   * the first rule inside the query and missed the success mark whenever the
+   * minifier put something else first. Splitting gives the whole of each
+   * reduced motion block, and the two selectors are grouped into one rule by
+   * the minifier, so both properties are asserted on that rule.
+   */
   const reduced = css
     .replace(/\s+/g, "")
-    .match(/prefers-reduced-motion:reduce\)\{[^@]*?\}/g)
-    ?.find((block) => block.includes("success-ring"));
+    .split("@media")
+    .filter((block) => block.startsWith("(prefers-reduced-motion:reduce)"))
+    .find((block) => block.includes("success-ring"));
+
+  const restingRule = reduced?.match(/\.success-ring[^{]*\{[^}]*\}/)?.[0];
+
   check(
     "and it is switched off for reduced motion, resting drawn",
-    Boolean(reduced) &&
-      reduced!.includes("animation:none") &&
-      reduced!.includes("stroke-dashoffset:0"),
-    reduced ?? "(none)",
+    Boolean(restingRule) &&
+      restingRule!.includes("animation:none") &&
+      restingRule!.includes("stroke-dashoffset:0"),
+    restingRule ?? "(none)",
   );
 
   // 3. Paying with the reference.

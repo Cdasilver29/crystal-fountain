@@ -76,12 +76,31 @@ async function main() {
   const sql = neon(databaseUrl!);
   const blocks = parse(readFileSync(sqlFile, "utf8"));
 
+  /*
+   * The verdict from the last section, repeated as a bare line.
+   *
+   * console.table puts it inside a box, and the sweep that runs every suite
+   * recognises a pass by grepping stdout. Printing it plainly as well costs
+   * one line and is the difference between a suite that can be read
+   * automatically and one that can only be read by eye. psql needs none of
+   * this, which is why it lives here rather than in the .sql file.
+   */
+  let verdict: string | null = null;
+
   for (const block of blocks) {
     if (block.heading) console.log(`\n${block.heading}`);
     const rows = (await sql.query(
       block.statement.replace(/;\s*$/, ""),
     )) as Record<string, unknown>[];
     render(rows);
+
+    const result = rows[0]?.result;
+    if (rows.length === 1 && typeof result === "string") verdict = result;
+  }
+
+  if (verdict) {
+    console.log(`\n${verdict}`);
+    if (!verdict.startsWith("all checks passed")) process.exitCode = 1;
   }
 }
 
