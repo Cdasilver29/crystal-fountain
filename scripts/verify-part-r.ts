@@ -195,19 +195,39 @@ async function main() {
   );
 
   /*
-   * Split on the at-rule rather than trying to match a balanced block.
+   * The reduced motion block, delimited by counting braces.
    *
-   * The old pattern stopped at the first closing brace, so it only ever saw
-   * the first rule inside the query and missed the success mark whenever the
-   * minifier put something else first. Splitting gives the whole of each
-   * reduced motion block, and the two selectors are grouped into one rule by
-   * the minifier, so both properties are asserted on that rule.
+   * Two regex attempts got this wrong in different directions. Stopping at
+   * the first closing brace saw only the first rule inside the query;
+   * splitting on the at-rule ran past the query's own closing brace and into
+   * the ordinary rules after it, where it found the animated .success-ring and
+   * reported it as the resting one. An at-rule is nested, so nothing short of
+   * matching braces reads it correctly.
    */
-  const reduced = css
-    .replace(/\s+/g, "")
-    .split("@media")
-    .filter((block) => block.startsWith("(prefers-reduced-motion:reduce)"))
-    .find((block) => block.includes("success-ring"));
+  const squashed = css.replace(/\s+/g, "");
+
+  const blockAt = (source: string, from: number): string => {
+    const open = source.indexOf("{", from);
+    if (open === -1) return "";
+    let depth = 0;
+    for (let i = open; i < source.length; i += 1) {
+      if (source[i] === "{") depth += 1;
+      else if (source[i] === "}") {
+        depth -= 1;
+        if (depth === 0) return source.slice(open + 1, i);
+      }
+    }
+    return "";
+  };
+
+  const reduced = (() => {
+    const needle = "(prefers-reduced-motion:reduce)";
+    for (let at = squashed.indexOf(needle); at !== -1; at = squashed.indexOf(needle, at + 1)) {
+      const body = blockAt(squashed, at);
+      if (body.includes("success-ring")) return body;
+    }
+    return undefined;
+  })();
 
   const restingRule = reduced?.match(/\.success-ring[^{]*\{[^}]*\}/)?.[0];
 

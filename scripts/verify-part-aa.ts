@@ -324,8 +324,22 @@ async function main() {
      * The journal is append only and the sweep at the top of this script does
      * not touch it, so rows from every previous run of this suite are still
      * there under the same address. Only what this run writes is counted.
+     *
+     * The watermark is the journal's own id and not a timestamp. This took
+     * new Date() from the machine running the script and compared it against
+     * audit_log.at, which is now() on the database server, and the two are not
+     * the same clock: this Neon branch measured three and a half seconds
+     * behind the laptop, so a row written immediately after the cutoff landed
+     * before it and the check reported nought rows against a repair that had
+     * plainly happened. audit_log.id is a bigserial on an append only table,
+     * so "written after this point" is exactly "id greater than this", and it
+     * cannot drift.
      */
-    const since = new Date().toISOString();
+    const watermark = (
+      await db.execute(sql`
+        select coalesce(max(id), 0)::text as id from audit_log
+      `)
+    ).rows[0] as { id: string };
 
     const recovered = await login();
     check(
@@ -349,8 +363,8 @@ async function main() {
         from audit_log
         where action = 'admin.totp_enrolment_reset'
           and after->>'email' = ${EMAIL}
-          and at >= ${since}::timestamptz
-        order by at desc
+          and id > ${watermark.id}::bigint
+        order by id desc
         limit 5
       `)
     ).rows as Record<string, unknown>[];

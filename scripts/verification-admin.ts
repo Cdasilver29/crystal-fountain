@@ -68,13 +68,26 @@ export async function provisionAdmin(
  * is the guard: a real administrator's address never matches it.
  */
 export async function removeVerificationAdmins(db: Db): Promise<void> {
+  /*
+   * Every column here is citext, and the pattern has to be cast to text on
+   * both sides of the operator or the delete quietly matches nothing.
+   *
+   * admin_users went first and did match, which is what made this hard to
+   * see: the admin rows vanished and the auth_users rows they hung off stayed
+   * behind, run after run, so an account could not be created again under the
+   * same address and nothing on the screen said why. The cast is the whole
+   * fix.
+   */
   await db.execute(sql`
-    delete from admin_users where email like ${VERIFICATION_EMAIL_PATTERN}
+    delete from admin_users
+    where email::text like ${VERIFICATION_EMAIL_PATTERN}
   `);
   await db.execute(sql`
-    delete from auth_users where email like ${VERIFICATION_EMAIL_PATTERN}
+    delete from auth_users
+    where email::text like ${VERIFICATION_EMAIL_PATTERN}
   `);
   await db.execute(sql`
-    delete from admin_login_attempts where email like ${VERIFICATION_EMAIL_PATTERN}
+    delete from admin_login_attempts
+    where email::text like ${VERIFICATION_EMAIL_PATTERN}
   `);
 }

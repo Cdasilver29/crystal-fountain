@@ -187,6 +187,38 @@ async function main() {
   heading("3. only the super administrator creates an administrator");
   const asAdmin = cookies.admin;
 
+  /*
+   * Room under the cap, made by standing down this suite's own accounts.
+   *
+   * MAX_ADMIN_USERS is five and it counts every active account, including the
+   * real administrators a branch carries because it is a copy of production.
+   * Three real ones plus the three provisioned above is six before this step
+   * even starts, so the create below was refused with admin_limit_reached, a
+   * 409 that reads exactly like the email already being taken. That is what
+   * made this look like a cleanup problem for so long.
+   *
+   * The viewer and the treasurer have done their work by now: their cookies
+   * were only needed for the list check above. Standing them down is what a
+   * real administrator would do to make room, it touches nothing but rows
+   * this suite created, and the sweep removes them either way.
+   */
+  await db.execute(sql`
+    update admin_users
+    set is_active = false
+    where email::text in (
+      'verify-part-v-viewer@example.test',
+      'verify-part-v-treasurer@example.test'
+    )
+  `);
+
+  const headroom = await adminUsersService.capacity(db);
+  show([{ active: headroom.active, limit: headroom.limit, full: headroom.full }]);
+  check(
+    "there is room under the cap to create one more",
+    !headroom.full,
+    `${headroom.active} of ${headroom.limit} active; the database already held ${baseline}`,
+  );
+
   const madeViewer = await call(asAdmin, "/api/admin/users", {
     method: "POST",
     body: JSON.stringify({
@@ -198,7 +230,10 @@ async function main() {
   check(
     "an ordinary admin may create a viewer",
     madeViewer.status === 201,
-    `${madeViewer.status}`,
+    // The code and not just the status: 409 is both "that address is taken"
+    // and "there are already five administrators", and telling them apart
+    // from the number alone is impossible.
+    `${madeViewer.status} ${String(madeViewer.body?.code ?? "")}`.trim(),
   );
   const issued = String(madeViewer.body?.temporaryPassword ?? "");
   check(
@@ -364,6 +399,10 @@ async function main() {
 
   // 8. Retiring keeps the row.
   heading("8. retiring an account keeps its history");
+  // Read before the retirement, so the cap check further down can assert that
+  // retiring freed exactly one place rather than arithmetic on how many
+  // accounts this suite and the installation happen to have between them.
+  const activeBeforeRetiring = (await adminUsersService.capacity(db)).active;
   const before = await db.execute(sql`
     select count(*)::int as n from admin_users where id = ${targetId}::uuid
   `);
@@ -408,10 +447,16 @@ async function main() {
   };
   show([room as unknown as Record<string, unknown>]);
   check("the limit is five", room.limit === MAX_ADMIN_USERS);
+  /*
+   * The claim is that retiring frees a place, so that is what is asserted:
+   * one fewer active account than there was immediately before the retirement
+   * above. It used to be baseline plus three, which encoded how many accounts
+   * this suite happened to leave standing and broke the moment that changed.
+   */
   check(
     "a retired account does not hold its place",
-    room.active === baseline + 3,
-    `${room.active} active: ${baseline} already there plus viewer, treasurer and admin, with the retired one excluded`,
+    room.active === activeBeforeRetiring - 1,
+    `${room.active} active, against ${activeBeforeRetiring} before the retirement`,
   );
 
   // Fill up to the cap, then try one more.
