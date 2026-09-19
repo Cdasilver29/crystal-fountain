@@ -256,9 +256,50 @@ async function main() {
   // 10. The reference race
   heading("10. reference generation under concurrency");
   const concurrency = 10;
+
+  /*
+   * A pool of this script's own, for this section only.
+   *
+   * The shared handle in src/db is capped at two connections, which is right
+   * for Vercel: one invocation serves one request and a larger cap would just
+   * multiply idle connections across warm instances. It is the wrong shape for
+   * ten simultaneous creates from a single process. Eight of the ten queued on
+   * the client, and once the branch had been worked hard by the thirty suites
+   * ahead of this one the queue stopped clearing inside the ten second connect
+   * timeout, so this section failed on a sweep and passed on its own.
+   *
+   * Sizing the pool to the work fixes the flake and makes the check honest at
+   * the same time. It was never testing ten way contention at the database;
+   * eight of the ten were waiting for a connection. Now they actually race,
+   * which is the thing next_pledge_reference() is being asked to survive.
+   *
+   * The service takes a Db argument precisely so it can be handed a different
+   * one. Nothing in src/ changes.
+   */
+  const { Pool, neonConfig } = await import("@neondatabase/serverless");
+  const { drizzle } = await import("drizzle-orm/neon-serverless");
+  const schema = await import("@/db/schema");
+
+  if (typeof globalThis.WebSocket !== "undefined") {
+    neonConfig.webSocketConstructor = globalThis.WebSocket;
+  }
+
+  const racePool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: concurrency,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 30_000,
+  });
+  racePool.on("error", () => {
+    // An idle client dying is normal against Neon and must not take the
+    // script down before it has reported.
+  });
+
+  const raceDb = drizzle(racePool, { schema });
+
   const racers = await Promise.all(
     Array.from({ length: concurrency }, (_, i) =>
-      pledges.create(db, {
+      pledges.create(raceDb, {
         input: createPledgeInput.parse({
           ...base,
           fullName: `Race Tester ${i}`,
@@ -283,6 +324,10 @@ async function main() {
     "every concurrent reference is within 12 characters",
     references.every((r) => r.length <= 12 && /^CF26-\d{6}$/.test(r)),
   );
+
+  // The pool has done its one job. Closing it here rather than at the end of
+  // the script keeps ten connections open for the few seconds they are needed.
+  await racePool.end();
 
   // 11. Audit trail
   heading("11. audit_log rows written by this run");
