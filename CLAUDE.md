@@ -85,6 +85,15 @@ Architecture:
   sentinel and read it back.
 - Never source an env file containing a Neon connection string. The unquoted & backgrounds the
   assignment and the variable silently never gets set. Export the value quoted instead.
+- When sweeping the verification suites, capture each suite's output, do not discard it and
+  record only pass or fail. A bare FAIL costs multiple sweeps of guesswork; the captured
+  stack trace usually names the cause on the first read.
+- Verification scripts that simulate concurrency or load must own their own database handle
+  rather than using the app's pool. The app pool is sized for a single serverless invocation
+  and a script that needs ten real connections will queue against it and time out, failing
+  for a reason unrelated to what it is testing.
+- Never run two sweeps against the same database branch at once. They overwrite each other's
+  fixtures and produce failures that do not reproduce.
 - Do not install a dependency without saying why and pinning the exact version.
 - Do not refactor code you were not asked to touch.
 - If something is ambiguous, ask one question and wait. Do not guess and build.
