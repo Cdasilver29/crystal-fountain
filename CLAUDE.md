@@ -129,6 +129,15 @@ or resolves to the same Neon endpoint as .env.local, proves the target with a se
 before migrating, and prints the host it migrates. Production still uses pnpm db:migrate,
 run by the user.
 
+- pnpm db:migrate prints "migrations applied successfully" even when it applied nothing,
+  because the queue was empty. That message alone is not evidence. After running it,
+  verify the specific schema change landed by querying information_schema for the column,
+  table or constraint the migration was supposed to create.
+- Reverting a feature commit also reverts its migration file. If a revert is used, the
+  migration disappears from drizzle/ and a subsequent db:migrate will silently apply
+  nothing. State this in the summary whenever a revert touches a commit that carried a
+  migration.
+
 ## Not in v1
 
 Do not build these unless explicitly asked, even if they seem useful:
