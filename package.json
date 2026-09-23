@@ -49,7 +49,8 @@
     "db:verify:change-queue": "tsx scripts/verify-part-ag.ts",
     "db:verify:consent-withdrawal": "tsx scripts/verify-part-ah.ts",
     "db:verify:change-form": "tsx scripts/verify-part-ai.ts",
-    "db:verify:display-names": "tsx scripts/verify-part-aj.ts"
+    "db:verify:display-names": "tsx scripts/verify-part-aj.ts",
+    "db:verify:name-review": "tsx scripts/verify-part-ak.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",
