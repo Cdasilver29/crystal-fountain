@@ -45,6 +45,7 @@ type PublicRow = {
   id: string;
   display_name: string;
   is_organisation: boolean;
+  public_display_name: string | null;
   amount_minor: string;
   created_at: string;
 };
@@ -76,13 +77,21 @@ const TITLE_PREFIX = `^(?:${[...TITLE_WORDS]
  * against, so searching "Otieno" returns nothing and cannot be used to confirm
  * whether a particular family pledged. The column still holds the full name,
  * and this expression is the only thing the search ever sees of it.
+ *
+ * A name the treasurer set by hand is searched by its own first word instead,
+ * because that is the name on the page. Somebody shown as "Peter O." after a
+ * typo was corrected has to be found by typing Peter, not Petet.
  */
 const SEARCHABLE_GIVEN_NAME = sql`
-  split_part(
-    trim(regexp_replace(trim(g.display_name), ${TITLE_PREFIX}, '', 'i')),
-    ' ',
-    1
-  )
+  case
+    when nullif(trim(g.public_display_name), '') is not null
+      then split_part(trim(g.public_display_name), ' ', 1)
+    else split_part(
+      trim(regexp_replace(trim(g.display_name), ${TITLE_PREFIX}, '', 'i')),
+      ' ',
+      1
+    )
+  end
 `;
 
 /**
@@ -195,6 +204,7 @@ export async function publicList(
     select p.id::text as id,
            g.display_name,
            g.is_organisation,
+           g.public_display_name,
            p.amount_minor,
            p.created_at
     from pledges p
@@ -218,6 +228,7 @@ export async function publicList(
     entry: {
       displayName: displayName(row.display_name, {
         isOrganisation: row.is_organisation,
+        override: row.public_display_name,
       }),
       amountMinor: BigInt(row.amount_minor).toString(),
       createdAt: new Date(row.created_at).toISOString(),

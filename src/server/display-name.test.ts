@@ -239,3 +239,33 @@ describe("displayName", () => {
     });
   });
 });
+
+/*
+ * The hand set name. It wins over the derivation and over the organisation
+ * flag, and it is published exactly as the treasurer typed it.
+ */
+describe("displayName with an override", () => {
+  it("returns the override verbatim instead of the derived name", () => {
+    expect(displayName("Petet Otieno", { override: "Peter O." })).toBe("Peter O.");
+  });
+
+  it("wins over the organisation flag", () => {
+    expect(
+      displayName("AMM/AMO  Seed Fund", {
+        isOrganisation: true,
+        override: "AMM Seed Fund",
+      }),
+    ).toBe("AMM Seed Fund");
+  });
+
+  it("is not tidied, capitalised or cut down", () => {
+    expect(displayName("The Nzioki's Family", { override: "the Nzioki family" })).toBe(
+      "the Nzioki family",
+    );
+  });
+
+  it("falls back to the derived name when null or blank", () => {
+    expect(displayName("SAMUEL NJOROGE", { override: null })).toBe("SAMUEL N.");
+    expect(displayName("Grace Kamau", { override: "   " })).toBe("Grace K.");
+  });
+});

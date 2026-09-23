@@ -7,12 +7,14 @@ import { pendingChangeRequestCount } from "@/lib/admin-badges";
 import { PledgeDelete } from "@/components/admin/pledge-delete";
 import { PledgeEdit } from "@/components/admin/pledge-edit";
 import { PledgerOrganisation } from "@/components/admin/pledger-organisation";
+import { PledgerPublicName } from "@/components/admin/pledger-public-name";
 import { db } from "@/db";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { formatDate, formatKES, formatPhoneForDisplay } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { redemptionSummary } from "@/lib/redemption";
 import { REDEMPTION_PLANS } from "@/server/contracts/pledges";
+import { displayName } from "@/server/display-name";
 import * as pledges from "@/server/services/pledges";
 
 export const dynamic = "force-dynamic";
@@ -153,6 +155,30 @@ export default async function AdminPledgeDetailPage({
             </dl>
 
             {/*
+              What the public pages render for this pledger, worked out by the
+              same function they use. Only a consented name has a public form,
+              so without consent this says so and offers nothing to edit.
+            */}
+            <div className="mt-2 border-t border-neutral-100 pt-4 text-sm">
+              <p className="text-neutral-500">Shown publicly as</p>
+              <div className="mt-1.5">
+                {pledge.displayConsent && pledge.displayName ? (
+                  <PledgerPublicName
+                    pledgeId={pledge.id}
+                    shownAs={displayName(pledge.displayName, {
+                      isOrganisation: pledge.isOrganisation,
+                      override: pledge.publicDisplayName,
+                    })}
+                    isOverride={pledge.publicDisplayName !== null}
+                    canEdit={can(admin, "pledgers.setDisplayName")}
+                  />
+                ) : (
+                  <p className="font-medium text-navy">Not shown publicly</p>
+                )}
+              </div>
+            </div>
+
+            {/*
               The treasurer sets this, so it sits with the pledger rather than
               with the pledge. A viewer sees the row above and no control, which
               is the same answer the route gives them if they ask it directly.
@@ -164,6 +190,7 @@ export default async function AdminPledgeDetailPage({
                   storedName={pledge.displayName}
                   initial={pledge.isOrganisation}
                   displayConsent={pledge.displayConsent}
+                  publicDisplayName={pledge.publicDisplayName}
                 />
               </div>
             )}
