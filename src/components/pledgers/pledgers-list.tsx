@@ -137,7 +137,7 @@ export function PledgersList({ initial, initialCursor }: Props) {
 
   return (
     <div>
-      <div className="relative">
+      <div className="container-form relative mx-0">
         <label htmlFor="pledger-search" className="sr-only">
           Search pledgers by first name
         </label>
