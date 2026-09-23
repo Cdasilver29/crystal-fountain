@@ -9,8 +9,8 @@ config({ path: ".env.local" });
  * The bulk public name review, session D3.
  *
  * Proves /admin/pledges/display-names through the real page and route: a
- * viewer gets 403, flagged rows come first, the progress line counts the hand
- * set names in the database, the "Review public names" button carries the
+ * viewer gets 403, flagged rows come first, the progress line counts rows that are
+ * hand set or unflagged in the database, the "Review public names" button carries the
  * flagged count, and every save and reset the screen makes leaves its own
  * audit row. The keyboard flow is checked in a browser, not here.
  *
@@ -172,17 +172,17 @@ async function main() {
       isOrganisation: row.is_organisation,
       publicDisplayName: row.public_display_name,
     }) !== null;
-  const edited = () => consented.filter((row) => row.public_display_name?.trim()).length;
+  const reviewed = () => consented.filter((row) => !isFlagged(row)).length;
 
   heading("3. what the screen shows");
   const progress = /(\d+) of (\d+) reviewed/.exec(screen.text);
   console.log(
-    `consented ${consented.length}, hand set ${edited()}, flagged ${consented.filter(isFlagged).length}, page says "${progress?.[0]}"`,
+    `consented ${consented.length}, reviewed ${reviewed()}, flagged ${consented.filter(isFlagged).length}, page says "${progress?.[0]}"`,
   );
   check(
-    "progress line counts hand set names out of every consented pledger",
+    "progress line counts hand set or unflagged rows out of every consented pledger",
     progress !== null &&
-      Number(progress[1]) === edited() &&
+      Number(progress[1]) === reviewed() &&
       Number(progress[2]) === consented.length,
   );
   const capsAt = screen.text.indexOf(NAMES.caps);

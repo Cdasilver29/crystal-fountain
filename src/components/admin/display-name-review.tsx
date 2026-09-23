@@ -14,9 +14,15 @@ import type { PublicNameReviewRow } from "@/server/services/pledges";
  * left alone, so stepping back reaches the previous row's Save and Reset
  * buttons for anybody who needs them without a mouse.
  *
- * Saving leaves the input exactly as typed, even when it matches the automatic
- * name. That is how the treasurer marks a name as read and correct: it becomes
- * a hand set name and counts toward the progress line.
+ * A row counts as reviewed when a name has been set by hand or the heuristic
+ * has nothing against it, so the progress line counts down the flagged rows
+ * and nothing else. Correct names are never overridden just to move it.
+ *
+ * For the same reason Enter and Save write nothing when the input still says
+ * what the website shows and there is nothing to decide: the row is unflagged,
+ * or already set by hand. On a flagged row an unchanged save is a real
+ * decision ("Antony" is fine as it is), so it is written as a hand set name,
+ * clears the badge and counts.
  *
  * Rows keep the order they arrived in. Re-sorting after a save would move the
  * row under the cursor and send the next Enter somewhere unexpected.
@@ -62,7 +68,16 @@ export function DisplayNameReview({ rows }: { rows: PublicNameReviewRow[] }) {
     return true;
   };
 
+  /** Whether a save would change nothing and decide nothing. */
+  const nothingToSave = (row: PublicNameReviewRow) => {
+    const current = state[row.pledgerId];
+    const flagged = current.publicDisplayName === null && row.automaticReview !== null;
+    return !flagged && current.value.trim() === current.shownAs;
+  };
+
   async function save(row: PublicNameReviewRow, publicDisplayName: string | null) {
+    if (publicDisplayName !== null && nothingToSave(row)) return;
+
     if (publicDisplayName !== null && !publicDisplayName.trim()) {
       patch(row.pledgerId, {
         status: "error",
@@ -125,7 +140,9 @@ export function DisplayNameReview({ rows }: { rows: PublicNameReviewRow[] }) {
   }
 
   const reviewed = rows.filter(
-    (row) => state[row.pledgerId].publicDisplayName !== null,
+    (row) =>
+      state[row.pledgerId].publicDisplayName !== null ||
+      row.automaticReview === null,
   ).length;
 
   return (
