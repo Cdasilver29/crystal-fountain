@@ -148,6 +148,12 @@ export type PledgeFormProps = {
    * It is still exact minor units.
    */
   existing?: ExistingPledge | null;
+  /**
+   * An amount to start from, in whole shillings, when the visitor arrived from
+   * a tier link on the home page. Already validated by the page; null for
+   * everybody else.
+   */
+  initialAmountKes?: number | null;
 };
 
 export type ExistingPledge = {
@@ -159,6 +165,7 @@ export type ExistingPledge = {
 export function PledgeForm({
   turnstileSiteKey = null,
   existing = null,
+  initialAmountKes = null,
 }: PledgeFormProps) {
   const router = useRouter();
 
@@ -166,7 +173,9 @@ export function PledgeForm({
   // Which way the last move went, so the incoming step enters from the side it
   // came from. Reset on every move, never read for anything but the animation.
   const [direction, setDirection] = useState<"forward" | "back">("forward");
-  const [amountDigits, setAmountDigits] = useState("");
+  const [amountDigits, setAmountDigits] = useState(
+    initialAmountKes === null ? "" : String(initialAmountKes),
+  );
   // Which tab is open. Family first, because that is the decision the campaign
   // is really asking a household to make.
   const [category, setCategory] = useState<PledgeCategory>("family");
@@ -177,7 +186,7 @@ export function PledgeForm({
   const [chosen, setChosen] = useState<{
     tier: PledgeTier;
     amount: number;
-  } | null>(null);
+  } | null>(() => chipFor(initialAmountKes));
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -887,6 +896,23 @@ export function PledgeForm({
       </div>
     </div>
   );
+}
+
+/**
+ * The family chip carrying this amount, if there is one.
+ *
+ * Only the family tab is searched, because it is the tab the form opens on and
+ * the home page tiers are per family figures. An amount no chip carries is
+ * simply left in the custom field, which is where a typed one would be.
+ */
+function chipFor(
+  amountKes: number | null,
+): { tier: PledgeTier; amount: number } | null {
+  if (amountKes === null) return null;
+  const tier = CATEGORY_TIERS.family.find((candidate) =>
+    candidate.amounts.includes(amountKes),
+  );
+  return tier ? { tier: tier.key, amount: amountKes } : null;
 }
 
 /**

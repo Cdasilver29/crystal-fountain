@@ -267,6 +267,27 @@ export const publicTokenInput = z.object({
 
 export type PublicTokenInput = z.infer<typeof publicTokenInput>;
 
+/**
+ * The ?amount= query parameter on /pledge, in minor units, as the tier links on
+ * the home page write it.
+ *
+ * Parsed to whole shillings for the form, because that is what the amount field
+ * holds. Anything that is not plain digits, is not a whole number of shillings,
+ * or falls outside what createPledgeInput would accept fails here, and the page
+ * treats a failure as no parameter at all. The regex runs before BigInt so a
+ * string like "1e9" or " 100" never reaches a conversion that would accept it.
+ */
+export const pledgeAmountParam = z
+  .string()
+  .regex(/^[1-9][0-9]{0,14}$/)
+  .transform((value) => BigInt(value))
+  .refine((minor) => minor % 100n === 0n)
+  .transform((minor) => minor / 100n)
+  .refine(
+    (kes) => kes >= BigInt(MIN_PLEDGE_KES) && kes <= BigInt(MAX_PLEDGE_KES),
+  )
+  .transform((kes) => Number(kes));
+
 export const approvePledgeInput = z.object({
   pledgeId: z.uuid("That is not a pledge id."),
 });

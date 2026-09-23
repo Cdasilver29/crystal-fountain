@@ -12,7 +12,10 @@ import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 import { donateActionSchema } from "@/lib/structured-data";
-import { publicTokenInput } from "@/server/contracts/pledges";
+import {
+  pledgeAmountParam,
+  publicTokenInput,
+} from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 
 /**
@@ -59,7 +62,7 @@ export const metadata: Metadata = pageMetadata({
 export default async function PledgePage({
   searchParams,
 }: {
-  searchParams: Promise<{ add?: string }>;
+  searchParams: Promise<{ add?: string; amount?: string | string[] }>;
 }) {
   const query = await searchParams;
   const totals = await getCampaignTotals();
@@ -78,6 +81,17 @@ export default async function PledgePage({
   const returning = query.add
     ? await existingPledgeFor(query.add)
     : null;
+
+  /*
+   * An amount handed over by a tier link on the home page, in minor units.
+   *
+   * Validated like any other input and never trusted: a malformed, repeated or
+   * out of range value is dropped without a word and the form opens as it
+   * would have without the parameter. It only prefills the field; the server
+   * checks the amount again when the pledge is submitted.
+   */
+  const amount = pledgeAmountParam.safeParse(query.amount);
+  const initialAmountKes = amount.success ? amount.data : null;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
@@ -144,6 +158,7 @@ export default async function PledgePage({
         <PledgeForm
           turnstileSiteKey={env.TURNSTILE_SITE_KEY || null}
           existing={returning}
+          initialAmountKes={initialAmountKes}
         />
 
         <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-neutral-600">
