@@ -8,7 +8,7 @@ import { env } from "@/env";
  *
  * Most arrivals will be from a WhatsApp group, so the card is the first thing
  * most of the congregation sees of this site. Every page gets an absolute
- * canonical URL and the campaign flyer as its image.
+ * canonical URL and the drawn campaign card as its image.
  */
 
 export const SITE_URL = env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
@@ -36,11 +36,11 @@ export function pageMetadata({
   path: string;
   noIndex?: boolean;
   /**
-   * A card of this page's own, instead of the campaign flyer.
+   * A card of this page's own, instead of the default campaign card.
    *
-   * Only the two pledge pages pass one. Everywhere else the flyer is the right
-   * image and this stays undefined, so the default is unchanged. The path is
-   * made absolute here the same way the flyer is: a link scraper is a machine
+   * Only the two pledge pages pass one. Everywhere else the default card is
+   * the right image and this stays undefined. The path is
+   * made absolute here the same way the default is: a link scraper is a machine
    * on somebody else's network and a relative og:image resolves to nothing for
    * it.
    */
@@ -50,8 +50,8 @@ export function pageMetadata({
 
   const card = image ?? {
     path: OG.image,
-    width: 1600,
-    height: 1600,
+    width: OG.imageWidth,
+    height: OG.imageHeight,
     alt: OG.imageAlt,
   };
   const cardUrl = `${SITE_URL}${card.path}`;

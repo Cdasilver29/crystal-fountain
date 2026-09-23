@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
    */
   outputFileTracingIncludes: {
     "/api/pledges/[token]/card.png": ["./src/assets/fonts/*.ttf"],
+    "/api/og/default.png": ["./src/assets/fonts/*.ttf"],
   },
 
   images: {

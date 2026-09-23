@@ -99,7 +99,13 @@ export const OG = {
   title: "Crystal Fountain Development Project: This is My Pledge",
   description:
     "Building a new sanctuary and centre of influence for Newlife SDA Church, Nairobi. Make your pledge today.",
-  image: "/images/image1.jpeg",
+  /*
+   * Drawn by src/app/api/og/default.png with the live campaign figures, at the
+   * 1200 by 630 WhatsApp and Facebook show without cropping.
+   */
+  image: "/api/og/default.png",
+  imageWidth: 1200,
+  imageHeight: 630,
   imageAlt:
-    "Crystal Fountain Development Project, This is My Pledge, launch of the Church Development Fund on 12 September 2026",
+    "This is My Pledge. Crystal Fountain Development Project, Newlife SDA Church, Nairobi, with the campaign progress toward its target",
 } as const;

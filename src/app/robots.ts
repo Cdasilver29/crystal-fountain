@@ -30,7 +30,10 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      // The default link preview lives under /api/ and has to stay fetchable:
+      // Twitterbot honours robots.txt for images, and the longer allow rule
+      // wins over the /api/ disallow.
+      allow: ["/", "/api/og/"],
       disallow: ["/admin/", "/api/", "/p/", "/pledge/confirmed/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
