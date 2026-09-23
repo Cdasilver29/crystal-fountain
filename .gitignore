@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# A Neon branch URL for pnpm db:migrate:branch. Never committed.
+branch.env.local

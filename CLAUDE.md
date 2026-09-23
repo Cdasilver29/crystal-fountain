@@ -123,6 +123,12 @@ When a session creates a migration:
 Never run pnpm db:migrate against production yourself unless explicitly asked in that
 session. The user runs it.
 
+Branch verification uses `pnpm db:migrate:branch`, which reads BRANCH_DATABASE_URL from
+the environment or the gitignored branch.env.local. It refuses when the value is missing
+or resolves to the same Neon endpoint as .env.local, proves the target with a sentinel
+before migrating, and prints the host it migrates. Production still uses pnpm db:migrate,
+run by the user.
+
 ## Not in v1
 
 Do not build these unless explicitly asked, even if they seem useful:

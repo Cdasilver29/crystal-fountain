@@ -10,6 +10,7 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:branch": "tsx scripts/migrate-branch.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:verify": "tsx scripts/verify.ts",
     "db:verify:guards": "tsx scripts/verify.ts scripts/verify-guards.sql",
