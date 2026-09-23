@@ -53,8 +53,8 @@ export function TargetedCommitment({
   const rest = tiers.filter(({ tier }) => !tier.featured);
 
   return (
-    <section className="bg-navy px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto w-full max-w-4xl">
+    <section className="bg-navy page-gutter section">
+      <div className="container-marketing">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
@@ -89,7 +89,7 @@ export function TargetedCommitment({
           the last, a sixth of the width in from each side, so it starts and
           stops on a marker rather than at the edge of the row.
         */}
-        <div className="relative mt-10">
+        <div className="relative mt-8">
           <div
             aria-hidden
             className="absolute top-4 right-[16.667%] left-[16.667%] h-0.5 -translate-y-1/2 rounded-full bg-white/20"
@@ -122,7 +122,7 @@ export function TargetedCommitment({
           </ol>
         </div>
 
-        <ol className="mt-10 grid gap-3 sm:grid-cols-3 sm:items-center sm:gap-4">
+        <ol className="mt-12 grid gap-3 sm:grid-cols-3 sm:items-center sm:gap-4">
           {featured.map(({ tier, count }) => (
             <li key={tier.families}>
               <LevelCard tier={tier} count={count} />

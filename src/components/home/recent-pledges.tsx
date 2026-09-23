@@ -380,7 +380,7 @@ export function RecentPledges({
   return (
     <section
       aria-labelledby="recent-pledges-heading"
-      className="cf-feed bg-navy px-4 pt-2 pb-6 sm:px-6 sm:pb-7"
+      className="cf-feed bg-navy page-gutter pt-2 pb-6 sm:pb-7"
     >
       <div className="mx-auto w-full max-w-3xl">
         {/*

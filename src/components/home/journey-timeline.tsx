@@ -19,13 +19,13 @@ export function JourneyTimeline() {
   const currentIndex = TIMELINE.findIndex((milestone) => milestone.current);
 
   return (
-    <section className="bg-[#0a2c63] px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto w-full max-w-5xl">
+    <section className="bg-[#0a2c63] page-gutter section">
+      <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
           From vision to reality
         </h2>
 
-        <div className="mt-10 grid gap-10 md:grid-cols-[3fr_2fr] md:items-start md:gap-12">
+        <div className="mt-6 grid gap-12 md:grid-cols-[3fr_2fr] md:items-start md:gap-16">
           {/*
             The file's own ratio, so nothing is cropped here. The crop happened
             once, in the file: the square original ended in a white nameplate

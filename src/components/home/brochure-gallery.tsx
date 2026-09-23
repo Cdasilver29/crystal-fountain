@@ -47,13 +47,13 @@ export function BrochureGallery() {
   };
 
   return (
-    <section className="bg-[#f8f7f5] px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto w-full max-w-5xl">
+    <section className="bg-[#f8f7f5] page-gutter section">
+      <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-4xl">
           The development plan
         </h2>
 
-        <div className="relative mt-8">
+        <div className="relative mt-5">
           <ul
             ref={stripRef}
             onScroll={syncArrows}

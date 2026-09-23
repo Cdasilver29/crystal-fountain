@@ -8,8 +8,8 @@ import Link from "next/link";
  */
 export function PledgeCta({ heading }: { heading: string }) {
   return (
-    <section className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-      <div className="mx-auto w-full max-w-5xl">
+    <section className="bg-navy page-gutter section-feature">
+      <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
           {heading}
         </h2>

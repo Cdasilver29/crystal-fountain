@@ -13,14 +13,14 @@ export function VisionSection() {
   return (
     <section
       id="vision"
-      className="scroll-mt-16 bg-[#f8f7f5] px-4 py-16 sm:px-6 sm:py-20"
+      className="scroll-mt-16 bg-[#f8f7f5] page-gutter section"
     >
-      <div className="mx-auto w-full max-w-5xl">
+      <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-navy sm:text-4xl">
           More than a building project
         </h2>
 
-        <div className="mt-8 grid gap-8 md:grid-cols-[3fr_2fr] md:items-start md:gap-12">
+        <div className="mt-5 grid gap-10 md:grid-cols-[3fr_2fr] md:items-start md:gap-16">
           <div>
             <p className="text-base leading-loose text-neutral-700 sm:text-lg">
               {VISION_SUMMARY}

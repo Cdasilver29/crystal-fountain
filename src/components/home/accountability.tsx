@@ -16,9 +16,9 @@ import { ACCOUNTABILITY } from "@/content/project";
  */
 export function Accountability() {
   return (
-    <section className="bg-[#f8f7f5] px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="grid gap-8 md:grid-cols-[9fr_11fr] md:items-start md:gap-12">
+    <section className="bg-[#f8f7f5] page-gutter section">
+      <div className="container-marketing">
+        <div className="grid gap-10 md:grid-cols-[9fr_11fr] md:items-start md:gap-16">
           {/*
             The file's own ratio at every width, rather than a fixed height on a
             phone and three by two above it. Both of those cropped the model,
@@ -42,7 +42,7 @@ export function Accountability() {
               Accountability and transparency
             </h2>
 
-            <p className="mt-5 text-base leading-relaxed text-neutral-700">
+            <p className="mt-3 text-base leading-relaxed text-neutral-700">
               {ACCOUNTABILITY.oversight}
             </p>
 

@@ -48,9 +48,9 @@ export function Roadmap({ reveal }: { reveal: React.ReactNode }) {
   return (
     <section
       id="roadmap"
-      className="scroll-mt-16 bg-navy px-4 py-12 sm:px-6 sm:py-16"
+      className="scroll-mt-16 bg-navy page-gutter section"
     >
-      <div className="mx-auto w-full max-w-5xl">
+      <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
           {ROADMAP.heading}
         </h2>

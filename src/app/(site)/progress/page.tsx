@@ -91,8 +91,8 @@ export default async function ProgressPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
+      <header className="bg-navy page-gutter section-feature">
+        <div className="container-marketing">
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Campaign progress
           </h1>
@@ -104,8 +104,8 @@ export default async function ProgressPage() {
         </div>
       </header>
 
-      <main className="px-4 py-12 pb-20 sm:px-6">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-12">
+      <main className="page-gutter section">
+        <div className="container-marketing block-stack">
           <section aria-labelledby="summary-heading">
             <h2
               id="summary-heading"

@@ -8,8 +8,8 @@ import Link from "next/link";
  */
 export function FinalCta() {
   return (
-    <section className="bg-campfire px-4 py-16 sm:px-6 sm:py-20">
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center">
+    <section className="bg-campfire page-gutter section-feature">
+      <div className="container-marketing flex flex-col items-center text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
           Ready to make your pledge?
         </h2>

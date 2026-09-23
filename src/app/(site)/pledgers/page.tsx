@@ -42,8 +42,8 @@ export default async function PledgersPage() {
 
   return (
     <div className="bg-white">
-      <header className="bg-navy px-4 py-10 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <header className="bg-navy page-gutter section">
+        <div className="container-marketing">
           <h1 className="text-3xl font-semibold tracking-tight text-white">
             Pledgers
           </h1>
@@ -81,8 +81,8 @@ export default async function PledgersPage() {
         </div>
       </header>
 
-      <main className="px-4 py-10 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <main className="page-gutter section">
+        <div className="container-marketing">
           <PledgersList initial={page.items} initialCursor={page.nextCursor} />
 
           <div className="mt-14 border-t border-neutral-200 pt-10 text-center">

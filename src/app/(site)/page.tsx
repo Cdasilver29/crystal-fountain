@@ -97,17 +97,17 @@ export default async function HomePage() {
       <JourneyTimeline />
       <BrochureGallery />
 
-      <section className="bg-white px-4 py-16 sm:px-6 sm:py-20">
-        <div className="mx-auto w-full max-w-5xl">
+      <section className="bg-white page-gutter section">
+        <div className="container-marketing">
           <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
             How to give
           </h2>
-          <p className="mt-3 max-w-3xl text-base leading-relaxed text-neutral-700">
+          <p className="container-prose mx-0 mt-2 text-base leading-relaxed text-neutral-700">
             You can give directly by M-Pesa or bank transfer, whether or not you
             have recorded a pledge.
           </p>
 
-          <div className="mt-8">
+          <div className="mt-6">
             <PaymentInstructions details={details} showContact={false} />
           </div>
         </div>

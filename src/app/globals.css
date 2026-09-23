@@ -1252,32 +1252,38 @@
    * the sections between them, so the page has a start and an end rather than
    * reading as a stack of equal boxes.
    */
-  .section-feature {
-    padding-block: 4rem;
-  }
-
   .section {
     padding-block: 3rem;
   }
 
-  @media (min-width: 1024px) {
-    .section-feature {
-      padding-block: 7rem;
+  .section-feature {
+    padding-block: 4.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .section {
+      padding-block: 4rem;
     }
 
+    .section-feature {
+      padding-block: 6rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
     .section {
       padding-block: 4.5rem;
+    }
+
+    .section-feature {
+      padding-block: 7rem;
     }
   }
 
   /*
-   * A heading sits close to what it introduces and further from the block
-   * before it, so it reads as belonging to what follows.
+   * Blocks within a page sit further apart than a heading sits from its own
+   * content, so a heading reads as belonging to what follows it.
    */
-  .section-heading {
-    margin-block-end: 1rem;
-  }
-
   .block-stack > * + * {
     margin-block-start: 2.5rem;
   }

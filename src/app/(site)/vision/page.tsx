@@ -29,17 +29,17 @@ export const metadata: Metadata = pageMetadata({
 export default function VisionPage() {
   return (
     <>
-      <section className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
+      <section className="bg-navy page-gutter section-feature">
+        <div className="container-marketing">
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
             More than a building project
           </h1>
 
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/80 sm:text-lg">
+          <p className="container-prose mx-0 mt-4 text-base leading-relaxed text-white/80 sm:text-lg">
             {VISION_SUMMARY}
           </p>
 
-          <div className="mt-9 max-w-3xl">
+          <div className="container-prose mx-0 mt-9">
             <YouTubeEmbed id={LAUNCH_VIDEO.id} title={LAUNCH_VIDEO.title} />
           </div>
 
@@ -64,11 +64,11 @@ export default function VisionPage() {
           <section
             key={section.id}
             id={section.id}
-            className={`scroll-mt-16 px-4 py-12 sm:px-6 sm:py-16 ${
+            className={`scroll-mt-16 page-gutter section ${
               index % 2 === 0 ? "bg-white" : "bg-neutral-50"
             }`}
           >
-            <div className="mx-auto grid w-full max-w-5xl gap-8 md:grid-cols-[1.4fr_1fr] md:items-start md:gap-12">
+            <div className="container-marketing grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-start md:gap-16">
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
                   {section.heading}
@@ -114,17 +114,17 @@ export default function VisionPage() {
         }
       />
 
-      <section className="bg-white px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
+      <section className="bg-white page-gutter section">
+        <div className="container-marketing">
           <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
             Oversight and accountability
           </h2>
 
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-neutral-700">
+          <p className="container-prose mx-0 mt-4 text-base leading-relaxed text-neutral-700">
             {ACCOUNTABILITY.oversight}
           </p>
 
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-neutral-700">
+          <p className="container-prose mx-0 mt-4 text-base leading-relaxed text-neutral-700">
             {ACCOUNTABILITY.updates}
           </p>
 

@@ -175,13 +175,16 @@ export function PledgersList({ initial, initialCursor }: Props) {
             : "No pledges are listed yet."}
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-neutral-200 border-y border-neutral-200">
+        // Columns at wider screens, so a name and its amount stay close enough
+        // to read as one entry. At 1200px one row per pledge would put the
+        // amount a whole screen's width from the name it belongs to.
+        <ul className="mt-6 grid border-t border-neutral-200 md:grid-cols-2 md:gap-x-12 lg:grid-cols-3">
           {entries.map((entry, index) => (
             <li
               // The list is append only and a pledge can repeat a name, an
               // amount and a date, so position is the only stable key here.
               key={`${entry.createdAt}-${index}`}
-              className="flex items-baseline justify-between gap-4 py-4"
+              className="flex items-baseline justify-between gap-4 border-b border-neutral-200 py-4"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium text-navy">
