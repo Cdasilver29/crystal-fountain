@@ -756,6 +756,73 @@ export type ListPledgesArgs = {
 };
 
 /**
+ * Which pledges the admin list is about, before any paging.
+ *
+ * Shared by the list and by its count, so the figure at the top of the screen
+ * and the rows underneath it are answers to the same question and cannot drift
+ * apart. The cursor is deliberately not part of it: a cursor says where on the
+ * list you are, not what the list is.
+ */
+function adminListFilter(args: Pick<ListPledgesArgs, "campaignSlug" | "q" | "status">) {
+  const term = args.q?.trim() ?? "";
+  // Below the search endpoint's own minimum the term is ignored rather than
+  // matched on, so a single stray character does not empty the screen.
+  const patterns = term.length >= 2 ? searchPatterns(term) : null;
+  const status = args.status ?? null;
+
+  return sql`
+    c.slug = ${args.campaignSlug}
+    and p.deleted_at is null
+    and (${status}::text is null or p.status = ${status}::pledge_status)
+    and ${patterns ? matchesTerm(patterns) : sql`true`}
+  `;
+}
+
+export type AdminPledgeCounts = {
+  /** Every pledge the current filters match, across all pages. */
+  total: number;
+  /** Of those, how many are waiting for somebody to approve them. */
+  pending: number;
+  /**
+   * How many of them come before the page being viewed, so the screen can say
+   * "showing 51 to 97". Zero on the first page. Counted rather than tracked,
+   * because a cursor says where a page starts and not how far down it is.
+   */
+  before: number;
+};
+
+/**
+ * The figures at the top of the admin list, for the whole book.
+ *
+ * Counted in the database under the same filters as the list, never from the
+ * page that happens to be loaded. The pending figure is the one that matters:
+ * read off a page, it said "0 awaiting approval" on page two while a pledge sat
+ * unapproved on page one, which is how an approval gets missed.
+ */
+export async function countForAdmin(
+  db: Db,
+  args: Pick<ListPledgesArgs, "campaignSlug" | "q" | "status" | "cursor">,
+): Promise<AdminPledgeCounts> {
+  const cursor = decodeCursor(args.cursor);
+
+  const result = await db.execute(sql`
+    select count(*)::int as total,
+           count(*) filter (where p.status = 'pending')::int as pending,
+           count(*) filter (
+             where ${cursor !== null}::boolean
+               and (p.created_at, p.id) >= (${cursor?.key ?? null}::timestamptz,
+                                            ${cursor?.id ?? null}::uuid)
+           )::int as before
+    from pledges p
+    join pledgers g on g.id = p.pledger_id
+    join campaigns c on c.id = p.campaign_id
+    where ${adminListFilter(args)}
+  `);
+  const row = result.rows[0] as { total: number; pending: number; before: number };
+  return { total: row.total, pending: row.pending, before: row.before };
+}
+
+/**
  * Pledges for the admin screen, newest first, filtered and paginated.
  *
  * This is the one place a pledger's name is returned alongside an amount, and
@@ -775,12 +842,6 @@ export async function listForAdmin(
   const limit = pageSize(args.limit);
   const cursor = decodeCursor(args.cursor);
 
-  const term = args.q?.trim() ?? "";
-  // Below the search endpoint's own minimum the term is ignored rather than
-  // matched on, so a single stray character does not empty the screen.
-  const patterns = term.length >= 2 ? searchPatterns(term) : null;
-  const status = args.status ?? null;
-
   const result = await db.execute(sql`
     select p.id,
            p.reference,
@@ -792,10 +853,7 @@ export async function listForAdmin(
     from pledges p
     join pledgers g on g.id = p.pledger_id
     join campaigns c on c.id = p.campaign_id
-    where c.slug = ${args.campaignSlug}
-      and p.deleted_at is null
-      and (${status}::text is null or p.status = ${status}::pledge_status)
-      and ${patterns ? matchesTerm(patterns) : sql`true`}
+    where ${adminListFilter(args)}
       and (
         ${cursor === null}::boolean
         or (p.created_at, p.id) < (${cursor?.key ?? null}::timestamptz,

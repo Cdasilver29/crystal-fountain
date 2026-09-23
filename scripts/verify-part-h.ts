@@ -363,6 +363,118 @@ async function main() {
     `status ${rubbish.status}`,
   );
 
+  /*
+   * 5b. The figures at the top count the whole book, not the loaded page.
+   *
+   * They used to be read off the page, so page two of 97 pledges said "47
+   * pledges, 0 awaiting approval" while a pledge waited on page one. The
+   * pending pledges made above are the newest rows, so they sit on page one,
+   * and page two is where that bug would show. Expected figures come from SQL
+   * written here, not from the service under test.
+   */
+  heading("5b. the header counts the whole book, on every page");
+  const truth = await db.execute(sql`
+    select count(*)::int as total,
+           count(*) filter (where p.status = 'pending')::int as pending
+    from pledges p
+    join campaigns c on c.id = p.campaign_id
+    where c.slug = ${CAMPAIGN_SLUG} and p.deleted_at is null
+  `);
+  const book = truth.rows[0] as { total: number; pending: number };
+
+  const pageOne = await pledges.listForAdmin(db, { campaignSlug: CAMPAIGN_SLUG });
+  const pageTwo = await pledges.listForAdmin(db, {
+    campaignSlug: CAMPAIGN_SLUG,
+    cursor: pageOne.nextCursor,
+  });
+  const pendingOnPageTwo = pageTwo.items.filter((r) => r.status === "pending").length;
+  show([
+    {
+      bookTotal: book.total,
+      bookPending: book.pending,
+      pageOne: pageOne.items.length,
+      pageTwo: pageTwo.items.length,
+      pendingOnPageTwo,
+    },
+  ]);
+
+  check("there is a second page to test", pageOne.hasMore && pageTwo.items.length > 0);
+  check(
+    "and page two holds fewer pending pledges than the book, so a page count would be wrong",
+    pendingOnPageTwo < book.pending,
+    `${pendingOnPageTwo} on the page, ${book.pending} in the book`,
+  );
+
+  // React separates adjacent text nodes with an empty comment; take them out
+  // before comparing a sentence.
+  const text = (html: string) => html.replace(/<!-- -->/g, "");
+  // A phrase that starts with a number, not matched inside a larger number:
+  // "0 awaiting approval." must not be found in "10 awaiting approval.".
+  const says = (html: string, phrase: string) => {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^0-9,])${escaped}`).test(html);
+  };
+  const header = `${book.total} pledges, ${book.pending} awaiting approval.`;
+
+  const firstHtml = text(await fetch(`${BASE}/admin/pledges`, as).then((r) => r.text()));
+  check("page one states the book-wide figures", says(firstHtml, header), header);
+  check(
+    "and where it sits",
+    firstHtml.includes(`Showing 1 to ${pageOne.items.length}.`),
+  );
+
+  const secondHtml = text(
+    await fetch(
+      `${BASE}/admin/pledges?cursor=${encodeURIComponent(pageOne.nextCursor ?? "")}`,
+      as,
+    ).then((r) => r.text()),
+  );
+  check(
+    "page two states the same book-wide total",
+    says(secondHtml, `${book.total} pledges,`),
+  );
+  check(
+    "and the book-wide pending count, not the page's",
+    says(secondHtml, `${book.pending} awaiting approval.`) &&
+      !says(secondHtml, `${pendingOnPageTwo} awaiting approval.`),
+    `expected ${book.pending}, page alone would say ${pendingOnPageTwo}`,
+  );
+  check(
+    "and where it sits",
+    secondHtml.includes(
+      `Showing ${pageOne.items.length + 1} to ${pageOne.items.length + pageTwo.items.length}.`,
+    ),
+  );
+  check(
+    "page two does not print its own row count as the total",
+    !says(secondHtml, `${pageTwo.items.length} pledges,`) ||
+      pageTwo.items.length === book.total,
+  );
+
+  const pendingTruth = await db.execute(sql`
+    select count(*)::int as n
+    from pledges p
+    join campaigns c on c.id = p.campaign_id
+    where c.slug = ${CAMPAIGN_SLUG} and p.deleted_at is null
+      and p.status = 'pending'
+      and exists (
+        select 1 from pledgers g
+        where g.id = p.pledger_id and g.full_name ilike '%Filter%'
+      )
+  `);
+  const filteredPending = (pendingTruth.rows[0] as { n: number }).n;
+  const filteredHtml = text(
+    await fetch(`${BASE}/admin/pledges?q=Filter&status=pending`, as).then((r) => r.text()),
+  );
+  check(
+    "a filtered view counts every match, not the page",
+    says(
+      filteredHtml,
+      `${filteredPending} matching ${filteredPending === 1 ? "pledge" : "pledges"}, ${filteredPending} awaiting approval.`,
+    ),
+    `${filteredPending} expected`,
+  );
+
   // 6. Clean up
   heading("6. cleanup");
   await sweep();

@@ -53,21 +53,30 @@ export default async function AdminPledgesPage({
     cursor: params.cursor ?? "",
   });
 
-  const [page, totals] = await Promise.all([
-    pledges.listForAdmin(db, {
-      campaignSlug: CAMPAIGN_SLUG,
-      q: filters.q,
-      status: filters.status === "all" ? null : filters.status,
-      cursor: filters.cursor,
-    }),
+  const listArgs = {
+    campaignSlug: CAMPAIGN_SLUG,
+    q: filters.q,
+    status: filters.status === "all" ? null : filters.status,
+    cursor: filters.cursor,
+  };
+
+  /*
+   * The figures come from their own count, never from the rows on screen. They
+   * used to be counted off the loaded page, so page two of 97 pledges said "47
+   * pledges, 0 awaiting approval" while a pledge sat unapproved on page one.
+   */
+  const [page, counts, totals] = await Promise.all([
+    pledges.listForAdmin(db, listArgs),
+    pledges.countForAdmin(db, listArgs),
     getCampaignTotals(),
   ]);
 
-  const pendingCount = page.items.filter(
-    (row) => row.status === "pending",
-  ).length;
-
   const filtering = filters.q !== null || filters.status !== "all";
+
+  // Where this page sits in the whole list, for "Showing 51 to 97".
+  const paged = counts.before > 0 || page.hasMore;
+  const firstShown = counts.before + 1;
+  const lastShown = counts.before + page.items.length;
 
   /** The same filters, pointed at the next page. */
   const nextHref = () => {
@@ -137,17 +146,18 @@ export default async function AdminPledgesPage({
           </div>
 
           <p className="mb-4 text-sm text-neutral-600">
-            {filtering ? (
+            {formatNumber(counts.total)}
+            {filtering ? " matching" : ""}{" "}
+            {counts.total === 1 ? "pledge" : "pledges"},{" "}
+            {formatNumber(counts.pending)} awaiting approval.
+            {paged && page.items.length > 0 && (
               <>
-                {formatNumber(page.items.length)} matching{" "}
-                {page.items.length === 1 ? "pledge" : "pledges"} on this page.
+                {" "}
+                Showing {formatNumber(firstShown)} to {formatNumber(lastShown)}.
               </>
-            ) : (
-              <>
-                {formatNumber(page.items.length)} pledges,{" "}
-                {formatNumber(pendingCount)} awaiting approval. Only approved
-                pledges count toward the public total.
-              </>
+            )}
+            {!filtering && (
+              <> Only approved pledges count toward the public total.</>
             )}
           </p>
 
