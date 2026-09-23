@@ -47,13 +47,13 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 h-16 border-b transition-colors duration-300 ${
+      className={`page-gutter fixed inset-x-0 top-0 z-50 h-16 border-b transition-colors duration-300 ${
         solid ? "border-white/10 bg-navy" : "border-transparent"
       }`}
     >
       <nav
         aria-label="Main"
-        className="mx-auto flex h-full w-full max-w-5xl items-center gap-3 px-4 sm:px-6"
+        className="container-marketing flex h-full items-center gap-3"
       >
         <a
           href={CONTACT.siteUrl}

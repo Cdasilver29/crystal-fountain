@@ -202,7 +202,7 @@ export function PaymentInstructions({
         </p>
       )}
 
-      <p className="rounded-2xl bg-navy/5 px-4 py-3 text-sm leading-relaxed text-navy">
+      <p className="container-prose mx-0 rounded-2xl bg-navy/5 px-4 py-3 text-sm leading-relaxed text-navy">
         After making your payment, the church treasury will reconcile your
         contribution with your pledge. You do not need to take any further
         action.

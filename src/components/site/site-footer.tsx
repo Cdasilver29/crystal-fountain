@@ -33,8 +33,8 @@ const SOCIAL_ICONS: Record<string, React.ReactNode> = {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 bg-navy px-4 py-10 sm:px-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 text-sm text-white/70">
+    <footer className="border-t border-white/10 bg-navy page-gutter py-10">
+      <div className="container-marketing flex flex-col gap-5 text-sm text-white/70">
         <p>
           &copy; 2026 {CONTACT.churchName}. {CAMPAIGN.name}.
         </p>
