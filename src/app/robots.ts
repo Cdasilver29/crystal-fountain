@@ -30,10 +30,12 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      // The default link preview lives under /api/ and has to stay fetchable:
+      // The link previews live under /api/ and have to stay fetchable:
       // Twitterbot honours robots.txt for images, and the longer allow rule
-      // wins over the /api/ disallow.
-      allow: ["/", "/api/og/"],
+      // wins over the /api/ disallow. The pledge card is matched by its file
+      // name rather than by /api/pledges/, which would also open the pledge
+      // JSON, the QR route and the public list to crawlers.
+      allow: ["/", "/api/og/", "/api/pledges/*/card.png"],
       disallow: ["/admin/", "/api/", "/p/", "/pledge/confirmed/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
