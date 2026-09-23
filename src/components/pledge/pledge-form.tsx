@@ -383,7 +383,7 @@ export function PledgeForm({
   const normalizedPhone = normalizeKenyanPhone(phone);
 
   return (
-    <div className="mx-auto w-full max-w-lg">
+    <div className="container-form">
       {/*
         What somebody coming back already has.
 

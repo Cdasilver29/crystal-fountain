@@ -38,13 +38,13 @@ export default async function FaqPage() {
     <>
       {/* Isolated, so the z-10 on the content below stays inside this section
           rather than competing with the fixed header and its phone drawer. */}
-      <section className="relative isolate overflow-hidden bg-navy px-4 py-12 sm:px-6 sm:py-16">
+      <section className="relative isolate overflow-hidden bg-navy page-gutter section">
         <SectionBackground
           src="/images/gallery/faq.jpg"
           overlayClassName="bg-navy/[0.75]"
         />
 
-        <div className="relative z-10 mx-auto w-full max-w-5xl">
+        <div className="container-prose relative z-10">
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
             Frequently asked questions
           </h1>
@@ -56,8 +56,8 @@ export default async function FaqPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-3xl">
+      <section className="bg-white page-gutter section">
+        <div className="container-prose">
           <FaqTabs
             categories={faqCategories({
               paybill: details.paybill,

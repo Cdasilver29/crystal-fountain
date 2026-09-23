@@ -14,16 +14,16 @@ export const metadata: Metadata = pageMetadata({
 export default function UpdatesPage() {
   return (
     <>
-      <section className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl">
+      <section className="bg-navy page-gutter section">
+        <div className="container-prose">
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
             Project updates
           </h1>
         </div>
       </section>
 
-      <section className="bg-white px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-3xl">
+      <section className="bg-white page-gutter section">
+        <div className="container-prose">
           <p className="text-base leading-relaxed text-neutral-700">
             {UPDATES_PLACEHOLDER}
           </p>

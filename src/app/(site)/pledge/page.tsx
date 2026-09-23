@@ -99,8 +99,8 @@ export default async function PledgePage({
           give, not a payment, and a rich result must not imply a checkout. */}
       <JsonLd data={donateActionSchema()} />
 
-      <header className="bg-navy px-4 pt-8 pb-10 sm:px-6">
-        <div className="mx-auto w-full max-w-lg">
+      <header className="bg-navy page-gutter pt-8 pb-10">
+        <div className="container-form">
           <Link
             href="/"
             className="rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
@@ -118,7 +118,7 @@ export default async function PledgePage({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
+      <main className="page-gutter py-8 pb-16">
         {/*
           The form is a client component driven entirely by fetch, and the
           Turnstile widget in front of it needs a script of its own, so with
@@ -129,7 +129,7 @@ export default async function PledgePage({
           ways to pledge that do not need a browser at all.
         */}
         <noscript>
-          <div className="mx-auto mb-6 max-w-lg rounded-2xl border border-campfire/30 bg-campfire/5 px-4 py-4 text-sm leading-relaxed text-neutral-800">
+          <div className="container-form mb-6 rounded-2xl border border-campfire/30 bg-campfire/5 px-4 py-4 text-sm leading-relaxed text-neutral-800">
             This pledge form requires JavaScript to work. Please enable
             JavaScript in your browser, or contact the church office at{" "}
             <a
@@ -161,7 +161,7 @@ export default async function PledgePage({
           initialAmountKes={initialAmountKes}
         />
 
-        <p className="mx-auto mt-6 max-w-lg text-center text-sm leading-relaxed text-neutral-600">
+        <p className="container-form mt-6 text-center text-sm leading-relaxed text-neutral-600">
           A pledge is a promise to give, not a payment. You will receive a
           reference number to use when you pay.
         </p>

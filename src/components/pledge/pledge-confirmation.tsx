@@ -81,8 +81,8 @@ export function PledgeConfirmation({
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-2xl">
+      <header className="bg-navy page-gutter py-8">
+        <div className="container-form">
           <Link
             href="/"
             className="rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
@@ -117,8 +117,8 @@ export function PledgeConfirmation({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-2xl space-y-5">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-form space-y-5">
           {justCreated && (
             <section className="rounded-2xl border border-black/5 bg-white p-5 text-center shadow-sm sm:p-7">
               <SuccessMark />

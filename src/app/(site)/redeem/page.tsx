@@ -31,8 +31,8 @@ export default async function RedeemPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 pt-8 pb-10 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <header className="bg-navy page-gutter pt-8 pb-10">
+        <div className="container-form">
           <Link
             href="/"
             className="rounded text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
@@ -51,8 +51,8 @@ export default async function RedeemPage() {
         </div>
       </header>
 
-      <main className="px-4 py-10 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <main className="page-gutter py-10 pb-16">
+        <div className="container-form">
           <RedeemLookup details={details} />
 
           <p className="mt-10 text-center text-sm leading-relaxed text-neutral-600">

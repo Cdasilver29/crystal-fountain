@@ -16,8 +16,8 @@ export const metadata: Metadata = pageMetadata({
 export default function PrivacyPage() {
   return (
     <div className="bg-white">
-      <header className="bg-navy px-4 py-10 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <header className="bg-navy page-gutter section">
+        <div className="container-prose">
           <h1 className="text-3xl font-semibold tracking-tight text-white">
             Privacy
           </h1>
@@ -27,8 +27,8 @@ export default function PrivacyPage() {
         </div>
       </header>
 
-      <main className="px-4 py-10 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl space-y-8">
+      <main className="page-gutter section">
+        <div className="container-prose space-y-8">
           <Section title="What we collect">
             <p>
               Your name, your phone number, and the amount you pledge. Your

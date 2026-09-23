@@ -22,8 +22,8 @@ export const metadata: Metadata = pageMetadata({
 export default function CdFundPage() {
   return (
     <div className="bg-white">
-      <header className="bg-navy px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto w-full max-w-3xl">
+      <header className="bg-navy page-gutter section">
+        <div className="container-prose">
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
             {CD_FUND_PAGE.title}
           </h1>
@@ -34,8 +34,8 @@ export default function CdFundPage() {
         </div>
       </header>
 
-      <main className="px-4 py-10 pb-16 sm:px-6 sm:py-14">
-        <div className="mx-auto w-full max-w-3xl">
+      <main className="page-gutter section">
+        <div className="container-prose">
           <section>
             <h2 className="text-lg font-semibold tracking-tight text-navy">
               {CD_FUND_PAGE.introHeading}
