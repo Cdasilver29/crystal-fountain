@@ -1,1 +1,0 @@
-ALTER TABLE "pledgers" ADD COLUMN "public_display_name" text;

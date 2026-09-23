@@ -453,23 +453,3 @@ export const setOrganisationInput = z.object({
 });
 
 export type SetOrganisationInput = z.infer<typeof setOrganisationInput>;
-
-/**
- * Setting the name a pledger is published under, by hand.
- *
- * Null resets it to automatic. A string is trimmed and has to say something:
- * an empty override would publish a blank row, so blank is refused rather
- * than quietly treated as a reset. Capped at 80 characters, which is longer
- * than any name in the campaign and short enough to sit on one line of the
- * feed.
- */
-export const setPublicDisplayNameInput = z.object({
-  publicDisplayName: z
-    .string("Enter the name to show, or reset it to automatic.")
-    .trim()
-    .min(1, "Enter the name to show, or reset it to automatic.")
-    .max(80, "Keep the name to 80 characters or fewer.")
-    .nullable(),
-});
-
-export type SetPublicDisplayNameInput = z.infer<typeof setPublicDisplayNameInput>;

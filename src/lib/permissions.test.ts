@@ -32,24 +32,6 @@ describe("pledgers.setOrganisation", () => {
   });
 });
 
-describe("pledgers.setDisplayName", () => {
-  it("is refused to a viewer", () => {
-    expect(can(viewer, "pledgers.setDisplayName")).toBe(false);
-  });
-
-  it("is allowed to a treasurer", () => {
-    expect(can(treasurer, "pledgers.setDisplayName")).toBe(true);
-  });
-
-  it("is allowed to an admin", () => {
-    expect(can(admin, "pledgers.setDisplayName")).toBe(true);
-  });
-
-  it("does not need the super flag", () => {
-    expect(can(superAdmin, "pledgers.setDisplayName")).toBe(true);
-  });
-});
-
 describe("change requests", () => {
   it("are visible to everybody who can see the books", () => {
     expect(can(viewer, "changeRequests.view")).toBe(true);

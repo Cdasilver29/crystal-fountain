@@ -67,9 +67,6 @@ export const AUDIT_TONES: Record<string, Tone> = {
    * congregation sees changes.
    */
   "pledgers.organisation_flagged": "amber",
-  // Amber for the same reason: it changes what the congregation sees about
-  // somebody, and nothing is destroyed.
-  "pledgers.display_name_set": "amber",
   /*
    * A password reset is amber and a self chosen one is grey, because the two
    * are different events. Somebody resetting their own password is routine;

@@ -28,7 +28,6 @@ export const ADMIN_ACTIONS = [
   "pledges.delete",
   "pledges.create",
   "pledgers.setOrganisation",
-  "pledgers.setDisplayName",
   "payments.view",
   "payments.record",
   "payments.allocate",
@@ -89,13 +88,6 @@ const RULES: Record<AdminAction, Rule> = {
    * which is why it is not a viewer action and why every change is audited.
    */
   "pledgers.setOrganisation": { minRole: "treasurer" },
-
-  /*
-   * Setting the name published for a pledger by hand. Same reasoning as the
-   * organisation flag: it changes what the congregation sees about somebody,
-   * so it is a treasurer action and every change is audited.
-   */
-  "pledgers.setDisplayName": { minRole: "treasurer" },
   /*
    * Answering a request. Reducing an amount, correcting a name, re-planning
    * instalments and chasing a payment that never appeared are all the

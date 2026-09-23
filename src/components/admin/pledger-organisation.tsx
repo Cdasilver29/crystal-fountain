@@ -25,7 +25,6 @@ export function PledgerOrganisation({
   storedName,
   initial,
   displayConsent,
-  publicDisplayName,
 }: {
   pledgeId: string;
   /** The display name as stored, or null when the pledger gave none. */
@@ -33,8 +32,6 @@ export function PledgerOrganisation({
   initial: boolean;
   /** Whether this name appears publicly at all, so the copy can say so. */
   displayConsent: boolean;
-  /** A name set by hand, which wins over this flag on the public pages. */
-  publicDisplayName: string | null;
 }) {
   const router = useRouter();
   const [isOrganisation, setIsOrganisation] = useState(initial);
@@ -102,12 +99,7 @@ export function PledgerOrganisation({
         shown in full. An individual is shown as a first name and an initial.
       </p>
 
-      {publicDisplayName ? (
-        <p className="mt-3 text-xs text-neutral-600">
-          A public name has been set by hand above, so this flag does not change
-          what is shown.
-        </p>
-      ) : preview ? (
+      {preview ? (
         <p className="mt-3 text-xs text-neutral-600">
           Shown publicly as{" "}
           <span className="font-medium text-navy">{preview}</span>

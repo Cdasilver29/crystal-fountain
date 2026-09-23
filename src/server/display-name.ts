@@ -196,20 +196,8 @@ export function displayName(
      * so inferring it would have published five surnames to tidy up one row.
      */
     isOrganisation?: boolean;
-    /**
-     * The name the treasurer set by hand, from pledgers.public_display_name.
-     *
-     * Checked before anything else and returned verbatim, with no tidying and
-     * no derivation, because a person has read it and decided it is what
-     * should be published. It exists for the names the rule cannot get right:
-     * a typo, a family name typed into the first name box, a name in capitals.
-     * Null or blank means automatic, and the rule below applies as before.
-     */
-    override?: string | null;
   },
 ): string {
-  if (options?.override?.trim()) return options.override;
-
   const cleaned = normalise(raw);
   if (!cleaned) return "";
 
