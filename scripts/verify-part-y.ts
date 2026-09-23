@@ -315,7 +315,7 @@ async function main() {
     const stillVisible = await get("/");
     check(
       "but the figures stay on the page, because they are already public",
-      stillVisible.body.includes("pledged so far"),
+      stillVisible.body.includes("pledged toward"),
     );
 
     await patch(cookies.super, { isPublic: true });

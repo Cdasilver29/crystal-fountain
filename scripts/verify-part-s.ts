@@ -269,7 +269,7 @@ async function main() {
     "and the declining pledger is nowhere on the page",
     !home.body.includes("Silent") && !home.body.includes("KES 9,400,000"),
   );
-  const atTracker = home.body.indexOf("pledged so far");
+  const atTracker = home.body.indexOf("pledged toward");
   const atFeed = home.body.indexOf("Recent pledges");
   const atVision = home.body.indexOf('id="vision"');
   check(
@@ -317,16 +317,15 @@ async function main() {
   );
 
   check(
-    "both fills and both labels are on the home page",
+    "both fills and the row that labels them are on the home page",
     home.body.includes("tracker-fill") &&
       home.body.includes("tracker-fill-solid") &&
-      home.body.includes("received") &&
-      home.body.includes("pledged") &&
-      home.body.includes("redeemed"),
+      home.body.includes("Received") &&
+      home.body.includes("of goal"),
   );
   check(
-    "and the target is named under them",
-    home.body.includes("out of KES 550,000,000 target"),
+    "and the target is named once, under the headline",
+    /pledged toward[\s\S]{0,200}KES 550,000,000/.test(home.body),
   );
 
   const progress = await get("/progress");

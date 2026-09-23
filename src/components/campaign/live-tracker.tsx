@@ -163,30 +163,20 @@ export function LiveTracker({
         <CountUp value={BigInt(totals.pledgedMinor)} />
       </p>
 
+      {/*
+        The target, once, as the second half of the headline's sentence. The
+        pledged figure is printed nowhere else on the card: the headline above
+        is the only place it appears.
+      */}
       <p className="mt-2 text-sm text-white/70 sm:text-base">
-        pledged so far
+        pledged toward{" "}
+        <span className="tabular font-semibold whitespace-nowrap text-white/90">
+          {formatKES(totals.targetMinor)}
+        </span>
       </p>
 
-      {/*
-        The figure and the share of the target, directly over the bar.
-
-        A bar is a picture of a ratio, and a picture is not a number. At this
-        stage of the campaign the fill is a short block near the left hand end,
-        which a reader can only turn into "seven per cent" by measuring it
-        against the track, so the bar no longer has to carry that alone.
-      */}
-      <div className="mt-6 flex items-baseline justify-between gap-3 text-sm">
-        <span className="tabular font-semibold text-white">
-          {formatKES(totals.pledgedMinor)}
-        </span>
-        <span className="tabular font-semibold text-white">
-          {formatPercent(totals.percentPledged)}
-          <span className="ml-1 font-normal text-white/60">of goal</span>
-        </span>
-      </div>
-
       <div
-        className="tracker-track relative mt-2 h-4 w-full overflow-hidden rounded-full"
+        className="tracker-track relative mt-6 h-4 w-full overflow-hidden rounded-full"
         role="progressbar"
         aria-valuenow={totals.percentPledged}
         aria-valuemin={0}
@@ -196,8 +186,8 @@ export function LiveTracker({
         {/*
           One progressbar, not two. Nesting a second one inside would have a
           screen reader announce two competing percentages for the same bar;
-          the legend underneath says both figures in words instead, which is
-          what somebody who cannot see the fills actually needs.
+          the row underneath says both figures in words instead, which is what
+          somebody who cannot see the fills actually needs.
         */}
         <div
           aria-hidden
@@ -222,70 +212,55 @@ export function LiveTracker({
       </div>
 
       {/*
-        The legend. Which colour is which, said in words beside the dot that
-        carries it, because the difference between the two fills is the whole
-        reason for drawing two.
+        One row of three supporting figures, which is also the bar's legend.
 
-        Received comes first: it is the solid one and the harder figure, money
-        already in the bank.
+        Each fill's dot sits beside the figure that fill draws: the solid
+        campfire beside what has been received, the apricot beside the share of
+        the target that has been pledged. Received comes first because it is
+        the harder figure, money already in the bank.
+
+        A list rather than a dl, because two of the three read value first
+        ("9.80% of goal") and a dt cannot follow its dd. Each item reads as a
+        phrase on its own, so a screen reader hears three short items.
+
+        The bullets between them are decoration and only appear once the row
+        fits on one line. On a phone the three wrap, and a bullet left at the
+        end of a wrapped line reads as a stray mark.
       */}
-      <dl className="mt-3 flex flex-wrap items-baseline justify-center gap-x-5 gap-y-1 text-sm">
-        <div className="flex items-baseline gap-2">
+      <ul className="mt-3 flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1 text-sm text-white/60 sm:gap-x-3">
+        <li className="flex items-baseline gap-2">
           <span
             aria-hidden
             className="size-2.5 shrink-0 rounded-full bg-campfire"
           />
-          <dt className="text-white/60">Received</dt>
-          <dd className="tabular font-semibold text-white">
-            {formatKES(totals.receivedMinor)}
-          </dd>
-        </div>
-        <div className="flex items-baseline gap-2">
+          <span>
+            Received{" "}
+            <span className="tabular font-semibold text-white">
+              {formatKES(totals.receivedMinor)}
+            </span>
+          </span>
+        </li>
+        <Bullet />
+        <li className="flex items-baseline gap-2">
           <span
             aria-hidden
             className="size-2.5 shrink-0 rounded-full bg-apricot"
           />
-          <dt className="text-white/60">Pledged</dt>
-          <dd className="tabular font-semibold text-white">
-            {formatKES(totals.pledgedMinor)}
-          </dd>
-        </div>
-      </dl>
-
-      <p className="mt-1.5 text-xs text-white/50">
-        out of {formatKES(totals.targetMinor)} target
-      </p>
-
-      <dl className="mt-5 grid grid-cols-3 gap-2 border-t border-white/10 pt-5">
-        <Stat label="of goal" value={formatPercent(totals.percentPledged)} />
-        <Stat
-          label={totals.pledgeCount === 1 ? "pledge" : "pledges"}
-          value={formatNumber(totals.pledgeCount)}
-        />
-        {/*
-          Received as a share of pledged, not of the target. It answers how much
-          of what was promised has been honoured, which is the question the
-          other two do not.
-        */}
-        <Stat
-          label="redeemed"
-          value={formatPercent(totals.percentRedeemed)}
-        />
-      </dl>
-
-      {/*
-        The count again, this time as a sentence about people rather than as a
-        figure in a column. The stat above it answers how many; this answers who,
-        which is the half that makes somebody reading it on a phone feel like
-        they are being asked to join something rather than to top up a total.
-      */}
-      <p className="mt-4 text-sm text-white/70">
-        <span className="tabular font-semibold text-white">
-          {formatNumber(totals.pledgeCount)}
-        </span>{" "}
-        {totals.pledgeCount === 1 ? "pledge" : "pledges"} from the Newlife
-        family
-      </p>
+          <span>
+            <span className="tabular font-semibold text-white">
+              {formatPercent(totals.percentPledged)}
+            </span>{" "}
+            of goal
+          </span>
+        </li>
+        <Bullet />
+        <li>
+          <span className="tabular font-semibold text-white">
+            {formatNumber(totals.pledgeCount)}
+          </span>{" "}
+          {totals.pledgeCount === 1 ? "pledge" : "pledges"}
+        </li>
+      </ul>
 
       {sparkline && (
         <div className="mt-5 text-white/20" aria-hidden>
@@ -338,20 +313,16 @@ function freshness(refreshedAt: number | null, now: number): string {
 }
 
 /**
- * One of the three figures under the bar.
+ * The separator between two figures in the row under the bar.
  *
- * The value is set larger than its label so the eye reads the number first and
- * the word only if it needs to. Every value is tabular, so three columns of
- * digits stay in their columns while the poll moves them.
+ * An li because it sits directly inside the ul, and hidden from assistive tech
+ * so the list is announced as the three figures and not five items.
  */
-function Stat({ label, value }: { label: string; value: string }) {
+function Bullet() {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <dd className="tabular text-sm font-semibold text-white sm:text-base">
-        {value}
-      </dd>
-      <dt className="text-xs text-white/60">{label}</dt>
-    </div>
+    <li aria-hidden className="hidden text-white/30 sm:block">
+      •
+    </li>
   );
 }
 

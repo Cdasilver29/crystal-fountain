@@ -124,8 +124,7 @@ export default async function ProgressPage() {
               />
               {/*
                 The hint says what share of the pledges has arrived, not what
-                share of the target, matching the "redeemed" figure on the hero
-                tracker. Against the target it is the same money counted a
+                share of the target. Against the target it is the same money counted a
                 second time; against the pledges it answers a question the other
                 cards do not.
               */}
