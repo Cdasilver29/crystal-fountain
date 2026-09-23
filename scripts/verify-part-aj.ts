@@ -186,7 +186,7 @@ async function main() {
       from audit_log
       where entity = 'pledger' and entity_id = ${pledgerId}
         and action = 'pledgers.display_name_set'
-      order by created_at, id
+      order by at, id
     `);
     return result.rows as {
       action: string;
@@ -237,10 +237,18 @@ async function main() {
   const original = await stored();
   show([original]);
   check("no override to begin with", original.public_display_name === null);
-  check(
-    "the feed shows the derived, misspelt name",
-    (await feedNames()).includes(DERIVED),
-  );
+  /*
+   * Waited for rather than read once. The pledge was made through the service,
+   * which clears no cache, so the feed can legitimately serve the list from
+   * before it for up to 30 seconds. The admin route below does clear it, which
+   * is why the later reads need no wait.
+   */
+  let feedBefore = await feedNames();
+  for (let i = 0; i < 25 && !feedBefore.includes(DERIVED); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    feedBefore = await feedNames();
+  }
+  check("the feed shows the derived, misspelt name", feedBefore.includes(DERIVED));
   check(
     "and so does /pledgers",
     (await listNames("Zebedeeq")).includes(DERIVED),
