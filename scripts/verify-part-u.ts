@@ -88,6 +88,8 @@ async function main() {
     // The treasurer knows which names are funds and which are families, and
     // the flag only widens what is already consented to being public.
     "pledgers.setOrganisation": [false, true, true, true],
+    // The name a pledger is published under, set by hand. Same reasoning.
+    "pledgers.setDisplayName": [false, true, true, true],
     /*
      * The queue of what pledgers have asked to have changed. Reading it is
      * reading the books. Answering is the treasurer's ordinary work, except

@@ -513,8 +513,13 @@ async function main() {
   });
   check(
     "paging keeps the filter applied",
+    // Against the filter's own prefixes, not "pledge." alone: the pledges
+    // filter deliberately takes the pledger actions too, and a recent
+    // pledgers.* row on page two is the filter working, not leaking.
     filteredTwo.items.length > 0 &&
-      filteredTwo.items.every((r) => r.action.startsWith("pledge.")),
+      filteredTwo.items.every((r) =>
+        AUDIT_FILTER_PREFIXES.pledges.some((p) => r.action.startsWith(p)),
+      ),
   );
 
   check(
