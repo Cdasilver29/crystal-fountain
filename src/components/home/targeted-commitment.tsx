@@ -115,17 +115,25 @@ export function TargetedCommitment({ targetMinor }: { targetMinor: string }) {
                   text, so the figure and its unit reach the page as a single
                   text node instead of being split by a comment marker.
                 */}
-                <span>
-                  {tier.sweetSpot && <span className="sr-only">Sweet spot. </span>}
-                  {`${formatNumber(tier.families)} families`}
-                </span>
+                <span>{`${formatNumber(tier.families)} families`}</span>
+                {/*
+                  One element for both audiences. On a phone the badge has no
+                  room and the campfire rule marks the row, so it is sr-only
+                  there; from the small breakpoint up the same node becomes the
+                  visible pill. Two nodes, one sr-only and one aria-hidden,
+                  put the phrase in the text flow twice.
+
+                  The space before it keeps "families" and "Sweet spot" apart
+                  when the row is read as text. Inside the flex row it is
+                  whitespace between items and takes no room.
+                */}
                 {tier.sweetSpot && (
-                  <span
-                    aria-hidden
-                    className="hidden shrink-0 rounded-full bg-campfire/20 px-2 py-0.5 text-[10px] font-medium text-campfire sm:inline-block"
-                  >
-                    Sweet spot
-                  </span>
+                  <>
+                    {" "}
+                    <span className="inline-block shrink-0 rounded-full bg-campfire/20 px-2 py-0.5 text-[10px] font-medium text-campfire max-sm:sr-only">
+                      Sweet spot
+                    </span>
+                  </>
                 )}
               </p>
 

@@ -429,8 +429,13 @@ export function RecentPledges({
               Announced when a poll brings something new, so a member using a
               screen reader is told rather than having to go looking. Only this
               copy: the duplicate exists for the drift and has nothing to say.
+
+              Additions only. The default also announces changed text, and
+              every poll moves the clock the relative times are worked out
+              against, so "4 minutes ago" turning into "5 minutes ago" on any
+              row was being read out every thirty seconds.
             */}
-            <ul ref={copyRef} aria-live="polite">
+            <ul ref={copyRef} aria-live="polite" aria-relevant="additions">
               {rows}
             </ul>
             <ul aria-hidden className="cf-feed-clone">
