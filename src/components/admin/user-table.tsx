@@ -207,7 +207,7 @@ export function UserTable({
                   key={user.id}
                   className={cn(!user.isActive && "bg-neutral-50 text-neutral-500")}
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <span className="font-medium text-navy">
                       {user.fullName}
                     </span>
@@ -216,7 +216,7 @@ export function UserTable({
                       {user.email}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     {user.isSuper ? "super admin" : user.role}
                     {!user.isActive && (
                       <span className="block text-xs">retired</span>
@@ -227,17 +227,17 @@ export function UserTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     <SignInMethods user={user} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     {user.twoFactorEnabled ? "Enrolled" : "Not enrolled"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">
                     {user.lastLoginAt ? formatDate(user.lastLoginAt) : "Never"}
                   </td>
-                  <td className="px-4 py-3">{formatDate(user.createdAt)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-4">{formatDate(user.createdAt)}</td>
+                  <td className="px-4 py-4">
                     <div className="flex flex-wrap justify-end gap-2">
                       {user.isActive && !self && (
                         <RowButton

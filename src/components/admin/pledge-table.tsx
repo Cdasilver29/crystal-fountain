@@ -206,7 +206,7 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
           <tbody className="divide-y divide-neutral-100">
             {rows.map((row) => (
               <tr key={row.id}>
-                <td className="px-4 py-3">
+                <td className="px-4 py-4 whitespace-nowrap">
                   <Link
                     href={`/admin/pledges/${row.id}`}
                     className="tabular rounded font-medium text-navy underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
@@ -214,19 +214,19 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
                     {row.reference}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-neutral-800">
+                <td className="px-4 py-4 text-neutral-800">
                   {row.fullName} <NameMarker row={row} />
                 </td>
-                <td className="tabular px-4 py-3 text-right font-medium text-navy">
+                <td className="tabular px-4 py-4 text-right whitespace-nowrap font-medium text-navy">
                   {formatKES(row.amountMinor)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-neutral-600">
+                <td className="px-4 py-4 whitespace-nowrap text-neutral-600">
                   {formatDate(row.createdAt)}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-4">
                   <StatusBadge status={row.status} />
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-4 text-right">
                   <ApproveButton row={row} />
                 </td>
               </tr>

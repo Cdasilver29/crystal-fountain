@@ -80,8 +80,10 @@ export function AuditFilters({
   const filtered = q !== null || filter !== "all";
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="flex-1">
+    // Wraps rather than squeezes: the search has a line of its own below
+    // 1024px and a floor under it above that.
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="basis-full lg:min-w-64 lg:basis-80 lg:grow">
         <label htmlFor="audit-search" className="sr-only">
           Search the journal by action or by who did it
         </label>
@@ -95,7 +97,7 @@ export function AuditFilters({
         />
       </div>
 
-      <div>
+      <div className="basis-full sm:basis-auto">
         <label htmlFor="audit-filter" className="sr-only">
           Filter by kind of action
         </label>
@@ -122,7 +124,7 @@ export function AuditFilters({
       {filtered && (
         <Link
           href="/admin/audit"
-          className="rounded text-sm font-medium text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          className="rounded text-sm font-medium whitespace-nowrap text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
         >
           Clear filters
         </Link>

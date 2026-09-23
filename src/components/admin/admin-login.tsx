@@ -507,7 +507,7 @@ function GoogleButton({
       onClick={start}
       disabled={busy}
       aria-describedby={describedBy}
-      className="btn-secondary mt-2 inline-flex h-12 w-full cursor-pointer items-center justify-center gap-3 border border-neutral-400 bg-white px-6 text-base font-semibold text-navy shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+      className="btn-secondary mt-2 inline-flex whitespace-nowrap h-12 w-full cursor-pointer items-center justify-center gap-3 border border-neutral-400 bg-white px-6 text-base font-semibold text-navy shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       <GoogleLogo />
       {busy ? "Taking you to Google" : "Continue with Google"}
@@ -627,7 +627,7 @@ function Submit({
     <button
       type="submit"
       disabled={busy}
-      className="btn-primary inline-flex h-11 w-full cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+      className="btn-primary inline-flex whitespace-nowrap h-11 w-full cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       {busy ? busyLabel : label}
     </button>

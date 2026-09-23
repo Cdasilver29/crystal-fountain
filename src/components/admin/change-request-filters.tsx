@@ -63,8 +63,8 @@ export function ChangeRequestFilters({
   const filtered = status !== "pending" || kind !== "all";
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div>
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="basis-full sm:basis-auto">
         <label htmlFor="request-status" className="sr-only">
           Filter by whether it has been answered
         </label>
@@ -86,7 +86,7 @@ export function ChangeRequestFilters({
         </SelectField>
       </div>
 
-      <div>
+      <div className="basis-full sm:basis-auto">
         <label htmlFor="request-kind" className="sr-only">
           Filter by what is being asked for
         </label>
@@ -110,7 +110,7 @@ export function ChangeRequestFilters({
       {filtered && (
         <Link
           href="/admin/change-requests"
-          className="rounded text-sm font-medium text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          className="rounded text-sm font-medium whitespace-nowrap text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
         >
           Back to what is waiting
         </Link>

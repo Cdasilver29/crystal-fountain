@@ -120,8 +120,8 @@ export default async function AdminPledgesPage({
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <header className="bg-navy page-gutter py-8">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -141,26 +141,31 @@ export default async function AdminPledgesPage({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
           {/*
             The export sits beside the filters but is not one of them: it hands
             out the whole book, not the filtered page, so it does not move when
             a filter changes.
           */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start">
-            <div className="flex-1">
-              <PledgeFilters
-                q={filters.q}
-                status={filters.status}
-                name={filters.name}
-              />
-            </div>
+          {/*
+            One wrapping row. Below 1024px the search takes a line of its own
+            and everything else wraps beneath it; from there it shares the row
+            and grows into whatever the buttons leave. Nothing in it shrinks
+            below its content, so a new control adds a line rather than
+            crushing the search box.
+          */}
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <PledgeFilters
+              q={filters.q}
+              status={filters.status}
+              name={filters.name}
+            />
 
             {can(admin, "pledges.create") && (
               <Link
                 href="/admin/pledges/new"
-                className="btn-primary inline-flex h-9 items-center justify-center bg-campfire px-4 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+                className="btn-primary inline-flex whitespace-nowrap h-11 shrink-0 items-center justify-center bg-campfire px-4 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               >
                 Record a pledge
               </Link>
@@ -173,7 +178,7 @@ export default async function AdminPledgesPage({
             {canReviewNames && (
               <Link
                 href="/admin/pledges/display-names"
-                className="btn-secondary inline-flex h-11 shrink-0 items-center justify-center gap-2 border border-neutral-300 bg-white px-4 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="btn-secondary inline-flex whitespace-nowrap h-11 shrink-0 items-center justify-center gap-2 border border-neutral-300 bg-white px-4 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 Review public names
                 {namesToCheck > 0 && (
@@ -234,7 +239,7 @@ export default async function AdminPledgesPage({
               {page.nextCursor && (
                 <Link
                   href={nextHref()}
-                  className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="btn-secondary inline-flex whitespace-nowrap h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   Older pledges
                 </Link>

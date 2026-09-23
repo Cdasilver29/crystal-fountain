@@ -173,13 +173,13 @@ export function DisplayNameReview({ rows }: { rows: PublicNameReviewRow[] }) {
 
               return (
                 <tr key={row.pledgerId} className="block sm:table-row">
-                  <td className="block px-4 pt-3 sm:table-cell sm:py-3">
+                  <td className="block px-4 pt-3 sm:table-cell sm:py-4">
                     <span className="text-neutral-800">{row.storedName}</span>
                     <span className="tabular ml-2 text-xs text-neutral-500">
                       {row.reference}
                     </span>
                   </td>
-                  <td className="block px-4 pt-1 sm:table-cell sm:py-3">
+                  <td className="block px-4 pt-1 sm:table-cell sm:py-4">
                     <span className="font-medium text-navy">{current.shownAs}</span>
                     {reason ? (
                       <span
@@ -192,7 +192,7 @@ export function DisplayNameReview({ rows }: { rows: PublicNameReviewRow[] }) {
                       <span className="ml-2 text-xs text-neutral-500">Edited</span>
                     ) : null}
                   </td>
-                  <td className="block px-4 pt-2 pb-3 sm:table-cell sm:py-3">
+                  <td className="block px-4 pt-2 pb-3 sm:table-cell sm:py-4">
                     <label htmlFor={inputId} className="sr-only">
                       Shown publicly as, for {row.storedName}
                     </label>

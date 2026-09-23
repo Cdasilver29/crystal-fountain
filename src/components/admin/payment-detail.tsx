@@ -175,7 +175,7 @@ export function AllocationsTable({
             const reversed = row.reversedAt !== null;
             return (
               <tr key={row.id} className={cn(reversed && "text-neutral-400")}>
-                <td className="tabular px-4 py-3 font-medium">
+                <td className="tabular px-4 py-4 font-medium whitespace-nowrap">
                   <span className={cn(reversed ? "line-through" : "text-navy")}>
                     {row.pledgeReference}
                   </span>
@@ -185,19 +185,19 @@ export function AllocationsTable({
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3">{row.pledgerName}</td>
+                <td className="px-4 py-4">{row.pledgerName}</td>
                 <td
                   className={cn(
-                    "tabular px-4 py-3 text-right font-medium",
+                    "tabular px-4 py-4 text-right font-medium whitespace-nowrap",
                     reversed ? "line-through" : "text-navy",
                   )}
                 >
                   {formatKES(row.amountMinor)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   {formatDate(row.allocatedAt)}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-4">
                   {reversed ? (
                     <>
                       {row.allocatedByName ?? "Unknown"}, reversed by{" "}
@@ -208,7 +208,7 @@ export function AllocationsTable({
                   )}
                 </td>
                 {canRemove && (
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-4 text-right">
                     {/* A reversed allocation cannot be reversed again. */}
                     {!reversed && (
                       <RemoveAllocationButton

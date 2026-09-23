@@ -93,7 +93,7 @@ function Row({
           type="button"
           onClick={() => onAllocate(candidate)}
           disabled={disabled}
-          className="btn-primary inline-flex h-9 cursor-pointer items-center justify-center bg-campfire px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primary inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center bg-campfire px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >
           Allocate
         </button>
@@ -350,7 +350,7 @@ export function AllocatePanel({
               type="button"
               onClick={confirm}
               disabled={working}
-              className="btn-primary inline-flex h-11 cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-primary inline-flex whitespace-nowrap h-11 cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               {working ? "Allocating..." : "Confirm allocation"}
             </button>
@@ -358,7 +358,7 @@ export function AllocatePanel({
               type="button"
               onClick={cancel}
               disabled={working}
-              className="btn-secondary inline-flex h-11 cursor-pointer items-center justify-center border border-neutral-300 px-6 text-base font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-secondary inline-flex whitespace-nowrap h-11 cursor-pointer items-center justify-center border border-neutral-300 px-6 text-base font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
@@ -540,7 +540,7 @@ export function RemoveAllocationButton({
           type="button"
           onClick={remove}
           disabled={working}
-          className="btn-primary inline-flex h-8 cursor-pointer items-center justify-center bg-red-700 px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primary inline-flex whitespace-nowrap h-8 cursor-pointer items-center justify-center bg-red-700 px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >
           {working ? "Removing..." : "Yes, remove"}
         </button>
@@ -551,7 +551,7 @@ export function RemoveAllocationButton({
             setError(null);
           }}
           disabled={working}
-          className="btn-secondary inline-flex h-8 cursor-pointer items-center justify-center border border-neutral-300 px-3 text-xs font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-secondary inline-flex whitespace-nowrap h-8 cursor-pointer items-center justify-center border border-neutral-300 px-3 text-xs font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >
           Keep
         </button>

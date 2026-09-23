@@ -27,16 +27,16 @@ export default async function AdminChangePasswordPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-5 sm:px-6">
-        <div className="mx-auto w-full max-w-md">
+      <header className="bg-navy page-gutter py-5">
+        <div className="container-form">
           <p className="text-sm text-white/70">
             Crystal Fountain, administration
           </p>
         </div>
       </header>
 
-      <main className="flex flex-1 items-start px-4 py-10 sm:px-6">
-        <div className="mx-auto w-full max-w-md">
+      <main className="flex flex-1 items-start page-gutter py-10">
+        <div className="container-form">
           <h1 className="text-2xl font-semibold tracking-tight text-navy">
             Set your password
           </h1>

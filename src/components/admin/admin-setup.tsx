@@ -111,7 +111,7 @@ export function AdminSetup() {
         <button
           type="submit"
           disabled={busy}
-          className="btn-primary inline-flex h-11 w-full cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-primary inline-flex whitespace-nowrap h-11 w-full cursor-pointer items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating" : "Create administrator"}
         </button>

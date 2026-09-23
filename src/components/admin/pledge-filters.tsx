@@ -102,10 +102,11 @@ export function PledgeFilters({
   const filtered = q !== null || status !== "all" || name !== "all";
 
   return (
-    // No bottom margin: the page places this in a row with the export control
-    // and owns the spacing below it.
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="flex-1">
+    // display: contents, so the search and the selects join the page's toolbar
+    // row and wrap alongside its buttons instead of being squeezed into one
+    // box beside them. The page owns the row and the spacing below it.
+    <div className="contents">
+      <div className="basis-full lg:min-w-64 lg:basis-80 lg:grow">
         <label htmlFor="pledge-search" className="sr-only">
           Search pledges by reference, name or phone number
         </label>
@@ -119,7 +120,7 @@ export function PledgeFilters({
         />
       </div>
 
-      <div>
+      <div className="basis-full sm:basis-auto">
         <label htmlFor="pledge-status" className="sr-only">
           Filter by status
         </label>
@@ -143,7 +144,7 @@ export function PledgeFilters({
         </SelectField>
       </div>
 
-      <div>
+      <div className="basis-full sm:basis-auto">
         <label htmlFor="pledge-name" className="sr-only">
           Filter by public name
         </label>
@@ -168,7 +169,7 @@ export function PledgeFilters({
       {filtered && (
         <Link
           href="/admin/pledges"
-          className="rounded text-sm font-medium text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          className="rounded text-sm font-medium whitespace-nowrap text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
         >
           Clear filters
         </Link>

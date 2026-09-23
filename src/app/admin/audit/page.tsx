@@ -100,8 +100,8 @@ export default async function AdminAuditPage({
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-6xl">
+      <header className="bg-navy page-gutter py-8">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -125,8 +125,8 @@ export default async function AdminAuditPage({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-6xl">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
           <div className="mb-4">
             <AuditFilters q={filters.q} filter={filters.filter} />
           </div>
@@ -158,7 +158,7 @@ export default async function AdminAuditPage({
               {nextHref && (
                 <Link
                   href={nextHref}
-                  className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="btn-secondary inline-flex whitespace-nowrap h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   Older entries
                 </Link>

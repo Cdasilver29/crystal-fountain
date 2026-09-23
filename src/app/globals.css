@@ -1186,3 +1186,105 @@
     overflow-y: auto;
   }
 }
+
+/*
+ * Page layout. Width follows what the content is, and these classes are the
+ * only place the four widths and the gutter are set:
+ *
+ *   container-table      admin screens and data tables, dense and scannable
+ *   container-marketing  home, vision and pledgers sections
+ *   container-prose      running text, about 70 characters to a line
+ *   container-form       a form wider than this is harder to use, not easier
+ *
+ * They sit in the components layer on purpose. An unlayered rule here would
+ * beat any Tailwind utility on the same element, so mx-0 on a container-form
+ * (to hold it left inside an admin screen) would silently do nothing.
+ */
+@layer components {
+  .page-gutter {
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .page-gutter {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .page-gutter {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .page-gutter {
+      padding-inline: 4rem;
+    }
+  }
+
+  .container-table,
+  .container-marketing,
+  .container-prose,
+  .container-form {
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .container-table {
+    max-width: 1400px;
+  }
+
+  .container-marketing {
+    max-width: 1200px;
+  }
+
+  .container-prose {
+    max-width: 680px;
+  }
+
+  .container-form {
+    max-width: 640px;
+  }
+
+  /*
+   * Vertical rhythm. The hero and the closing call to action get more room than
+   * the sections between them, so the page has a start and an end rather than
+   * reading as a stack of equal boxes.
+   */
+  .section-feature {
+    padding-block: 4rem;
+  }
+
+  .section {
+    padding-block: 3rem;
+  }
+
+  @media (min-width: 1024px) {
+    .section-feature {
+      padding-block: 7rem;
+    }
+
+    .section {
+      padding-block: 4.5rem;
+    }
+  }
+
+  /*
+   * A heading sits close to what it introduces and further from the block
+   * before it, so it reads as belonging to what follows.
+   */
+  .section-heading {
+    margin-block-end: 1rem;
+  }
+
+  .block-stack > * + * {
+    margin-block-start: 2.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .block-stack > * + * {
+      margin-block-start: 3.5rem;
+    }
+  }
+}

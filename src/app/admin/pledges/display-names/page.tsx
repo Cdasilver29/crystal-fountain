@@ -48,8 +48,8 @@ export default async function AdminDisplayNamesPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <header className="bg-navy page-gutter py-8">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -76,8 +76,8 @@ export default async function AdminDisplayNamesPage() {
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
           <DisplayNameReview rows={rows} />
         </div>
       </main>

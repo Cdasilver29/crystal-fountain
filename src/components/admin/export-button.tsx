@@ -24,7 +24,7 @@ export function ExportButton({
       // too means a browser that ignores the header still saves something
       // sensibly named rather than showing a wall of commas.
       download
-      className="btn-secondary inline-flex h-11 shrink-0 items-center justify-center gap-2 border border-neutral-300 bg-white px-4 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="btn-secondary inline-flex whitespace-nowrap h-11 shrink-0 items-center justify-center gap-2 border border-neutral-300 bg-white px-4 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       <svg
         viewBox="0 0 24 24"

@@ -77,8 +77,8 @@ export default async function AdminPledgeDetailPage({
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-5 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <header className="bg-navy page-gutter py-5">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -88,8 +88,8 @@ export default async function AdminPledgeDetailPage({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table space-y-6">
           <div>
             <Link
               href="/admin/pledges"

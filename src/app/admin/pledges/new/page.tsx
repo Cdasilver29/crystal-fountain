@@ -35,8 +35,8 @@ export default async function AdminNewPledgePage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-5 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <header className="bg-navy page-gutter py-5">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -46,8 +46,8 @@ export default async function AdminNewPledgePage() {
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
           <Link
             href="/admin/pledges"
             className="rounded text-sm text-denim underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
@@ -65,7 +65,7 @@ export default async function AdminNewPledgePage() {
             perform.
           </p>
 
-          <div className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
+          <div className="container-form mx-0 mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
             <PledgeRecordForm />
           </div>
         </div>

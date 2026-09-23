@@ -66,7 +66,7 @@ export default async function AdminLoginPage({
   const rejection = error ? messageForRejection(error) : null;
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-navy px-4 py-16 sm:px-6">
+    <main className="flex flex-1 flex-col items-center justify-center bg-navy page-gutter py-16">
       <AdminLogin
         next={target}
         googleEnabled={googleEnabled}

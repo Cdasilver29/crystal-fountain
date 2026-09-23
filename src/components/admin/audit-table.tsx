@@ -257,19 +257,19 @@ export function AuditTable({ rows }: { rows: AuditRow[] }) {
                 key={row.id}
                 className="border-b border-neutral-100 last:border-0"
               >
-                <td className="tabular px-4 py-3 whitespace-nowrap text-neutral-600">
+                <td className="tabular px-4 py-4 whitespace-nowrap text-neutral-600">
                   {formatAuditTime(row.at)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-navy">
+                <td className="px-4 py-4 whitespace-nowrap text-navy">
                   {actorLabel(row)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   <Badge action={row.action} />
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-neutral-600">
+                <td className="px-4 py-4 whitespace-nowrap text-neutral-600">
                   {row.entity}
                 </td>
-                <td className="px-4 py-3 text-neutral-700">
+                <td className="px-4 py-4 text-neutral-700">
                   {row.detail || (
                     <span className="text-neutral-400">no detail recorded</span>
                   )}

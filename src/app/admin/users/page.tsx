@@ -45,8 +45,8 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-5 sm:px-6">
-        <div className="mx-auto w-full max-w-5xl">
+      <header className="bg-navy page-gutter py-5">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -56,8 +56,8 @@ export default async function AdminUsersPage() {
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-5xl">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
           <h1 className="text-2xl font-semibold tracking-tight text-navy">
             Administrators
           </h1>

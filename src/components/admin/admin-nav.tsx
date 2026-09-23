@@ -155,7 +155,7 @@ export function AdminNav({
           type="button"
           onClick={signOut}
           disabled={busy}
-          className="btn-secondary inline-flex h-9 cursor-pointer items-center justify-center border border-white/20 px-4 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-secondary inline-flex whitespace-nowrap h-9 cursor-pointer items-center justify-center border border-white/20 px-4 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Signing out" : "Sign out"}
         </button>

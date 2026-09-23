@@ -150,7 +150,7 @@ export function PaymentTable({ rows }: { rows: AdminPaymentDto[] }) {
                 key={row.id}
                 className="relative transition-colors focus-within:bg-neutral-50 hover:bg-neutral-50"
               >
-                <td className="px-4 py-3 whitespace-nowrap text-neutral-600">
+                <td className="px-4 py-4 whitespace-nowrap text-neutral-600">
                   <Link
                     href={`/admin/payments/${row.id}`}
                     className="rounded after:absolute after:inset-0 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
@@ -161,21 +161,21 @@ export function PaymentTable({ rows }: { rows: AdminPaymentDto[] }) {
                     </span>
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-neutral-800 capitalize">
+                <td className="px-4 py-4 text-neutral-800 capitalize">
                   {row.method}
                 </td>
-                <td className="px-4 py-3 text-neutral-600">
+                <td className="px-4 py-4 whitespace-nowrap text-neutral-600">
                   <Reference value={row.externalRef} />
                 </td>
-                <td className="tabular px-4 py-3 text-right font-medium text-navy">
+                <td className="tabular px-4 py-4 text-right whitespace-nowrap font-medium text-navy">
                   {formatKES(row.amountMinor)}
                 </td>
-                <td className="px-4 py-3 text-neutral-800">
+                <td className="px-4 py-4 text-neutral-800">
                   {row.payerName ?? (
                     <span className="text-neutral-400">Not recorded</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-4">
                   <AllocationBadge row={row} />
                 </td>
               </tr>

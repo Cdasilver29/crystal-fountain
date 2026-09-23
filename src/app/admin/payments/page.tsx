@@ -65,8 +65,8 @@ export default async function AdminPaymentsPage({
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <header className="bg-navy page-gutter py-8">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -86,7 +86,7 @@ export default async function AdminPaymentsPage({
             {can(admin, "exports.download") && (
               <Link
                 href="/admin/payments/new"
-                className="btn-primary inline-flex h-10 items-center justify-center bg-campfire px-5 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+                className="btn-primary inline-flex whitespace-nowrap h-10 items-center justify-center bg-campfire px-5 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
               >
                 Record a payment
               </Link>
@@ -101,9 +101,9 @@ export default async function AdminPaymentsPage({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-neutral-600">
               {formatNumber(page.items.length)} payments on this page,{" "}
               {formatNumber(unallocatedCount)} not yet fully matched to a
@@ -149,7 +149,7 @@ export default async function AdminPaymentsPage({
               {page.nextCursor && (
                 <Link
                   href={`/admin/payments?cursor=${encodeURIComponent(page.nextCursor)}`}
-                  className="btn-secondary inline-flex h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+                  className="btn-secondary inline-flex whitespace-nowrap h-10 items-center justify-center border border-neutral-300 bg-white px-5 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   Older payments
                 </Link>

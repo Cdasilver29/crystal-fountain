@@ -91,8 +91,8 @@ export default async function PaymentDetailPage({
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-4xl">
+      <header className="bg-navy page-gutter py-8">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -121,8 +121,8 @@ export default async function PaymentDetailPage({
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table flex flex-col gap-8">
           <section aria-labelledby="details-heading">
             <h2
               id="details-heading"

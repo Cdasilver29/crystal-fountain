@@ -47,8 +47,8 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-neutral-50">
-      <header className="bg-navy px-4 py-5 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <header className="bg-navy page-gutter py-5">
+        <div className="container-table">
           <AdminNav
             name={admin.name}
             role={admin.role}
@@ -58,8 +58,8 @@ export default async function AdminSettingsPage() {
         </div>
       </header>
 
-      <main className="px-4 py-8 pb-16 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
+      <main className="page-gutter py-8 pb-16">
+        <div className="container-table">
           <h1 className="text-2xl font-semibold tracking-tight text-navy">
             Campaign settings
           </h1>
@@ -70,7 +70,7 @@ export default async function AdminSettingsPage() {
             money is sent to.
           </p>
 
-          <div className="mt-6">
+          <div className="container-form mx-0 mt-6">
             <SettingsForm
               settings={{
                 targetMinor: settings.targetMinor.toString(),
