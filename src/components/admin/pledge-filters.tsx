@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  PLEDGE_NAME_FILTERS,
   PLEDGE_STATUS_FILTERS,
+  type PledgeNameFilter,
   type PledgeStatusFilter,
 } from "@/server/contracts/admin";
 import { SelectField } from "@/components/ui/select-field";
@@ -34,6 +36,11 @@ const STATUS_LABELS: Record<PledgeStatusFilter, string> = {
   void: "Void",
 };
 
+const NAME_LABELS: Record<PledgeNameFilter, string> = {
+  all: "All names",
+  review: "Needs review",
+};
+
 /**
  * The pledge list URL for a set of filters.
  *
@@ -42,10 +49,15 @@ const STATUS_LABELS: Record<PledgeStatusFilter, string> = {
  * ordering and carrying it across would land on a row that may not be in the
  * new result set at all.
  */
-function hrefFor(q: string | null, status: PledgeStatusFilter): string {
+function hrefFor(
+  q: string | null,
+  status: PledgeStatusFilter,
+  name: PledgeNameFilter,
+): string {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (status !== "all") params.set("status", status);
+  if (name !== "all") params.set("name", name);
   const query = params.toString();
   return query ? `/admin/pledges?${query}` : "/admin/pledges";
 }
@@ -53,9 +65,11 @@ function hrefFor(q: string | null, status: PledgeStatusFilter): string {
 export function PledgeFilters({
   q,
   status,
+  name,
 }: {
   q: string | null;
   status: PledgeStatusFilter;
+  name: PledgeNameFilter;
 }) {
   const router = useRouter();
   const [term, setTerm] = useState(q ?? "");
@@ -79,13 +93,13 @@ export function PledgeFilters({
       committed.current = term;
       // replace, not push, so a search does not leave one history entry per
       // pause in typing for the back button to walk through.
-      router.replace(hrefFor(term.trim() || null, status));
+      router.replace(hrefFor(term.trim() || null, status, name));
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [term, status, router]);
+  }, [term, status, name, router]);
 
-  const filtered = q !== null || status !== "all";
+  const filtered = q !== null || status !== "all" || name !== "all";
 
   return (
     // No bottom margin: the page places this in a row with the export control
@@ -117,13 +131,35 @@ export function PledgeFilters({
             // The typed term goes with it, so choosing a status does not throw
             // away a search the treasurer has already entered.
             committed.current = term.trim();
-            router.replace(hrefFor(term.trim() || null, next));
+            router.replace(hrefFor(term.trim() || null, next, name));
           }}
           className="w-full sm:w-48"
         >
           {PLEDGE_STATUS_FILTERS.map((value) => (
             <option key={value} value={value}>
               {STATUS_LABELS[value]}
+            </option>
+          ))}
+        </SelectField>
+      </div>
+
+      <div>
+        <label htmlFor="pledge-name" className="sr-only">
+          Filter by public name
+        </label>
+        <SelectField
+          id="pledge-name"
+          value={name}
+          onChange={(event) => {
+            const next = event.target.value as PledgeNameFilter;
+            committed.current = term.trim();
+            router.replace(hrefFor(term.trim() || null, status, next));
+          }}
+          className="w-full sm:w-40"
+        >
+          {PLEDGE_NAME_FILTERS.map((value) => (
+            <option key={value} value={value}>
+              {NAME_LABELS[value]}
             </option>
           ))}
         </SelectField>

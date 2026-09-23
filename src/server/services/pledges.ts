@@ -21,6 +21,10 @@ import {
 import type { ChangeRequestKind } from "@/server/contracts/change-requests";
 import { displayName } from "@/server/display-name";
 import {
+  nameNeedsReview,
+  type NameReviewReason,
+} from "@/server/display-name-review";
+import {
   closeForPledge,
   closureFor,
 } from "@/server/services/change-request-closure";
@@ -733,17 +737,61 @@ export type AdminPledgeRow = {
   currency: string;
   status: PledgeStatus;
   createdAt: Date;
+  /** Why the public name wants a second look, or null when it does not. */
+  nameReview: { reason: NameReviewReason } | null;
+  /** Whether a person has already set the public name by hand. */
+  publicNameEdited: boolean;
 };
 
-type PledgeListRow = {
+/** The pledger columns the name review reads. */
+type NameReviewColumns = {
+  full_name: string;
+  display_name: string | null;
+  display_consent: boolean;
+  is_organisation: boolean;
+  public_display_name: string | null;
+};
+
+type PledgeListRow = NameReviewColumns & {
   id: string;
   reference: string;
-  full_name: string;
   amount_minor: string;
   currency: string;
   status: string;
   created_at: string;
 };
+
+/** The heuristic's view of one pledger row. */
+function reviewRow(row: NameReviewColumns) {
+  return nameNeedsReview({
+    storedName: row.display_name ?? row.full_name,
+    displayConsent: row.display_consent,
+    isOrganisation: row.is_organisation,
+    publicDisplayName: row.public_display_name,
+  });
+}
+
+/**
+ * The pledgers whose public name the heuristic flags.
+ *
+ * The rule is TypeScript, not SQL, so it has one tested home in
+ * display-name-review.ts rather than a second copy in a query that could drift
+ * from it. Only consented pledgers with no hand set name can be flagged, which
+ * is a few dozen rows, so they are read and checked here and the ids handed to
+ * the list and its count.
+ */
+export async function nameReviewPledgerIds(db: Db): Promise<string[]> {
+  const result = await db.execute(sql`
+    select g.id, g.full_name, g.display_name, g.display_consent,
+           g.is_organisation, g.public_display_name
+    from pledgers g
+    where g.display_consent
+      and nullif(trim(g.public_display_name), '') is null
+  `);
+  return (result.rows as (NameReviewColumns & { id: string })[])
+    .filter((row) => reviewRow(row) !== null)
+    .map((row) => row.id);
+}
 
 export type ListPledgesArgs = {
   campaignSlug: string;
@@ -751,6 +799,11 @@ export type ListPledgesArgs = {
   q?: string | null;
   /** One status, or null for every status. */
   status?: PledgeStatus | null;
+  /**
+   * Only pledges by these pledgers, or null for everybody. Carries the
+   * "Needs review" filter, from nameReviewPledgerIds.
+   */
+  pledgerIds?: string[] | null;
   limit?: number;
   cursor?: string | null;
 };
@@ -763,17 +816,23 @@ export type ListPledgesArgs = {
  * apart. The cursor is deliberately not part of it: a cursor says where on the
  * list you are, not what the list is.
  */
-function adminListFilter(args: Pick<ListPledgesArgs, "campaignSlug" | "q" | "status">) {
+function adminListFilter(
+  args: Pick<ListPledgesArgs, "campaignSlug" | "q" | "status" | "pledgerIds">,
+) {
   const term = args.q?.trim() ?? "";
   // Below the search endpoint's own minimum the term is ignored rather than
   // matched on, so a single stray character does not empty the screen.
   const patterns = term.length >= 2 ? searchPatterns(term) : null;
   const status = args.status ?? null;
+  // A Postgres array literal. The ids are uuids read from the database and the
+  // cast refuses anything else. An empty list matches nothing, as it should.
+  const pledgerIds = args.pledgerIds ? `{${args.pledgerIds.join(",")}}` : null;
 
   return sql`
     c.slug = ${args.campaignSlug}
     and p.deleted_at is null
     and (${status}::text is null or p.status = ${status}::pledge_status)
+    and (${pledgerIds}::uuid[] is null or g.id = any(${pledgerIds}::uuid[]))
     and ${patterns ? matchesTerm(patterns) : sql`true`}
   `;
 }
@@ -801,7 +860,10 @@ export type AdminPledgeCounts = {
  */
 export async function countForAdmin(
   db: Db,
-  args: Pick<ListPledgesArgs, "campaignSlug" | "q" | "status" | "cursor">,
+  args: Pick<
+    ListPledgesArgs,
+    "campaignSlug" | "q" | "status" | "pledgerIds" | "cursor"
+  >,
 ): Promise<AdminPledgeCounts> {
   const cursor = decodeCursor(args.cursor);
 
@@ -846,6 +908,10 @@ export async function listForAdmin(
     select p.id,
            p.reference,
            g.full_name,
+           g.display_name,
+           g.display_consent,
+           g.is_organisation,
+           g.public_display_name,
            p.amount_minor,
            p.currency,
            p.status,
@@ -871,6 +937,9 @@ export async function listForAdmin(
     currency: row.currency,
     status: row.status as PledgeStatus,
     createdAt: new Date(row.created_at),
+    nameReview: reviewRow(row),
+    publicNameEdited:
+      row.display_consent && Boolean(row.public_display_name?.trim()),
   }));
 
   return toPage(rows, limit, (row) => ({

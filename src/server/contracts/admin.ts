@@ -46,6 +46,11 @@ export const PLEDGE_STATUS_FILTERS = [
 
 export type PledgeStatusFilter = (typeof PLEDGE_STATUS_FILTERS)[number];
 
+/** "review" keeps only pledgers whose public name the heuristic flags. */
+export const PLEDGE_NAME_FILTERS = ["all", "review"] as const;
+
+export type PledgeNameFilter = (typeof PLEDGE_NAME_FILTERS)[number];
+
 export const pledgeListFilters = z.object({
   q: z
     .string()
@@ -54,6 +59,7 @@ export const pledgeListFilters = z.object({
     .catch("")
     .transform((value) => (value === "" ? null : value)),
   status: z.enum(PLEDGE_STATUS_FILTERS).catch("all"),
+  name: z.enum(PLEDGE_NAME_FILTERS).catch("all"),
   cursor: z.string().max(512).catch("").transform((value) => value || null),
 });
 

@@ -27,7 +27,12 @@ export const dynamic = "force-dynamic";
 export default async function AdminPledgesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; cursor?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    name?: string;
+    cursor?: string;
+  }>;
 }) {
   /*
    * The middleware has already bounced anyone with no cookie at all, but it
@@ -50,6 +55,7 @@ export default async function AdminPledgesPage({
   const filters = pledgeListFilters.parse({
     q: params.q ?? "",
     status: params.status ?? "all",
+    name: params.name ?? "all",
     cursor: params.cursor ?? "",
   });
 
@@ -57,6 +63,8 @@ export default async function AdminPledgesPage({
     campaignSlug: CAMPAIGN_SLUG,
     q: filters.q,
     status: filters.status === "all" ? null : filters.status,
+    pledgerIds:
+      filters.name === "review" ? await pledges.nameReviewPledgerIds(db) : null,
     cursor: filters.cursor,
   };
 
@@ -71,7 +79,8 @@ export default async function AdminPledgesPage({
     getCampaignTotals(),
   ]);
 
-  const filtering = filters.q !== null || filters.status !== "all";
+  const filtering =
+    filters.q !== null || filters.status !== "all" || filters.name !== "all";
 
   // Where this page sits in the whole list, for "Showing 51 to 97".
   const paged = counts.before > 0 || page.hasMore;
@@ -83,6 +92,7 @@ export default async function AdminPledgesPage({
     const next = new URLSearchParams();
     if (filters.q) next.set("q", filters.q);
     if (filters.status !== "all") next.set("status", filters.status);
+    if (filters.name !== "all") next.set("name", filters.name);
     if (page.nextCursor) next.set("cursor", page.nextCursor);
     return `/admin/pledges?${next.toString()}`;
   };
@@ -92,6 +102,7 @@ export default async function AdminPledgesPage({
     const first = new URLSearchParams();
     if (filters.q) first.set("q", filters.q);
     if (filters.status !== "all") first.set("status", filters.status);
+    if (filters.name !== "all") first.set("name", filters.name);
     const query = first.toString();
     return query ? `/admin/pledges?${query}` : "/admin/pledges";
   };
@@ -128,7 +139,11 @@ export default async function AdminPledgesPage({
           */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start">
             <div className="flex-1">
-              <PledgeFilters q={filters.q} status={filters.status} />
+              <PledgeFilters
+                q={filters.q}
+                status={filters.status}
+                name={filters.name}
+              />
             </div>
 
             {can(admin, "pledges.create") && (
@@ -169,6 +184,8 @@ export default async function AdminPledgesPage({
               amountMinor: row.amountMinor.toString(),
               status: row.status,
               createdAt: row.createdAt.toISOString(),
+              nameReview: row.nameReview?.reason ?? null,
+              publicNameEdited: row.publicNameEdited,
             }))}
           />
 

@@ -27,6 +27,10 @@ export type AdminPledgeDto = {
   amountMinor: string;
   status: string;
   createdAt: string;
+  /** Why the public name wants a second look, or null. */
+  nameReview: string | null;
+  /** Whether a person has already set the public name by hand. */
+  publicNameEdited: boolean;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -46,6 +50,28 @@ function StatusBadge({ status }: { status: string }) {
       )}
     >
       {status}
+    </span>
+  );
+}
+
+/**
+ * Whether the public name has been looked at.
+ *
+ * "Check name" when the heuristic thinks the derived public name is wrong, with
+ * the reason on hover. "Edited" when a person has already set it by hand, so
+ * the treasurer can see what is done. Nothing for the rest.
+ */
+function NameMarker({ row }: { row: AdminPledgeDto }) {
+  if (row.publicNameEdited) {
+    return <span className="ml-1 text-xs text-neutral-500">Edited</span>;
+  }
+  if (!row.nameReview) return null;
+  return (
+    <span
+      title={`Public name: ${row.nameReview}`}
+      className="ml-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-900"
+    >
+      Check name
     </span>
   );
 }
@@ -137,7 +163,9 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
               <StatusBadge status={row.status} />
             </div>
 
-            <p className="mt-2 text-sm text-neutral-800">{row.fullName}</p>
+            <p className="mt-2 text-sm text-neutral-800">
+              {row.fullName} <NameMarker row={row} />
+            </p>
 
             <div className="mt-1 flex items-baseline justify-between gap-3">
               <span className="tabular text-lg font-semibold text-navy">
@@ -186,7 +214,9 @@ export function PledgeTable({ rows }: { rows: AdminPledgeDto[] }) {
                     {row.reference}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-neutral-800">{row.fullName}</td>
+                <td className="px-4 py-3 text-neutral-800">
+                  {row.fullName} <NameMarker row={row} />
+                </td>
                 <td className="tabular px-4 py-3 text-right font-medium text-navy">
                   {formatKES(row.amountMinor)}
                 </td>
