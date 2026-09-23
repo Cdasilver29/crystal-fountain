@@ -65,6 +65,11 @@ describe("nameNeedsReview", () => {
     });
   });
 
+  it("skips an organisation, which a treasurer has already reviewed", () => {
+    expect(check("AMM/AMO  Seed Fund", { isOrganisation: true })).toBeNull();
+    expect(check("AMM/AMO  Seed Fund")).toEqual({ reason: "contains a slash" });
+  });
+
   it("skips a pledger who has not consented to being shown", () => {
     expect(check("SAMUEL NGOA", { displayConsent: false })).toBeNull();
   });

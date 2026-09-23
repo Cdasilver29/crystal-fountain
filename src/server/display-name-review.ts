@@ -75,8 +75,9 @@ function isAllCapitals(text: string): boolean {
  * Whether this pledger's public name needs a person to read it, and why.
  *
  * Returns null when there is nothing to review: the pledger is not shown
- * publicly, or a public name has already been set by hand, which means
- * somebody has already read it and decided. Otherwise returns the first rule
+ * publicly, a public name has already been set by hand, or a treasurer has
+ * marked the pledger an organisation. Either way somebody has already read the
+ * name and decided. Otherwise returns the first rule
  * that holds, in the order the treasurer would care about them.
  */
 export function nameNeedsReview(
@@ -84,6 +85,8 @@ export function nameNeedsReview(
 ): { reason: NameReviewReason } | null {
   if (!input.displayConsent) return null;
   if (input.publicDisplayName?.trim()) return null;
+  // The organisation flag is itself a treasurer's decision about this name.
+  if (input.isOrganisation) return null;
 
   const stored = input.storedName.trim();
   const derived = displayName(stored, { isOrganisation: input.isOrganisation });
