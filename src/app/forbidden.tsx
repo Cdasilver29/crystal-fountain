@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { STATUS_PRIMARY, StatusPage } from "@/components/site/status-page";
+
 /**
  * The 403 screen.
  *
@@ -13,23 +15,15 @@ import Link from "next/link";
  */
 export default function Forbidden() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-neutral-50 px-4 py-20 text-center">
-      <p className="text-sm font-medium tracking-wide text-neutral-500 uppercase">
-        403
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-navy">
-        Your account cannot open this
-      </h1>
-      <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-600">
-        This screen is limited to administrators. If you think that is wrong,
-        ask an administrator to check your role.
-      </p>
-      <Link
-        href="/admin/pledges"
-        className="btn-primary mt-6 inline-flex h-11 items-center justify-center bg-navy px-6 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
-      >
-        Back to pledges
-      </Link>
-    </div>
+    <StatusPage
+      width="container-table"
+      title="Your account cannot open this"
+      lead="This screen is limited to administrators. If you think that is wrong, ask an administrator to check your role."
+      actions={
+        <Link href="/admin/pledges" className={STATUS_PRIMARY}>
+          Back to pledges
+        </Link>
+      }
+    />
   );
 }
