@@ -51,6 +51,7 @@ import {
   type PledgeStatus,
   type RedemptionChoice,
   type SetOrganisationInput,
+  type SetPublicDisplayNameInput,
   type WithdrawDisplayConsentInput,
 } from "@/server/contracts/pledges";
 
@@ -1046,6 +1047,7 @@ type RecentRow = {
   id: string;
   display_name: string;
   is_organisation: boolean;
+  public_display_name: string | null;
   amount_minor: string;
   created_at: string;
 };
@@ -1080,6 +1082,7 @@ export async function recent(
     select p.id,
            g.display_name,
            g.is_organisation,
+           g.public_display_name,
            p.amount_minor,
            p.created_at
     from pledges p
@@ -1099,6 +1102,7 @@ export async function recent(
     id: row.id,
     displayName: displayName(row.display_name, {
       isOrganisation: row.is_organisation,
+      override: row.public_display_name,
     }),
     amountMinor: BigInt(row.amount_minor),
     createdAt: new Date(row.created_at),
@@ -1387,7 +1391,14 @@ export async function withdrawDisplayConsent(
 
     await tx
       .update(pledgers)
-      .set({ displayConsent: false, displayName: null, updatedAt: new Date() })
+      .set({
+        displayConsent: false,
+        displayName: null,
+        // A hand set public name goes too. It is a name prepared for
+        // publishing, and the person has just asked not to be published.
+        publicDisplayName: null,
+        updatedAt: new Date(),
+      })
       .where(eq(pledgers.id, row.pledger_id));
 
     /*
@@ -1474,6 +1485,8 @@ export type AdminPledgeDetail = {
   isOrganisation: boolean;
   /** The public display name as stored, or null when none was given. */
   displayName: string | null;
+  /** The name set by hand for public pages, or null when automatic. */
+  publicDisplayName: string | null;
   createdAt: Date;
   updatedAt: Date;
   verifiedAt: Date | null;
@@ -1503,6 +1516,7 @@ type DetailRow = {
   contact_consent: boolean;
   is_organisation: boolean;
   display_name: string | null;
+  public_display_name: string | null;
   created_at: string;
   updated_at: string;
   verified_at: string | null;
@@ -1535,6 +1549,7 @@ export async function getForAdmin(
            g.contact_consent,
            g.is_organisation,
            g.display_name,
+           g.public_display_name,
            p.created_at,
            p.updated_at,
            p.verified_at
@@ -1602,6 +1617,7 @@ export async function getForAdmin(
     contactConsent: row.contact_consent,
     isOrganisation: row.is_organisation,
     displayName: row.display_name,
+    publicDisplayName: row.public_display_name,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
@@ -2311,6 +2327,145 @@ export async function setOrganisation(
       pledgerId: current.pledgerId,
       reference: current.reference,
       isOrganisation: input.isOrganisation,
+      changed: true,
+      affectsPublicList,
+    };
+  });
+}
+
+/* ---------------------------------------------------------------------------
+ * Setting the name a pledger is published under.
+ * ------------------------------------------------------------------------- */
+
+export type SetPublicDisplayNameArgs = {
+  /** The pledge the treasurer is looking at. Resolved to its pledger. */
+  pledgeId: string;
+  input: SetPublicDisplayNameInput;
+  adminId?: string | null;
+  request?: RequestContext;
+};
+
+export type SetPublicDisplayNameResult = {
+  pledgeId: string;
+  pledgerId: string;
+  reference: string;
+  /** The override now stored, or null when the name is back to automatic. */
+  publicDisplayName: string | null;
+  /** What the public pages now render for this pledger. */
+  shownAs: string;
+  /** False when the override already held that value and nothing was written. */
+  changed: boolean;
+  /** Whether this pledge is consented and counted, so the public pages moved. */
+  affectsPublicList: boolean;
+};
+
+/**
+ * Sets, or resets to automatic, the name published for the pledger behind a
+ * pledge.
+ *
+ * Addressed by pledge because that is the screen it is set from, and written to
+ * the pledger, like the organisation flag beside it. full_name and
+ * display_name are never written here: the record of who pledged, and what
+ * they typed, stays exactly as it was.
+ *
+ * Refused when the pledger has not consented to being shown. A name that is not
+ * published needs no published form, and storing one would be preparing a
+ * public name for somebody who asked not to have one.
+ *
+ * The audit row carries what was rendered before and after, not only the
+ * column. Reviewing a change like this means seeing what the congregation saw
+ * and what they see now, and with the column alone a reset would read as
+ * "null" with no clue what it went back to.
+ */
+export async function setPublicDisplayName(
+  db: Db,
+  args: SetPublicDisplayNameArgs,
+): Promise<SetPublicDisplayNameResult> {
+  const { pledgeId, input, adminId = null, request } = args;
+
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        pledgeId: pledges.id,
+        reference: pledges.reference,
+        status: pledges.status,
+        pledgerId: pledgers.id,
+        displayName: pledgers.displayName,
+        displayConsent: pledgers.displayConsent,
+        isOrganisation: pledgers.isOrganisation,
+        publicDisplayName: pledgers.publicDisplayName,
+      })
+      .from(pledges)
+      .innerJoin(pledgers, eq(pledgers.id, pledges.pledgerId))
+      .where(and(eq(pledges.id, pledgeId), isNull(pledges.deletedAt)))
+      .for("update")
+      .limit(1);
+
+    if (!current) {
+      throw notFound("pledge_not_found", "That pledge does not exist.");
+    }
+
+    if (!current.displayConsent) {
+      throw conflict(
+        "display_not_consented",
+        "This pledger is not shown publicly, so there is no public name to set.",
+      );
+    }
+
+    const render = (override: string | null) =>
+      displayName(current.displayName ?? "", {
+        isOrganisation: current.isOrganisation,
+        override,
+      });
+
+    const next = input.publicDisplayName;
+    const shownAs = render(next);
+
+    const affectsPublicList =
+      current.status === "verified" || current.status === "fulfilled";
+
+    if (current.publicDisplayName === next) {
+      return {
+        pledgeId: current.pledgeId,
+        pledgerId: current.pledgerId,
+        reference: current.reference,
+        publicDisplayName: next,
+        shownAs,
+        changed: false,
+        affectsPublicList: false,
+      };
+    }
+
+    await tx
+      .update(pledgers)
+      .set({ publicDisplayName: next, updatedAt: new Date() })
+      .where(eq(pledgers.id, current.pledgerId));
+
+    await tx.insert(auditLog).values({
+      actorType: "admin",
+      actorId: adminId,
+      action: "pledgers.display_name_set",
+      entity: "pledger",
+      entityId: current.pledgerId,
+      before: {
+        publicDisplayName: current.publicDisplayName,
+        shownAs: render(current.publicDisplayName),
+      },
+      after: {
+        publicDisplayName: next,
+        shownAs,
+        reference: current.reference,
+      },
+      ip: request?.ip ?? null,
+      userAgent: request?.userAgent ?? null,
+    });
+
+    return {
+      pledgeId: current.pledgeId,
+      pledgerId: current.pledgerId,
+      reference: current.reference,
+      publicDisplayName: next,
+      shownAs,
       changed: true,
       affectsPublicList,
     };

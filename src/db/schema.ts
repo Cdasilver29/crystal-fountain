@@ -133,6 +133,15 @@ export const pledgers = pgTable(
     // What appears publicly, and only if display_consent is true.
     displayName: text("display_name"),
     displayConsent: boolean("display_consent").notNull().default(false),
+    /*
+     * What the public sees, verbatim, when the treasurer has set it by hand.
+     *
+     * Null means automatic: the name is derived from display_name by
+     * src/server/display-name.ts. When set it overrides both the derivation
+     * and the organisation flag, because a person has decided this exact
+     * string is safe to publish. full_name is never touched by it.
+     */
+    publicDisplayName: text("public_display_name"),
     contactConsent: boolean("contact_consent").notNull().default(false),
     /*
      * Whether this pledger is an organisation rather than a person.

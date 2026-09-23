@@ -187,6 +187,20 @@ export function summarise(
       return ref ? `${ref}, ${what}` : what;
     }
 
+    case "pledgers.display_name_set": {
+      // The rendered names rather than the column, so a reset reads as what
+      // it went back to instead of as "null".
+      const ref = str(a.reference);
+      const was = str(b.shownAs);
+      const now = str(a.shownAs);
+      const what =
+        a.publicDisplayName === null
+          ? `public name reset to automatic${now ? `, "${now}"` : ""}`
+          : `public name set to "${now ?? ""}"`;
+      const full = was && was !== now ? `${what}, was "${was}"` : what;
+      return ref ? `${ref}, ${full}` : full;
+    }
+
     case "payment.recorded": {
       const amount = kes(a.amountMinor);
       const method = str(a.method);
