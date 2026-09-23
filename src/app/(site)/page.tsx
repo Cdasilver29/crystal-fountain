@@ -16,6 +16,7 @@ import { db } from "@/db";
 import {
   CAMPAIGN_SLUG,
   getCampaignTotals,
+  getCommitmentBandCounts,
   getRecentPledges,
 } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
@@ -45,12 +46,14 @@ export default async function HomePage() {
   // as an element. Drawing it in the client component would ship the drawing
   // code to a browser for a picture that never changes after first paint, and
   // this is the page most people arrive on.
-  const [totals, recent, recentPledges, details] = await Promise.all([
-    getCampaignTotals(),
-    snapshots.series(db, { campaignSlug: CAMPAIGN_SLUG, days: 30 }),
-    getRecentPledges(),
-    paymentDetails(),
-  ]);
+  const [totals, recent, recentPledges, details, bandCounts] =
+    await Promise.all([
+      getCampaignTotals(),
+      snapshots.series(db, { campaignSlug: CAMPAIGN_SLUG, days: 30 }),
+      getRecentPledges(),
+      paymentDetails(),
+      getCommitmentBandCounts(),
+    ]);
 
   return (
     <>
@@ -87,7 +90,10 @@ export default async function HomePage() {
         renderedAt={new Date().toISOString()}
       />
       <VisionSection />
-      <TargetedCommitment targetMinor={totals.targetMinor} />
+      <TargetedCommitment
+        targetMinor={totals.targetMinor}
+        bandCounts={bandCounts}
+      />
       <JourneyTimeline />
       <BrochureGallery />
 

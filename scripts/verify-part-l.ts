@@ -315,7 +315,10 @@ async function main() {
     (sectionHtml.match(/campaign target/g) ?? []).length === 1,
     `${(sectionHtml.match(/campaign target/g) ?? []).length} time(s)`,
   );
-  check("the subheading renders", homeHtml.includes(COMMITMENT_COPY.subheading));
+  check(
+    "the subheading renders",
+    homeHtml.includes("Nine ways the congregation reaches"),
+  );
   check(
     "the three steps render",
     PLEDGE_STEPS.every((step) => homeHtml.includes(`>${step.label}<`)),
@@ -336,7 +339,10 @@ async function main() {
     ACCOUNTABILITY.oversight,
     ACCOUNTABILITY.updates,
     COMMITMENT_COPY.heading,
-    COMMITMENT_COPY.subheading,
+    COMMITMENT_COPY.subheading("KES 550 million"),
+    COMMITMENT_COPY.sweetSpotNote,
+    COMMITMENT_COPY.expand,
+    ...PLEDGE_STEPS.map((step) => step.detail),
     COMMITMENT_COPY.cta,
     COMMITMENT_COPY.ctaLink,
     ...TIMELINE.map((m) => `${m.when} ${m.what}`),

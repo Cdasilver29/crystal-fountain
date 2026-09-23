@@ -102,6 +102,95 @@ export async function getTotals(
 }
 
 /* ---------------------------------------------------------------------------
+ * How many pledges sit at each commitment level.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The smallest count a band may show publicly.
+ *
+ * Below this a count can be matched against the public pledger list, which
+ * carries names and amounts: "one family at KES 10 million" beside a list with
+ * one consented name at that figure says who the unconsented other is, or that
+ * there is none. Three is where that stops being a lookup.
+ */
+export const BAND_COUNT_PUBLIC_MINIMUM = 3;
+
+export type CommitmentBand = {
+  floorMinor: bigint;
+  /** Pledges in the band, or null where there are too few to show. */
+  pledges: number | null;
+};
+
+/**
+ * Counts pledges into bands by amount.
+ *
+ * Each floor opens a band that runs up to, but not including, the next floor
+ * above it; the highest floor's band has no ceiling, and anything under the
+ * lowest floor is in no band. The floors arrive as an argument rather than
+ * being read from the content file, so this stays a plain function over the
+ * database.
+ *
+ * Counts only what the tracker counts: verified and fulfilled, not deleted,
+ * the same statuses v_campaign_totals sums. A fulfilled pledge is a verified
+ * one that has been paid in full, and leaving it out would make a band shrink
+ * each time a family finished giving.
+ *
+ * The public minimum is applied here, so a small count never leaves the
+ * service and cannot reach a cache, a payload or a page by accident.
+ */
+export async function commitmentBands(
+  db: Db,
+  args: { campaignSlug: string; floorsMinor: readonly bigint[] },
+): Promise<CommitmentBand[]> {
+  if (args.floorsMinor.length === 0) return [];
+
+  const floors = sql.join(
+    args.floorsMinor.map((floor) => sql`${floor.toString()}::bigint`),
+    sql`, `,
+  );
+
+  const result = await db.execute(sql`
+    with bands as (
+      select floor_minor,
+             lead(floor_minor) over (order by floor_minor) as ceiling_minor
+      from unnest(array[${floors}]) as floor_minor
+    ),
+    counted as (
+      select p.amount_minor
+      from pledges p
+      join campaigns c on c.id = p.campaign_id
+      where c.slug = ${args.campaignSlug}
+        and p.deleted_at is null
+        and p.status in ('verified', 'fulfilled')
+    )
+    select b.floor_minor::text as floor_minor,
+           count(counted.amount_minor)::int as pledges
+    from bands b
+    left join counted
+      on counted.amount_minor >= b.floor_minor
+     and (b.ceiling_minor is null or counted.amount_minor < b.ceiling_minor)
+    group by b.floor_minor
+  `);
+
+  const byFloor = new Map(
+    (result.rows as { floor_minor: string; pledges: number }[]).map((row) => [
+      row.floor_minor,
+      Number(row.pledges),
+    ]),
+  );
+
+  // Returned in the order the floors were given, whatever order Postgres
+  // grouped them in.
+  return args.floorsMinor.map((floorMinor) => {
+    const pledges = byFloor.get(floorMinor.toString()) ?? 0;
+    return {
+      floorMinor,
+      pledges: pledges >= BAND_COUNT_PUBLIC_MINIMUM ? pledges : null,
+    };
+  });
+}
+
+/* ---------------------------------------------------------------------------
  * Settings the super administrator can change.
  * ------------------------------------------------------------------------- */
 

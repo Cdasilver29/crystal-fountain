@@ -4,34 +4,53 @@ import {
   COMMITMENT_COPY,
   COMMITMENT_TIERS,
   PLEDGE_STEPS,
+  type CommitmentTier,
 } from "@/content/project";
 import { formatKESCompact, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { MoreLevels } from "./more-levels";
+
 /**
  * The targeted commitment guide, on navy.
  *
- * This replaced the four key numbers, which described the building. This
- * describes what the congregation has to do, which is the more useful thing to
- * put in front of somebody deciding what to pledge: nine ways to reach the
- * target, and the per family figure each one asks for.
+ * A question rather than a table. Three levels are shown to start with, the
+ * two sweet spot rows and the one above them, with the middle one drawn larger
+ * so a household has somewhere obvious to place itself. The other six are one
+ * tap away and open in place.
  *
- * One list, two shapes. Nine full width rows read as a long ledger on a wide
- * screen, so from the small breakpoint up the same items become a three by
- * three grid of cards: a third of the height, and the nine options are taken in
- * at a glance rather than scrolled. On a phone they stay a single column of
- * rows, families on the left and the figure on the right, under a pair of
- * column labels that do the work the table header used to do.
+ * Every level is a link into the pledge form with its amount already chosen,
+ * so a member who settles on one does not have to carry the number across and
+ * type it in. The amount travels in minor units and the form validates it
+ * again like any other input.
  *
- * The total is the same on every row, so it is stated once beside the heading
- * instead of nine times down a column, and it is read from the database.
+ * Under each card is how many pledges already sit at that level, read from the
+ * database. Where there are fewer than three the service returns nothing, and
+ * nothing is shown, so a small count cannot be matched against the public list.
  */
-export function TargetedCommitment({ targetMinor }: { targetMinor: string }) {
+export function TargetedCommitment({
+  targetMinor,
+  bandCounts,
+}: {
+  targetMinor: string;
+  /** Pledges per level in COMMITMENT_TIERS order, null where withheld. */
+  bandCounts: readonly (number | null)[];
+}) {
   // The target is read from the database and formatted here. It is never
   // written into the content file, per CLAUDE.md. A whole compact figure loses
   // its trailing zero, so it reads "KES 550M" as the flyer does rather than
   // "KES 550.0M", without pinning the number to 550 of anything.
   const total = formatKESCompact(targetMinor).replace(/\.0([KMB])$/, "$1");
+  // The same figure in words for the sentence under the heading, where
+  // "KES 550 million" reads better than the abbreviation.
+  const totalInWords = total.replace(/M$/, " million").replace(/B$/, " billion");
+
+  const tiers = COMMITMENT_TIERS.map((tier, index) => ({
+    tier,
+    count: bandCounts[index] ?? null,
+  }));
+  const featured = tiers.filter(({ tier }) => tier.featured);
+  const rest = tiers.filter(({ tier }) => !tier.featured);
 
   return (
     <section className="bg-navy px-4 py-16 sm:px-6 sm:py-20">
@@ -41,14 +60,13 @@ export function TargetedCommitment({ targetMinor }: { targetMinor: string }) {
             <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
               {COMMITMENT_COPY.heading}
             </h2>
-            <p className="mt-2 text-base text-white/60">
-              {COMMITMENT_COPY.subheading}
+            <p className="mt-2 max-w-xl text-base text-pretty text-white/60">
+              {COMMITMENT_COPY.subheading(totalInWords)}
             </p>
           </div>
 
           {/*
-            The figure every row adds up to. It belongs beside the heading
-            rather than repeated down a column, and it is the one number in this
+            The figure every level adds up to, and the one number in this
             section that comes from the database rather than the flyer.
           */}
           <p className="shrink-0 self-start rounded-xl bg-white/5 px-4 py-3 ring-1 ring-white/10 sm:self-auto">
@@ -62,96 +80,69 @@ export function TargetedCommitment({ targetMinor }: { targetMinor: string }) {
         </div>
 
         {/*
-          Pray, pledge, redeem. Three steps off the flyer, each carrying one of
-          the church's colours. The numeral is the coloured element and the word
-          stays white, because a denim pill on navy would be a shape a reader
-          has to work at rather than read.
-        */}
-        <ol className="mt-8 flex flex-wrap items-center gap-x-2 gap-y-2">
-          {PLEDGE_STEPS.map((step, index) => (
-            <li
-              key={step.label}
-              className="flex items-center gap-1.5 rounded-full bg-white/5 py-1.5 pr-3 pl-1 ring-1 ring-white/10"
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "tabular flex size-6 items-center justify-center rounded-full text-xs font-semibold text-white",
-                  index === 0 && "bg-campfire",
-                  index === 1 && "bg-treefrog",
-                  index === 2 && "bg-denim",
-                )}
-              >
-                {step.step}
-              </span>
-              <span className="text-sm font-medium text-white">
-                {step.label}
-              </span>
-            </li>
-          ))}
-        </ol>
+          Pray, pledge, redeem, as one path rather than three separate pills:
+          a line runs behind the numbered markers the way the roadmap on
+          /vision joins its steps. The markers carry the church's colours and a
+          navy ring, which is what cuts the line where it passes behind them.
 
-        {/* The column labels the phone layout needs and the grid does not. */}
-        <div className="mt-8 flex items-baseline justify-between border-b border-white/15 pb-2 text-xs text-white/40 sm:hidden">
-          <span>Families</span>
-          <span>Pledge per family</span>
+          The line runs from the centre of the first column to the centre of
+          the last, a sixth of the width in from each side, so it starts and
+          stops on a marker rather than at the edge of the row.
+        */}
+        <div className="relative mt-10">
+          <div
+            aria-hidden
+            className="absolute top-4 right-[16.667%] left-[16.667%] h-0.5 -translate-y-1/2 rounded-full bg-white/20"
+          />
+          <ol className="relative grid grid-cols-3 gap-3 sm:gap-6">
+            {PLEDGE_STEPS.map((step, index) => (
+              <li
+                key={step.label}
+                className="flex flex-col items-center text-center"
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "tabular flex size-8 items-center justify-center rounded-full text-sm font-semibold text-white ring-4 ring-navy",
+                    index === 0 && "bg-campfire",
+                    index === 1 && "bg-treefrog",
+                    index === 2 && "bg-denim",
+                  )}
+                >
+                  {step.step}
+                </span>
+                <span className="mt-3 text-sm font-semibold text-white sm:text-base">
+                  {step.label}
+                </span>
+                <span className="mt-1 text-xs leading-snug text-pretty text-white/60 sm:text-sm">
+                  {step.detail}
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
 
-        <ol className="sm:mt-8 sm:grid sm:grid-cols-2 sm:gap-3 md:grid-cols-3">
-          {COMMITMENT_TIERS.map((tier) => (
-            <li
-              key={tier.families}
-              className={cn(
-                // Phone: a row on a divider. Small and up: a card.
-                "flex items-baseline justify-between gap-3 border-b border-white/10 py-3.5",
-                "sm:block sm:rounded-xl sm:border sm:border-white/10 sm:px-4 sm:py-4",
-                tier.sweetSpot &&
-                  "border-l-2 border-l-campfire pl-2.5 sm:border-l sm:border-campfire/60 sm:bg-campfire/10 sm:pl-4",
-              )}
-            >
-              <p className="text-sm text-white/60 sm:mb-1 sm:flex sm:items-center sm:justify-between sm:gap-2 sm:text-xs sm:text-white/50">
-                {/*
-                  Built as one string rather than an expression beside literal
-                  text, so the figure and its unit reach the page as a single
-                  text node instead of being split by a comment marker.
-                */}
-                <span>{`${formatNumber(tier.families)} families`}</span>
-                {/*
-                  One element for both audiences. On a phone the badge has no
-                  room and the campfire rule marks the row, so it is sr-only
-                  there; from the small breakpoint up the same node becomes the
-                  visible pill. Two nodes, one sr-only and one aria-hidden,
-                  put the phrase in the text flow twice.
-
-                  The space before it keeps "families" and "Sweet spot" apart
-                  when the row is read as text. Inside the flex row it is
-                  whitespace between items and takes no room.
-                */}
-                {tier.sweetSpot && (
-                  <>
-                    {" "}
-                    <span className="inline-block shrink-0 rounded-full bg-campfire/20 px-2 py-0.5 text-[10px] font-medium text-campfire max-sm:sr-only">
-                      Sweet spot
-                    </span>
-                  </>
-                )}
-              </p>
-
-              <p className="tabular text-base font-semibold text-campfire sm:text-xl lg:text-2xl">
-                {`KES ${formatNumber(tier.pledgePerFamilyKes)}`}
-              </p>
-
-              <p className="hidden text-xs text-white/40 sm:mt-0.5 sm:block">
-                per family
-              </p>
+        <ol className="mt-10 grid gap-3 sm:grid-cols-3 sm:items-center sm:gap-4">
+          {featured.map(({ tier, count }) => (
+            <li key={tier.families}>
+              <LevelCard tier={tier} count={count} />
             </li>
           ))}
         </ol>
 
-        <p className="mt-6 text-sm text-white/40 sm:hidden">
-          The rows marked in campfire are the range the campaign is planning
-          around.
+        <p className="mt-4 text-sm text-white/50">
+          {COMMITMENT_COPY.sweetSpotNote}
         </p>
+
+        <MoreLevels id="all-levels" label={COMMITMENT_COPY.expand}>
+          <ol className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {rest.map(({ tier, count }) => (
+              <li key={tier.families}>
+                <LevelCard tier={tier} count={count} />
+              </li>
+            ))}
+          </ol>
+        </MoreLevels>
 
         <p className="mt-8 text-base text-white/70">
           {COMMITMENT_COPY.cta}{" "}
@@ -165,5 +156,77 @@ export function TargetedCommitment({ targetMinor }: { targetMinor: string }) {
         </p>
       </div>
     </section>
+  );
+}
+
+/**
+ * One level, as a link into the pledge form with its amount chosen.
+ *
+ * The amount goes over in minor units, built as a bigint so the conversion is
+ * exact. The lead card is the one the section is built around: larger type, a
+ * campfire border and lifted a little off the row from the small breakpoint,
+ * where the three sit side by side and the lift reads as emphasis rather than
+ * as misalignment.
+ */
+function LevelCard({
+  tier,
+  count,
+}: {
+  tier: CommitmentTier;
+  count: number | null;
+}) {
+  const amountMinor = (BigInt(tier.pledgePerFamilyKes) * 100n).toString();
+
+  return (
+    <Link
+      href={`/pledge?amount=${amountMinor}`}
+      className={cn(
+        // Two to a row on a phone leaves about 150px a card, so the side
+        // padding comes in until the small breakpoint to keep the widest
+        // figure, KES 10,000,000, on one line.
+        "group block h-full rounded-xl border px-3 py-4 transition-colors sm:px-4",
+        "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
+        tier.lead
+          ? "border-2 border-campfire bg-campfire/15 py-5 shadow-lg shadow-black/30 hover:bg-campfire/20 sm:-translate-y-2 sm:py-7"
+          : tier.sweetSpot
+            ? "border-campfire/50 bg-campfire/5 hover:bg-campfire/10"
+            : "border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10",
+      )}
+    >
+      <span className="flex items-center justify-between gap-2 text-xs text-white/60">
+        {/*
+          Built as one string rather than an expression beside literal text, so
+          the figure and its unit reach the page as a single text node.
+        */}
+        <span>{`${formatNumber(tier.families)} families`}</span>
+        {tier.sweetSpot && (
+          <>
+            {" "}
+            <span className="shrink-0 rounded-full bg-campfire/20 px-2 py-0.5 text-[10px] font-medium text-campfire">
+              Sweet spot
+            </span>
+          </>
+        )}
+      </span>
+
+      <span
+        className={cn(
+          "tabular mt-1 block font-semibold whitespace-nowrap text-campfire",
+          tier.lead ? "text-2xl sm:text-3xl" : "text-base sm:text-xl",
+        )}
+      >
+        {`KES ${formatNumber(tier.pledgePerFamilyKes)}`}
+      </span>
+
+      {count !== null && (
+        <span className="mt-1 block text-xs text-white/60">
+          {`${formatNumber(count)} families at this level`}
+        </span>
+      )}
+
+      <span className="mt-3 block text-xs font-medium whitespace-nowrap text-white/50 transition-colors group-hover:text-white">
+        Pledge this amount <span aria-hidden>&rarr;</span>
+      </span>
+    </Link>
   );
 }

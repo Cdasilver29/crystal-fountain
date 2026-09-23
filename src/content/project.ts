@@ -49,10 +49,23 @@ export const SOCIAL_LINKS: readonly { label: string; href: string }[] = [
 ];
 
 /** The three steps printed on the campaign flyer, in order. */
-export const PLEDGE_STEPS: readonly { step: string; label: string }[] = [
-  { step: "1", label: "Pray" },
-  { step: "2", label: "Pledge" },
-  { step: "3", label: "Redeem" },
+export const PLEDGE_STEPS: readonly {
+  step: string;
+  label: string;
+  detail: string;
+}[] = [
+  { step: "1", label: "Pray", detail: "Ask God what your family should commit." },
+  {
+    step: "2",
+    label: "Pledge",
+    detail: "Record it here and receive your reference.",
+  },
+  {
+    step: "3",
+    label: "Redeem",
+    // A non breaking hyphen, so a narrow column never splits "M-Pesa" in two.
+    detail: "Pay through M‑Pesa or the bank over the next three years.",
+  },
 ];
 
 export type CommitmentTier = {
@@ -64,6 +77,14 @@ export type CommitmentTier = {
    * somewhere to place itself rather than reading nine equal options.
    */
   sweetSpot?: boolean;
+  /**
+   * Shown before the list is expanded. The two sweet spot rows and the one
+   * above them, so the first thing a household sees is the range the campaign
+   * is planning around with one step up from it.
+   */
+  featured?: boolean;
+  /** The one featured card drawn larger than the others. Exactly one. */
+  lead?: boolean;
 };
 
 /**
@@ -81,19 +102,40 @@ export type CommitmentTier = {
 export const COMMITMENT_TIERS: readonly CommitmentTier[] = [
   { families: 55, pledgePerFamilyKes: 10_000_000 },
   { families: 100, pledgePerFamilyKes: 5_500_000 },
-  { families: 150, pledgePerFamilyKes: 3_670_000 },
-  { families: 200, pledgePerFamilyKes: 2_700_000, sweetSpot: true },
-  { families: 250, pledgePerFamilyKes: 2_200_000, sweetSpot: true },
+  { families: 150, pledgePerFamilyKes: 3_670_000, featured: true },
+  {
+    families: 200,
+    pledgePerFamilyKes: 2_700_000,
+    sweetSpot: true,
+    featured: true,
+    lead: true,
+  },
+  {
+    families: 250,
+    pledgePerFamilyKes: 2_200_000,
+    sweetSpot: true,
+    featured: true,
+  },
   { families: 300, pledgePerFamilyKes: 1_800_000 },
   { families: 350, pledgePerFamilyKes: 1_600_000 },
   { families: 450, pledgePerFamilyKes: 1_300_000 },
   { families: 500, pledgePerFamilyKes: 1_000_000 },
 ];
 
-/** Headings for the commitment section. A colon stands in for the em dash. */
+/**
+ * Headings for the commitment section.
+ *
+ * The subheading names the target, which is read from the database, so it is
+ * written around the figure rather than with it: the caller supplies the
+ * formatted target and this supplies the words.
+ */
 export const COMMITMENT_COPY = {
-  heading: "Church Development Fund: targeted commitment",
-  subheading: "Over a 3-year period",
+  heading: "What could your family give?",
+  subheading: (target: string) =>
+    `Nine ways the congregation reaches ${target} over three years. Each figure is per family.`,
+  sweetSpotNote:
+    "The levels marked sweet spot are the range the campaign is planning around.",
+  expand: "See all nine levels",
   cta: "Find your family's place in the vision.",
   ctaLink: "Make a pledge",
 } as const;

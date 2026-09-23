@@ -1,7 +1,8 @@
 import { unstable_cache } from "next/cache";
 
+import { COMMITMENT_TIERS } from "@/content/project";
 import { db } from "@/db";
-import { getTotals } from "@/server/services/campaign";
+import { commitmentBands, getTotals } from "@/server/services/campaign";
 import * as pledges from "@/server/services/pledges";
 
 /**
@@ -88,5 +89,29 @@ export const getRecentPledges = unstable_cache(
     }));
   },
   [`${CAMPAIGN_TOTALS_TAG}-recent`],
+  { revalidate: CAMPAIGN_TOTALS_MAX_AGE_SECONDS, tags: [CAMPAIGN_TOTALS_TAG] },
+);
+
+/**
+ * How many pledges sit at each commitment level, in COMMITMENT_TIERS order.
+ *
+ * Null where the service withheld a count as too small to show. Plain numbers
+ * rather than the service's shape, because the floors are already known to the
+ * caller and bigint does not survive unstable_cache.
+ *
+ * On the totals tag, because approving a pledge is what moves a family into a
+ * band, and the count under a card should not lag the figure in the hero.
+ */
+export const getCommitmentBandCounts = unstable_cache(
+  async (): Promise<(number | null)[]> => {
+    const bands = await commitmentBands(db, {
+      campaignSlug: CAMPAIGN_SLUG,
+      floorsMinor: COMMITMENT_TIERS.map(
+        (tier) => BigInt(tier.pledgePerFamilyKes) * 100n,
+      ),
+    });
+    return bands.map((band) => band.pledges);
+  },
+  [`${CAMPAIGN_TOTALS_TAG}-bands`],
   { revalidate: CAMPAIGN_TOTALS_MAX_AGE_SECONDS, tags: [CAMPAIGN_TOTALS_TAG] },
 );
