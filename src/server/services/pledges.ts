@@ -837,6 +837,90 @@ function adminListFilter(
   `;
 }
 
+/** One row of the bulk public name review. */
+export type PublicNameReviewRow = {
+  pledgerId: string;
+  /** The pledge the edit is addressed through, since the route is per pledge. */
+  pledgeId: string;
+  reference: string;
+  /** What the pledger typed, the string the automatic name is derived from. */
+  storedName: string;
+  /** What the public pages render now. */
+  shownAs: string;
+  /** What they would render with no hand set name. */
+  automaticName: string;
+  publicDisplayName: string | null;
+  /** Why the automatic name wants a second look, or null. */
+  automaticReview: NameReviewReason | null;
+};
+
+/**
+ * Every consented pledger with a live pledge in the campaign, for the bulk
+ * review screen, flagged first and then by name.
+ *
+ * automaticReview is the heuristic's answer as if no name had been set by
+ * hand, so the screen can put the badge back after "Reset to automatic"
+ * without asking the server again. A hand set name still clears the badge;
+ * the screen decides that from publicDisplayName.
+ *
+ * A pledger is listed once, through their newest pledge. Accumulation keeps
+ * that to one pledge per pledger anyway.
+ */
+export async function listPublicNamesForReview(
+  db: Db,
+  args: { campaignSlug: string },
+): Promise<PublicNameReviewRow[]> {
+  const result = await db.execute(sql`
+    select distinct on (g.id)
+           g.id as pledger_id, p.id as pledge_id, p.reference,
+           g.full_name, g.display_name, g.display_consent,
+           g.is_organisation, g.public_display_name
+    from pledgers g
+    join pledges p on p.pledger_id = g.id and p.deleted_at is null
+    join campaigns c on c.id = p.campaign_id
+    where c.slug = ${args.campaignSlug} and g.display_consent
+    order by g.id, p.created_at desc
+  `);
+
+  const rows = (
+    result.rows as (NameReviewColumns & {
+      pledger_id: string;
+      pledge_id: string;
+      reference: string;
+    })[]
+  ).map((row) => {
+    const storedName = row.display_name ?? row.full_name;
+    const automaticName = displayName(storedName, {
+      isOrganisation: row.is_organisation,
+    });
+    return {
+      pledgerId: row.pledger_id,
+      pledgeId: row.pledge_id,
+      reference: row.reference,
+      storedName,
+      shownAs: displayName(storedName, {
+        isOrganisation: row.is_organisation,
+        override: row.public_display_name,
+      }),
+      automaticName,
+      publicDisplayName: row.public_display_name?.trim()
+        ? row.public_display_name
+        : null,
+      automaticReview:
+        reviewRow({ ...row, public_display_name: null })?.reason ?? null,
+    };
+  });
+
+  const flagged = (row: PublicNameReviewRow) =>
+    row.publicDisplayName === null && row.automaticReview !== null;
+
+  return rows.sort(
+    (a, b) =>
+      Number(flagged(b)) - Number(flagged(a)) ||
+      a.storedName.localeCompare(b.storedName, "en", { sensitivity: "base" }),
+  );
+}
+
 export type AdminPledgeCounts = {
   /** Every pledge the current filters match, across all pages. */
   total: number;

@@ -73,11 +73,22 @@ export default async function AdminPledgesPage({
    * used to be counted off the loaded page, so page two of 97 pledges said "47
    * pledges, 0 awaiting approval" while a pledge sat unapproved on page one.
    */
-  const [page, counts, totals] = await Promise.all([
+  const canReviewNames = can(admin, "pledgers.setDisplayName");
+
+  const [page, counts, totals, nameRows] = await Promise.all([
     pledges.listForAdmin(db, listArgs),
     pledges.countForAdmin(db, listArgs),
     getCampaignTotals(),
+    canReviewNames
+      ? pledges.listPublicNamesForReview(db, { campaignSlug: CAMPAIGN_SLUG })
+      : [],
   ]);
+
+  // The same rows the review screen lists, so the figure on the button is the
+  // number of badges waiting there.
+  const namesToCheck = nameRows.filter(
+    (row) => row.publicDisplayName === null && row.automaticReview !== null,
+  ).length;
 
   const filtering =
     filters.q !== null || filters.status !== "all" || filters.name !== "all";
@@ -157,6 +168,21 @@ export default async function AdminPledgesPage({
 
             {can(admin, "exports.download") && (
               <ExportButton href="/api/admin/exports/pledges.csv" />
+            )}
+
+            {canReviewNames && (
+              <Link
+                href="/admin/pledges/display-names"
+                className="btn-secondary inline-flex h-11 shrink-0 items-center justify-center gap-2 border border-neutral-300 bg-white px-4 text-sm font-medium text-navy focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                Review public names
+                {namesToCheck > 0 && (
+                  <span className="tabular rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                    {namesToCheck}
+                    <span className="sr-only"> to check</span>
+                  </span>
+                )}
+              </Link>
             )}
           </div>
 
