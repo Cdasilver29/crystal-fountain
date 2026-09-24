@@ -192,12 +192,11 @@ export function PledgersList({ initial, initialCursor, renderedAt }: Props) {
         // tint bands pull the eye along the band, while a divider keeps each
         // name and amount reading as one entry.
         //
-        // From 640px the rows share one grid through subgrid: the name column
-        // is as wide as the longest name, the amount sits in a fixed 200px
-        // column right after it, and an empty column runs the divider on to
-        // the edge. Every amount lands on the same vertical line, close to
-        // the names, instead of drifting to the far side of a wide screen.
-        <ul className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-[minmax(0,max-content)_200px_1fr] sm:gap-x-8">
+        // From 640px the rows share one grid through subgrid: the name takes
+        // the free width and the amount sits in a fixed 200px column at the
+        // right, so the list spans the page and every amount lands on the same
+        // vertical line.
+        <ul className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-[minmax(0,1fr)_200px] sm:gap-x-8">
           {entries.map((entry, index) => (
             <li
               // The list is append only and a pledge can repeat a name, an
