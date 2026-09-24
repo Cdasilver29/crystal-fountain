@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
 import { Sparkline } from "@/components/campaign/sparkline";
 import { Accountability } from "@/components/home/accountability";
-import { AtAGlance } from "@/components/home/at-a-glance";
 import { BrochureGallery } from "@/components/home/brochure-gallery";
 import { FinalCta } from "@/components/home/final-cta";
 import { Hero } from "@/components/home/hero";
@@ -92,8 +91,8 @@ export default async function HomePage() {
         renderedAt={new Date().toISOString()}
       />
       {/*
-        Bands are rationed so that one means something. Vision, the three
-        figures and how to give sit on the page itself; navy and the light
+        Bands are rationed so that one means something. Vision and how to
+        give sit on the page itself; navy and the light
         band alternate only around them, never in strict turn.
       */}
       <VisionSection />
@@ -101,7 +100,6 @@ export default async function HomePage() {
         targetMinor={totals.targetMinor}
         bandCounts={bandCounts}
       />
-      <AtAGlance />
       <JourneyTimeline />
       <BrochureGallery />
 

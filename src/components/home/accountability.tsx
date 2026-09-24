@@ -1,5 +1,6 @@
 import { FadeImage } from "@/components/media/fade-image";
 
+import { CONTACT } from "@/content/campaign";
 import { DEVELOPMENT_LEADER, OVERSIGHT_SHORT } from "@/content/leadership";
 
 /**
@@ -62,6 +63,15 @@ export function Accountability() {
                 className="tabular rounded text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
               >
                 {leader.phoneDisplay}
+              </a>
+              <span aria-hidden className="mx-2 text-neutral-300">
+                |
+              </span>
+              <a
+                href={`mailto:${CONTACT.developmentEmail}`}
+                className="rounded break-all text-denim underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              >
+                {CONTACT.developmentEmail}
               </a>
             </p>
           </div>

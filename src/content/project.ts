@@ -204,9 +204,16 @@ export const BROCHURE_PAGES: readonly { src: string; alt: string }[] = [
   },
 ];
 
-/** The short vision statement used on the home page. */
+/**
+ * The short vision statement used on the home page. /vision has its own,
+ * VISION_PAGE_SUMMARY, which names the tower.
+ */
 export const VISION_SUMMARY =
   "The Crystal Fountain Development gives our church a permanent, larger home: a sanctuary built for the size and future of this congregation, while creating a mixed-use tower alongside it that generates income to sustain the ministry for years to come.";
+
+/** The short vision statement at the top of /vision. */
+export const VISION_PAGE_SUMMARY =
+  "The Crystal Fountain Development gives our church a permanent, larger home: a sanctuary built for the size and future of this congregation, with Advent Tower and Centre alongside it, a mixed-use commercial tower that generates income to sustain the ministry for years to come.";
 
 /**
  * About the project, as the church supplied it for /vision. Used exactly as
@@ -261,9 +268,9 @@ export const VISION_SECTIONS: readonly VisionSection[] = [
   },
   {
     id: "tower",
-    heading: "The commercial tower",
+    heading: "Advent Tower and Centre",
     paragraphs: [
-      "A mixed-use commercial tower stands alongside the sanctuary. It is not an afterthought: it is how the development pays for itself over time.",
+      "Advent Tower and Centre, a mixed-use commercial tower, stands alongside the sanctuary. It is not an afterthought: it is how the development pays for itself over time.",
       "Rental income from the tower is intended to sustain the ministry and the upkeep of the building for years to come, so that the congregation is not asked to fund maintenance out of offerings in perpetuity. A building that earns is a building that lasts.",
     ],
     illustration: 2,
@@ -425,16 +432,6 @@ export function faqCategories(
     },
   ];
 }
-
-/**
- * Three figures set between two dense sections on the home page, with no
- * heading. Under twenty words between them, and it should stay that way.
- */
-export const AT_A_GLANCE = [
-  { figure: "5,000", label: "seats" },
-  { figure: "700", label: "parking spaces" },
-  { figure: "3", label: "years to build" },
-] as const;
 
 /** Governance and transparency copy, used on the home page and /vision. */
 export const ACCOUNTABILITY = {

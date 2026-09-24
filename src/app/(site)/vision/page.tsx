@@ -16,14 +16,14 @@ import {
   LAUNCH_VIDEO,
   SCRIPTURE_HAGGAI,
   VISION_SECTIONS,
-  VISION_SUMMARY,
+  VISION_PAGE_SUMMARY,
 } from "@/content/project";
 import { pageMetadata } from "@/lib/metadata";
 
 export const metadata: Metadata = pageMetadata({
   title: "Our vision",
   description:
-    "What the Crystal Fountain Development Project is building: the sanctuary, the facilities, the commercial tower, and the site.",
+    "What the Crystal Fountain Development Project is building: the sanctuary, the facilities, Advent Tower and Centre, and the site.",
   path: "/vision",
 });
 
@@ -37,7 +37,7 @@ export default function VisionPage() {
           </h1>
 
           <p className="container-prose mx-0 mt-4 text-base leading-relaxed text-white/80 sm:text-lg">
-            {VISION_SUMMARY}
+            {VISION_PAGE_SUMMARY}
           </p>
 
           <div className="container-prose mx-0 mt-9">
