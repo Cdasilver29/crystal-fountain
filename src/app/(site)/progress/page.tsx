@@ -2,15 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { MonthlyChart } from "@/components/campaign/progress-charts";
+import { StatCount } from "@/components/campaign/stat-count";
 import { CumulativeChart } from "@/components/charts/cumulative-chart";
 import { db } from "@/db";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
-import {
-  formatKES,
-  formatKESCompact,
-  formatNumber,
-  formatPercent,
-} from "@/lib/format";
+import { formatNumber, formatPercent } from "@/lib/format";
 import { pageMetadata } from "@/lib/metadata";
 import * as metrics from "@/server/services/metrics";
 import * as snapshots from "@/server/services/snapshots";
@@ -44,7 +40,7 @@ function Card({
   accent = false,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   hint?: string;
   accent?: boolean;
 }) {
@@ -71,11 +67,11 @@ function Card({
  * about a campaign than that it is too early to tell.
  */
 function metricValue(
-  value: bigint | number | null,
-  format: (v: never) => string,
-): string {
+  value: bigint | null,
+  format: "kes" | "kesCompact",
+): React.ReactNode {
   if (value === null) return "Not enough data yet";
-  return format(value as never);
+  return <StatCount value={value.toString()} format={format} />;
 }
 
 export default async function ProgressPage() {
@@ -88,6 +84,9 @@ export default async function ProgressPage() {
 
   const hasHistory = series.length >= 2;
   const hasMonths = monthly.some((month) => month.newPledgedMinor > 0n);
+  const outstanding =
+    BigInt(totals.pledgedMinor) - BigInt(totals.receivedMinor);
+  const stillToCome = outstanding > 0n ? outstanding : 0n;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
@@ -115,10 +114,10 @@ export default async function ProgressPage() {
             </h2>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card label="Target" value={formatKES(totals.targetMinor)} />
+              <Card label="Target" value={<StatCount value={totals.targetMinor.toString()} format="kes" />} />
               <Card
                 label="Pledged"
-                value={formatKES(totals.pledgedMinor)}
+                value={<StatCount value={totals.pledgedMinor.toString()} format="kes" />}
                 accent
                 hint={`${formatPercent(totals.percentPledged)} of the target`}
               />
@@ -130,26 +129,29 @@ export default async function ProgressPage() {
               */}
               <Card
                 label="Received"
-                value={formatKES(totals.receivedMinor)}
+                value={<StatCount value={totals.receivedMinor.toString()} format="kes" />}
                 hint={`${formatPercent(totals.percentRedeemed)} of what has been pledged`}
               />
               <Card
                 label="Remaining"
-                value={formatKES(totals.remainingMinor)}
+                value={<StatCount value={totals.remainingMinor.toString()} format="kes" />}
                 hint="Still to be pledged"
               />
               <Card
                 label="Still to come in"
-                value={formatKES(
-                  BigInt(totals.pledgedMinor) - BigInt(totals.receivedMinor) > 0n
-                    ? BigInt(totals.pledgedMinor) - BigInt(totals.receivedMinor)
-                    : 0n,
-                )}
+                value={
+<StatCount value={stillToCome.toString()} format="kes" />
+                }
                 hint="Pledged but not yet received"
               />
               <Card
                 label="Pledges"
-                value={formatNumber(totals.pledgeCount)}
+                value={
+                  <StatCount
+                    value={totals.pledgeCount.toString()}
+                    format="number"
+                  />
+                }
                 hint={`from ${formatNumber(totals.pledgerCount)} ${
                   totals.pledgerCount === 1 ? "person" : "people"
                 }`}
@@ -228,30 +230,22 @@ export default async function ProgressPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Card
                 label="Average pledge"
-                value={metricValue(key.averagePledgeMinor, (v: bigint) =>
-                  formatKES(v),
-                )}
+                value={metricValue(key.averagePledgeMinor, "kes")}
                 hint="Across every approved pledge"
               />
               <Card
                 label="Median pledge"
-                value={metricValue(key.medianPledgeMinor, (v: bigint) =>
-                  formatKES(v),
-                )}
+                value={metricValue(key.medianPledgeMinor, "kes")}
                 hint="The middle pledge, not the mean"
               />
               <Card
                 label="Recent pace"
-                value={metricValue(key.runRate4WeekMinor, (v: bigint) =>
-                  formatKESCompact(v),
-                )}
+                value={metricValue(key.runRate4WeekMinor, "kesCompact")}
                 hint="Average pledged per week, last 4 weeks"
               />
               <Card
                 label="Settled pace"
-                value={metricValue(key.runRate12WeekMinor, (v: bigint) =>
-                  formatKESCompact(v),
-                )}
+                value={metricValue(key.runRate12WeekMinor, "kesCompact")}
                 hint="Average pledged per week, last 12 weeks"
               />
               <Card
@@ -261,7 +255,13 @@ export default async function ProgressPage() {
                     ? "Not enough data yet"
                     : key.weeksToTarget === 0
                       ? "Target reached"
-                      : `${formatNumber(key.weeksToTarget)} weeks`
+                      : (
+                          <StatCount
+                            value={key.weeksToTarget.toString()}
+                            format="number"
+                            suffix=" weeks"
+                          />
+                        )
                 }
                 hint={
                   key.monthsToTarget && key.monthsToTarget > 0
@@ -271,9 +271,7 @@ export default async function ProgressPage() {
               />
               <Card
                 label="Needed each month"
-                value={metricValue(key.requiredMonthlyMinor, (v: bigint) =>
-                  formatKESCompact(v),
-                )}
+                value={metricValue(key.requiredMonthlyMinor, "kesCompact")}
                 accent
                 hint={`to reach the target in ${formatNumber(key.monthsRemaining)} months`}
               />
