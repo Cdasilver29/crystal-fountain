@@ -80,6 +80,32 @@ export function formatDate(value: Date | string): string {
 }
 
 /**
+ * A date and time, as "23 September 2026, 2:47 pm".
+ *
+ * Pinned to Nairobi time rather than the runtime's zone. The server renders in
+ * UTC and the browser in whatever the visitor's machine says, so without the
+ * zone the same pledge would show two different times and fail hydration.
+ * Built from parts so the punctuation does not depend on a locale's defaults.
+ */
+export function formatDateTime(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Nairobi",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} ${String(parts.dayPeriod).toLowerCase()}`;
+}
+
+/**
  * A large amount, shortened for a chart axis or a metric card.
  *
  * "KES 1.2M", "KES 125K", "KES 900". Charts and small cards have no room for

@@ -6,7 +6,7 @@ import type {
   PublicPledgeDto,
   PublicPledgersPage,
 } from "@/server/contracts/public-pledgers";
-import { formatDate, formatKES } from "@/lib/format";
+import { formatDateTime, formatKES, formatRelativeTime } from "@/lib/format";
 
 /**
  * The searchable list on /pledgers.
@@ -28,12 +28,22 @@ const SEARCH_DEBOUNCE_MS = 300;
 /** Matches MIN_SEARCH_LENGTH in the contract. Below it, the search is cleared. */
 const MIN_SEARCH_LENGTH = 2;
 
+/** Newer than this reads as "3 hours ago"; older gets the full timestamp. */
+const RELATIVE_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 type Props = {
   initial: PublicPledgeDto[];
   initialCursor: string | null;
+  /**
+   * When the server rendered the page. Relative times are worked out against
+   * this rather than the browser's clock, so the server and the first client
+   * render agree and hydration does not trip on "2 hours ago".
+   */
+  renderedAt: string;
 };
 
-export function PledgersList({ initial, initialCursor }: Props) {
+export function PledgersList({ initial, initialCursor, renderedAt }: Props) {
+  const now = new Date(renderedAt);
   const [entries, setEntries] = useState(initial);
   const [cursor, setCursor] = useState(initialCursor);
   const [query, setQuery] = useState("");
@@ -136,12 +146,10 @@ export function PledgersList({ initial, initialCursor }: Props) {
     query.trim().length > 0 && query.trim().length < MIN_SEARCH_LENGTH;
 
   return (
-    // One column at the prose measure, centred in the page's 1200px. People
-    // come here to find their own name among fifty, and a single column scans
-    // top to bottom where a grid makes the eye jump. Holding it to 680px keeps
-    // each amount close to its name. The search sits in the same column so
-    // its left edge lines up with the names below it.
-    <div className="container-prose">
+    // One column across the page's full 1200px. People come here to find their
+    // own name among fifty, and a single column scans top to bottom. The
+    // search keeps the 640px form measure, on the same left edge as the names.
+    <div>
       <div className="container-form relative mx-0">
         <label htmlFor="pledger-search" className="sr-only">
           Search pledgers by first name
@@ -183,24 +191,42 @@ export function PledgersList({ initial, initialCursor }: Props) {
         // A hairline between rows rather than alternating tint: at fifty rows
         // tint bands pull the eye along the band, while a divider keeps each
         // name and amount reading as one entry.
-        <ul className="mt-6 divide-y divide-neutral-200 border-y border-neutral-200">
+        //
+        // From 640px the rows share one grid through subgrid: the name column
+        // is as wide as the longest name, the amount sits in a fixed 200px
+        // column right after it, and an empty column runs the divider on to
+        // the edge. Every amount lands on the same vertical line, close to
+        // the names, instead of drifting to the far side of a wide screen.
+        <ul className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 divide-y divide-neutral-200 border-y border-neutral-200 sm:grid-cols-[minmax(0,max-content)_200px_1fr] sm:gap-x-8">
           {entries.map((entry, index) => (
             <li
               // The list is append only and a pledge can repeat a name, an
               // amount and a date, so position is the only stable key here.
               key={`${entry.createdAt}-${index}`}
-              className="flex items-baseline justify-between gap-4 py-4 sm:py-5"
+              className="col-span-full grid grid-cols-subgrid items-baseline py-4 sm:py-5"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium text-navy">
                   {entry.displayName}
                 </p>
                 <p className="mt-0.5 text-xs text-neutral-500">
-                  {formatDate(entry.createdAt)}
+                  {now.getTime() - new Date(entry.createdAt).getTime() <
+                  RELATIVE_WINDOW_MS ? (
+                    <time
+                      dateTime={entry.createdAt}
+                      title={formatDateTime(entry.createdAt)}
+                    >
+                      {formatRelativeTime(entry.createdAt, now)}
+                    </time>
+                  ) : (
+                    <time dateTime={entry.createdAt}>
+                      {formatDateTime(entry.createdAt)}
+                    </time>
+                  )}
                 </p>
               </div>
 
-              <p className="tabular shrink-0 font-semibold text-campfire">
+              <p className="tabular text-right font-semibold whitespace-nowrap text-campfire">
                 {formatKES(entry.amountMinor)}
               </p>
             </li>

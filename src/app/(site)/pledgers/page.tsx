@@ -83,7 +83,11 @@ export default async function PledgersPage() {
 
       <main className="page-gutter section">
         <div className="container-marketing">
-          <PledgersList initial={page.items} initialCursor={page.nextCursor} />
+          <PledgersList
+            initial={page.items}
+            initialCursor={page.nextCursor}
+            renderedAt={new Date().toISOString()}
+          />
 
           <div className="mt-14 border-t border-neutral-200 pt-10 text-center">
             <p className="text-base text-neutral-700">
