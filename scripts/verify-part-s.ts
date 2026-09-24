@@ -213,8 +213,8 @@ async function main() {
     times.map((t) => new Date(t).toISOString().slice(11, 19)).join(" > "),
   );
   check(
-    "and never more than thirty",
-    pledgeService.RECENT_PLEDGE_LIMIT === 30 && feed.length <= 30,
+    "and never more than two hundred",
+    pledgeService.RECENT_PLEDGE_LIMIT === 200 && feed.length <= 200,
     `${feed.length}`,
   );
   const tails = names.map((n) => n.split(" ").at(-1) ?? "");

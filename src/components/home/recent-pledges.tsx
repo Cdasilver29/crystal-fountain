@@ -17,7 +17,7 @@ import { formatKES, formatRelativeTime } from "@/lib/format";
  * src/server/display-name.ts before it ever reaches this component. Enough to
  * tell two Marys apart, not enough to identify either to a stranger.
  *
- * It sits on the same navy as the hero and shows three rows, so it reads as the
+ * It sits on the same navy as the hero and shows five rows, so it reads as the
  * tracker's last line rather than as a section arguing with it. The column
  * drifts upward at 25 pixels a second, slow enough to read a name as it passes,
  * and the entries are in the DOM twice so the drift can loop without a seam:
@@ -29,15 +29,16 @@ import { formatKES, formatRelativeTime } from "@/lib/format";
  * somebody who saw a name go by can go back for it. A minute after they let go
  * it returns to the newest entry and picks the drift back up.
  *
- * The server renders the first thirty entries, so the page is right on first
+ * The server renders every consented entry, up to the ceiling set by
+ * RECENT_PLEDGE_LIMIT, so the page is right on first
  * paint and with JavaScript switched off. After hydration it polls the same
  * endpoint on the same interval as the tracker above it, and an entry that
  * arrives on a poll fades in. The entries that were already there do not,
  * because they did not just happen.
  *
- * The section removes itself when there are fewer than four consented entries.
+ * The section removes itself when there are fewer than six consented entries.
  * An empty "recent pledges" heading on a church home page reads as though
- * nobody has given, and three names looping every few seconds reads as a
+ * nobody has given, and a handful of names looping every few seconds reads as a
  * broken animation. Both are worse than no band at all.
  */
 
@@ -52,8 +53,11 @@ const IDLE_BEFORE_RETURN_MS = 60_000;
 /** How long the scroll back to the newest entry takes. */
 const RETURN_MS = 800;
 
-/** Below this many consented entries the band does not render. */
-const MINIMUM_ENTRIES = 4;
+/**
+ * Below this many consented entries the band does not render. One more than
+ * the window shows, so no name is ever on screen twice at once.
+ */
+const MINIMUM_ENTRIES = 6;
 
 /** Ease in out cubic, for the return. Starts and ends still. */
 function ease(t: number): number {
@@ -350,7 +354,7 @@ export function RecentPledges({
       window.removeEventListener("resize", onResize);
     };
     // The list length changes what one copy measures, so the loop is rebuilt
-    // when it does. Thirty entries change a few times an hour at most.
+    // when it does. The list changes a few times an hour at most.
   }, [entries.length]);
 
   if (entries.length < MINIMUM_ENTRIES) return null;
@@ -385,10 +389,9 @@ export function RecentPledges({
       <div className="mx-auto w-full max-w-3xl">
         {/*
           The link sits on the heading's own line rather than under the window.
-          The band is capped at 240px on a desktop and 220px on a phone and it
-          already measures 218 and 202, so a line of its own would not fit
-          without making the window shorter, and three rows is the window. On
-          the heading line it costs nothing.
+          A line of its own would make the band taller without showing one more
+          name, and five rows is the window. On the heading line it costs
+          nothing.
         */}
         <div className="flex items-center justify-between gap-4">
           {/*

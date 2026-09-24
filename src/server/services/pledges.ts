@@ -1246,13 +1246,17 @@ export type RecentPledge = {
 /**
  * How many entries the feed returns.
  *
- * Thirty rather than ten because the home page scroller loops through them
- * continuously, and a short list makes the loop obvious: the same four names
- * coming round every few seconds reads as a broken animation rather than as a
- * congregation. The shape of an entry is unchanged, so this is a bigger page of
- * the same feed and nothing that reads it needs to know.
+ * In practice, everybody. The home page scroller loops through the feed
+ * continuously, and every pledger who ticked the display box asked to be in it,
+ * so the loop covers all of them rather than the newest few. It was about fifty
+ * in September 2026.
+ *
+ * The ceiling is for growth. The scroller renders the list twice so the loop
+ * has no seam, which is nothing at a few hundred rows and a real cost to a
+ * phone at a few thousand, so past 200 consented pledges the feed is the newest
+ * 200 and the oldest drop off the band. They are still on /pledgers.
  */
-export const RECENT_PLEDGE_LIMIT = 30;
+export const RECENT_PLEDGE_LIMIT = 200;
 
 type RecentRow = {
   id: string;
@@ -1264,7 +1268,7 @@ type RecentRow = {
 };
 
 /**
- * The last few pledges, for the feed on the home page.
+ * Every consented pledge, newest first, for the feed on the home page.
  *
  * Consented pledges only. The display consent box says, in as many words, that
  * ticking it is what allows a first name and a pledge amount to appear in this

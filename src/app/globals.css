@@ -1651,7 +1651,7 @@ html:has([data-site]) {
  * ------------------------------------------------------------------------- */
 
 /*
- * A window exactly three rows tall, with the column drifting upward inside it.
+ * A window exactly five rows tall, with the column drifting upward inside it.
  *
  * The height is a variable rather than a utility because three things have to
  * agree on it: the window, the rAF loop that decides when a copy has gone past,
@@ -1668,10 +1668,10 @@ html:has([data-site]) {
 }
 
 .cf-feed-window {
-  height: calc(var(--cf-feed-row) * 3);
+  height: calc(var(--cf-feed-row) * 5);
   overflow-y: hidden;
   /*
-   * Fade the top and bottom edges rather than cutting them. A three row window
+   * Fade the top and bottom edges rather than cutting them. A five row window
    * with hard edges reads as a list that has been truncated; the same window
    * with entries dissolving at both ends reads as a column that continues past
    * what is shown, which is what it is. The stops are a hair under a row, so a
