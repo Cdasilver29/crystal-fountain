@@ -14,10 +14,11 @@ import { MoreLevels } from "./more-levels";
 /**
  * The targeted commitment guide, on navy.
  *
- * A question rather than a table. Three levels are shown to start with, the
- * two sweet spot rows and the one above them, with the middle one drawn larger
- * so a household has somewhere obvious to place itself. The other six are one
- * tap away and open in place.
+ * It opens on one figure rather than a heading: the lead level at display
+ * size, so a household has somewhere obvious to place itself before it reads
+ * a word. The question follows, then the other two featured levels as cards,
+ * and the remaining six one tap away in a details element that opens in place
+ * and needs no JavaScript to do it.
  *
  * Every level is a link into the pledge form with its amount already chosen,
  * so a member who settles on one does not have to carry the number across and
@@ -49,18 +50,35 @@ export function TargetedCommitment({
     tier,
     count: bandCounts[index] ?? null,
   }));
-  const featured = tiers.filter(({ tier }) => tier.featured);
+  const lead = tiers.find(({ tier }) => tier.lead);
+  // The lead level is drawn on its own at display size, so the cards below
+  // carry the other two featured levels and the details carry the rest.
+  const featured = tiers.filter(({ tier }) => tier.featured && !tier.lead);
   const rest = tiers.filter(({ tier }) => !tier.featured);
 
   return (
-    <section className="bg-navy page-gutter section">
+    <section
+      aria-labelledby="commitment-heading"
+      className="bg-navy page-gutter section"
+    >
       <div className="container-marketing">
+        {/*
+          The section opens on one figure rather than a heading: the lead
+          level, the second largest thing on the page after the hero total.
+          It is a link like every other level, into the form with its amount
+          chosen.
+        */}
+        {lead && <LeadLevel tier={lead.tier} count={lead.count} />}
+
         <div
           data-reveal=""
-          className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8"
+          className="mt-12 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8"
         >
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
+            <h2
+              id="commitment-heading"
+              className="text-xl font-semibold tracking-tight text-balance text-white sm:text-2xl"
+            >
               {COMMITMENT_COPY.heading}
             </h2>
             <p className="mt-2 max-w-xl text-base text-pretty text-white/60">
@@ -128,7 +146,7 @@ export function TargetedCommitment({
         <ol
           data-reveal=""
           data-stagger=""
-          className="mt-12 grid gap-3 sm:grid-cols-3 sm:items-center sm:gap-4"
+          className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3"
         >
           {featured.map(({ tier, count }) => (
             <li key={tier.families}>
@@ -166,15 +184,62 @@ export function TargetedCommitment({
   );
 }
 
+/** The pledge form with this level's amount chosen, in minor units. */
+function pledgeHref(tier: CommitmentTier): string {
+  // Built as a bigint so the conversion is exact.
+  return `/pledge?amount=${(BigInt(tier.pledgePerFamilyKes) * 100n).toString()}`;
+}
+
 /**
- * One level, as a link into the pledge form with its amount chosen.
+ * The lead level, set as the figure the section opens on.
  *
- * The amount goes over in minor units, built as a bigint so the conversion is
- * exact. The lead card is the one the section is built around: larger type, a
- * campfire border and lifted a little off the row from the small breakpoint,
- * where the three sit side by side and the lift reads as emphasis rather than
- * as misalignment.
+ * Sized against the hero total: clamp(2rem, 8.5vw, 4rem) against its
+ * clamp(2rem, 9vw, 4.5rem), so it is never the larger of the two and always
+ * larger than anything else on the page.
  */
+function LeadLevel({
+  tier,
+  count,
+}: {
+  tier: CommitmentTier;
+  count: number | null;
+}) {
+  return (
+    <Link
+      data-reveal=""
+      href={pledgeHref(tier)}
+      className="card-lift group -mx-3 block w-fit max-w-full rounded-2xl px-3 py-2 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+    >
+      <span className="tabular block font-semibold tracking-tight whitespace-nowrap text-campfire [font-size:clamp(2rem,8.5vw,4rem)] [line-height:1.05]">
+        {`KES ${formatNumber(tier.pledgePerFamilyKes)}`}
+      </span>
+
+      <span className="mt-3 block max-w-md text-base text-pretty text-white/80 sm:text-lg">
+        {COMMITMENT_COPY.leadLine(formatNumber(tier.families))}
+        {tier.sweetSpot && (
+          <>
+            {" "}
+            <span className="ml-1 inline-block rounded-full bg-campfire/20 px-2 py-0.5 align-middle text-[10px] font-medium text-campfire">
+              Sweet spot
+            </span>
+          </>
+        )}
+      </span>
+
+      {count !== null && (
+        <span className="mt-2 block text-sm text-white/60">
+          {`${formatNumber(count)} families at this level`}
+        </span>
+      )}
+
+      <span className="mt-4 block text-sm font-medium text-white/60 transition-colors group-hover:text-white">
+        Pledge this amount <span aria-hidden>&rarr;</span>
+      </span>
+    </Link>
+  );
+}
+
+/** One level, as a link into the pledge form with its amount chosen. */
 function LevelCard({
   tier,
   count,
@@ -182,20 +247,16 @@ function LevelCard({
   tier: CommitmentTier;
   count: number | null;
 }) {
-  const amountMinor = (BigInt(tier.pledgePerFamilyKes) * 100n).toString();
-
   return (
     <Link
-      href={`/pledge?amount=${amountMinor}`}
+      href={pledgeHref(tier)}
       className={cn(
         // Two to a row on a phone leaves about 150px a card, so the side
         // padding comes in until the small breakpoint to keep the widest
         // figure, KES 10,000,000, on one line.
         "card-lift group block h-full rounded-xl border px-3 py-4 sm:px-4",
         "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
-        tier.lead
-          ? "border-2 border-campfire bg-campfire/15 py-5 shadow-lg shadow-black/30 hover:bg-campfire/20 sm:-translate-y-2 sm:py-7"
-          : tier.sweetSpot
+        tier.sweetSpot
             ? "border-campfire/50 bg-campfire/5 hover:bg-campfire/10"
             : "border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10",
       )}
@@ -217,10 +278,7 @@ function LevelCard({
       </span>
 
       <span
-        className={cn(
-          "tabular mt-1 block font-semibold whitespace-nowrap text-campfire",
-          tier.lead ? "text-2xl sm:text-3xl" : "text-base sm:text-xl",
-        )}
+        className="tabular mt-1 block text-base font-semibold whitespace-nowrap text-campfire sm:text-xl"
       >
         {`KES ${formatNumber(tier.pledgePerFamilyKes)}`}
       </span>

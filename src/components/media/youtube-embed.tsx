@@ -25,10 +25,13 @@ export function YouTubeEmbed({
   id,
   title,
   className,
+  sizes = "(min-width: 768px) 640px, 100vw",
 }: {
   id: string;
   title: string;
   className?: string;
+  /** The poster's sizes hint, for a call site that sets it wider than /vision does. */
+  sizes?: string;
 }) {
   const [playing, setPlaying] = useState(false);
   // maxresdefault only exists for videos uploaded at 720p or better, and a
@@ -63,7 +66,7 @@ export function YouTubeEmbed({
             alt=""
             width={POSTER_WIDTH}
             height={POSTER_HEIGHT}
-            sizes="(min-width: 768px) 640px, 100vw"
+            sizes={sizes}
             className="size-full object-cover transition-opacity group-hover:opacity-90"
           />
 

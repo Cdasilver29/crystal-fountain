@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
 import { Sparkline } from "@/components/campaign/sparkline";
 import { Accountability } from "@/components/home/accountability";
+import { AtAGlance } from "@/components/home/at-a-glance";
 import { BrochureGallery } from "@/components/home/brochure-gallery";
 import { FinalCta } from "@/components/home/final-cta";
 import { Hero } from "@/components/home/hero";
@@ -90,17 +91,23 @@ export default async function HomePage() {
         initial={recentPledges}
         renderedAt={new Date().toISOString()}
       />
+      {/*
+        Bands are rationed so that one means something. Vision, the three
+        figures and how to give sit on the page itself; navy and the light
+        band alternate only around them, never in strict turn.
+      */}
       <VisionSection />
       <TargetedCommitment
         targetMinor={totals.targetMinor}
         bandCounts={bandCounts}
       />
+      <AtAGlance />
       <JourneyTimeline />
       <BrochureGallery />
 
-      <section className="bg-white page-gutter section">
+      <section className="page-gutter section">
         <div data-reveal="" className="container-marketing">
-          <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+          <h2 className="text-xl font-semibold tracking-tight text-navy sm:text-2xl">
             How to give
           </h2>
           <p className="container-prose mx-0 mt-2 text-base leading-relaxed text-neutral-700">

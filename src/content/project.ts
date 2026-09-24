@@ -135,6 +135,8 @@ export const COMMITMENT_COPY = {
     `Nine ways the congregation reaches ${target} over three years. Each figure is per family.`,
   sweetSpotNote:
     "The levels marked sweet spot are the range the campaign is planning around.",
+  leadLine: (families: string) =>
+    `is what ${families} families would each give to reach the target`,
   expand: "See all nine levels",
   cta: "Find your family's place in the vision.",
   ctaLink: "Make a pledge",
@@ -399,6 +401,16 @@ export function faqCategories(
     },
   ];
 }
+
+/**
+ * Three figures set between two dense sections on the home page, with no
+ * heading. Under twenty words between them, and it should stay that way.
+ */
+export const AT_A_GLANCE = [
+  { figure: "5,000", label: "seats" },
+  { figure: "700", label: "parking spaces" },
+  { figure: "3", label: "years to build" },
+] as const;
 
 /** Governance and transparency copy, used on the home page and /vision. */
 export const ACCOUNTABILITY = {

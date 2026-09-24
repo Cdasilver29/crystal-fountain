@@ -4,44 +4,41 @@ import { YouTubeEmbed } from "@/components/media/youtube-embed";
 import { LAUNCH_VIDEO, VISION_SUMMARY } from "@/content/project";
 
 /**
- * What is being built, with the launch video beside it.
+ * What is being built, led by the launch video.
  *
- * Copy first in the source order, so a phone reads the explanation before it
- * reaches the video, and the video is click to load either way.
+ * No band: it sits on the page itself, between two navy sections, so the
+ * video is the entry and the words follow it. The copy takes about 62 per cent
+ * of the width and leaves the rest empty on purpose, with a heading a step
+ * below the other sections, because the video has already opened the section.
+ * The video stays click to load.
  */
 export function VisionSection() {
   return (
-    <section
-      id="vision"
-      className="bg-[#f8f7f5] page-gutter section"
-    >
+    <section id="vision" className="page-gutter section">
       <div className="container-marketing">
-        <h2
-          data-reveal=""
-          className="text-2xl font-semibold tracking-tight text-balance text-navy sm:text-4xl"
-        >
-          More than a building project
-        </h2>
+        <div data-reveal="">
+          <YouTubeEmbed
+            id={LAUNCH_VIDEO.id}
+            title={LAUNCH_VIDEO.title}
+            sizes="(min-width: 1280px) 1200px, 100vw"
+          />
+        </div>
 
-        <div
-          data-reveal=""
-          data-stagger=""
-          className="mt-5 grid gap-10 md:grid-cols-[3fr_2fr] md:items-start md:gap-16"
-        >
-          <div>
-            <p className="text-base leading-loose text-neutral-700 sm:text-lg">
-              {VISION_SUMMARY}
-            </p>
+        <div data-reveal="" className="mt-8 md:w-[62%] lg:mt-10">
+          <h2 className="text-xl font-semibold tracking-tight text-balance text-navy sm:text-2xl">
+            More than a building project
+          </h2>
 
-            <Link
-              href="/vision"
-              className="mt-6 inline-flex rounded font-medium text-campfire underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
-            >
-              Learn more about the vision &rarr;
-            </Link>
-          </div>
+          <p className="mt-3 text-base leading-loose text-neutral-700 sm:text-lg">
+            {VISION_SUMMARY}
+          </p>
 
-          <YouTubeEmbed id={LAUNCH_VIDEO.id} title={LAUNCH_VIDEO.title} />
+          <Link
+            href="/vision"
+            className="mt-5 inline-flex rounded font-medium text-campfire underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          >
+            Learn more about the vision &rarr;
+          </Link>
         </div>
       </div>
     </section>
