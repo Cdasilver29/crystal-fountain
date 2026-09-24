@@ -96,7 +96,7 @@ export default async function PledgersPage() {
             </p>
             <Link
               href="/pledge"
-              className="btn-primary mt-5 inline-flex h-12 items-center justify-center bg-campfire px-8 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="btn-primary cta-sweep mt-5 [--sweep-delay:2.6s] inline-flex h-12 items-center justify-center bg-campfire px-8 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               Make a pledge
             </Link>

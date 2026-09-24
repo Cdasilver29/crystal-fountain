@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { PointerMotion } from "@/components/motion/pointer-motion";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
@@ -19,6 +20,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <div data-site="" className="contents">
       <ScrollProgress />
+      <PointerMotion />
       <SiteHeader />
       {/* The header is fixed, so its height is reserved here once rather than
           in the top padding of every page. The hero cancels this out. */}

@@ -46,9 +46,12 @@ const ICONS: Record<RoadmapIcon, React.ComponentType<{ className?: string }>> =
 
 export function Roadmap({ reveal }: { reveal: React.ReactNode }) {
   return (
+    // Clipped sideways because a card can be pulled 40px toward the edge, and
+    // on a narrow window that would otherwise widen the page mid drag. clip
+    // rather than hidden, so the section does not become a scroll container.
     <section
       id="roadmap"
-      className="bg-navy page-gutter section"
+      className="bg-navy page-gutter section overflow-x-clip"
     >
       <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
@@ -151,6 +154,7 @@ export function RoadmapSteps() {
               </span>
 
               <div
+                data-spring=""
                 className={cn(
                   "surface-lift rounded-2xl border p-4 sm:p-5",
                   isCurrent && "border-campfire bg-campfire/15 shadow-lg",

@@ -179,7 +179,7 @@ export function Hero({
         <div className="mt-11 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
           <Link
             href="/pledge"
-            className="btn-primary inline-flex h-14 items-center justify-center bg-campfire px-10 text-lg font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="btn-primary cta-sweep inline-flex h-14 [--sweep-delay:1.3s] items-center justify-center bg-campfire px-10 text-lg font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Make a pledge
           </Link>
@@ -222,7 +222,9 @@ export function Hero({
           its own line under a short divider, which is what separates a citation
           from the sentence it belongs to without needing a heavier weight.
         */}
-        <blockquote className="relative mx-auto mt-12 max-w-xl rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-7 backdrop-blur-[2px] sm:px-8">
+        <blockquote
+          data-spring=""
+          className="relative mx-auto mt-12 max-w-xl rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-7 backdrop-blur-[2px] sm:px-8">
           <span
             aria-hidden
             className="absolute inset-x-0 -top-px mx-auto h-px w-24 bg-gradient-to-r from-transparent via-campfire/70 to-transparent"

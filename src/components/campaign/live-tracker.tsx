@@ -158,7 +158,9 @@ export function LiveTracker({
      * takes over. Padding tightens only on the narrowest screens, where 20px a
      * side starts to eat into the headline.
      */
-    <div className="tracker-card mx-auto w-full max-w-[640px] p-5 text-center max-[400px]:p-4 sm:w-[90%] md:p-8">
+    <div
+      data-spring=""
+      className="tracker-card mx-auto w-full max-w-[640px] p-5 text-center max-[400px]:p-4 sm:w-[90%] md:p-8">
       <p className="tabular font-semibold tracking-tight text-white [font-size:clamp(2rem,9vw,4.5rem)] [line-height:1.05]">
         <CountUp value={BigInt(totals.pledgedMinor)} />
       </p>

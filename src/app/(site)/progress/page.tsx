@@ -45,7 +45,10 @@ function Card({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+    <div
+      data-tilt=""
+      className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm"
+    >
       <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
         {label}
       </p>
@@ -288,7 +291,7 @@ export default async function ProgressPage() {
             </p>
             <Link
               href="/pledge"
-              className="btn-primary mt-6 inline-flex h-13 items-center justify-center bg-campfire px-9 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+              className="btn-primary cta-sweep mt-6 [--sweep-delay:2.6s] inline-flex h-13 items-center justify-center bg-campfire px-9 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
             >
               Make a pledge
             </Link>

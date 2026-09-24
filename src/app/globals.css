@@ -1471,6 +1471,182 @@ html:has([data-site]) {
 }
 
 /* ---------------------------------------------------------------------------
+ * Surfaces that answer a press: pulled and let go, or leaning toward the
+ * pointer. src/components/motion/pointer-motion.tsx writes the inline values;
+ * everything about how they move is here, and all of it sits under
+ * no-preference, so with reduced motion the script's values would have nothing
+ * to animate them and the script does not write them in the first place.
+ * ------------------------------------------------------------------------- */
+
+/*
+ * Vertical scrolling always belongs to the page. A finger on the hero tracker
+ * is how most visitors get past it, so these surfaces never take the gesture,
+ * and pinch zoom stays available as well.
+ */
+[data-spring],
+[data-tilt] {
+  touch-action: pan-y pinch-zoom;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * translate, rotate and scale are the individual properties rather than
+   * transform, so a pull composes with whatever hover lift the surface already
+   * has instead of replacing it. The transitions the road map cards had from
+   * surface-lift are repeated here, since this rule replaces that list.
+   *
+   * Released, it comes home on an overshooting curve: past the origin and back.
+   */
+  [data-spring] {
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition:
+      translate 450ms var(--spring),
+      rotate 450ms var(--spring),
+      scale 450ms var(--spring),
+      transform 150ms ease-out,
+      box-shadow 150ms ease-out,
+      background-color 150ms ease-out,
+      border-color 150ms ease-out;
+  }
+
+  /* Held, it follows the pointer almost at once, and a squash lands quickly. */
+  [data-spring][data-held] {
+    transition:
+      translate 60ms linear,
+      rotate 60ms linear,
+      scale 120ms ease-out,
+      transform 150ms ease-out,
+      box-shadow 150ms ease-out,
+      background-color 150ms ease-out,
+      border-color 150ms ease-out;
+  }
+
+  /*
+   * Only for the length of a drag, so a pull does not paint a selection
+   * across the hero. Text is selectable again the moment it is let go.
+   */
+  :root[data-dragging] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /*
+   * The figures on /progress. The card is its own stacking context so the
+   * light sits over its white background and under its text: a warm spot where
+   * the pointer is, fading to the faintest navy at the far edge.
+   */
+  [data-tilt] {
+    position: relative;
+    isolation: isolate;
+    transition:
+      transform 400ms ease-out,
+      box-shadow 400ms ease-out;
+  }
+
+  [data-tilt]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+      circle at var(--tilt-x, 50%) var(--tilt-y, 50%),
+      rgb(246 190 142 / 0.22),
+      rgb(255 255 255 / 0) 45%,
+      rgb(5 34 82 / 0.06)
+    );
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+  }
+
+  [data-tilt][data-tilting] {
+    transition:
+      transform 90ms linear,
+      box-shadow 200ms ease-out;
+    box-shadow: 0 18px 36px -14px rgb(5 34 82 / 0.28);
+  }
+
+  [data-tilt][data-tilting]::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  [data-spring] {
+    cursor: grab;
+  }
+
+  /* On the root as well, so the hand stays closed when it outruns the card. */
+  [data-spring][data-held],
+  :root[data-dragging] {
+    cursor: grabbing;
+  }
+}
+
+/*
+ * A band of light across the pledge buttons, once every four seconds.
+ *
+ * The band crosses in the first 700ms of each cycle and waits off the right
+ * edge for the rest, so it reads as a glint rather than a loop. Each button
+ * takes its own delay, and the header, hero and closing band start 1.3s apart,
+ * so no two on one page fire together.
+ *
+ * Behind the label and above the fill: the button is its own stacking context
+ * and the band sits at z-index -1 inside it, clipped by the button's own
+ * rounded overflow. The white button on the campfire band sets a warm colour,
+ * since white light on white is nothing.
+ *
+ * Under the cursor it goes, and stays paused where it was, so the hover lift is
+ * the only thing happening and the rhythm resumes on the way out.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .cta-sweep {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .cta-sweep::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    width: 60%;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 15%,
+      var(--sweep-color, rgb(255 255 255 / 0.3)) 50%,
+      transparent 85%
+    );
+    transform: translateX(-100%);
+    animation: cta-sweep 4s var(--sweep-delay, 0s) infinite;
+    transition: opacity 150ms ease-out;
+  }
+
+  .cta-sweep:hover::after {
+    animation-play-state: paused;
+    opacity: 0;
+  }
+}
+
+/* 700ms of a 4s cycle is 17.5%. 170% of a band 60% wide clears the far edge. */
+@keyframes cta-sweep {
+  0% {
+    transform: translateX(-100%);
+    animation-timing-function: ease-in-out;
+  }
+
+  17.5%,
+  100% {
+    transform: translateX(170%);
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * The recent pledges scroller under the hero.
  * ------------------------------------------------------------------------- */
 

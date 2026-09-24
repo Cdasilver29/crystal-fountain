@@ -119,7 +119,7 @@ export function SiteHeader() {
 
           <Link
             href="/pledge"
-            className="btn-primary bg-campfire px-3 py-1.5 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+            className="btn-primary cta-sweep bg-campfire px-3 py-1.5 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
           >
             Make a pledge
           </Link>

@@ -16,7 +16,7 @@ export function FinalCta() {
 
         <Link
           href="/pledge"
-          className="btn-primary mt-8 inline-flex h-14 items-center justify-center bg-white px-10 text-lg font-semibold text-campfire hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-campfire focus-visible:outline-none"
+          className="btn-primary cta-sweep mt-8 [--sweep-color:rgb(227_101_32/0.22)] [--sweep-delay:2.6s] inline-flex h-14 items-center justify-center bg-white px-10 text-lg font-semibold text-campfire hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-campfire focus-visible:outline-none"
         >
           Make a pledge
         </Link>
