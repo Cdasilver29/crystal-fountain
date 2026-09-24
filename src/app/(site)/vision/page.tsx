@@ -64,7 +64,7 @@ export default function VisionPage() {
           <section
             key={section.id}
             id={section.id}
-            className={`scroll-mt-16 page-gutter section ${
+            className={`page-gutter section ${
               index % 2 === 0 ? "bg-white" : "bg-neutral-50"
             }`}
           >

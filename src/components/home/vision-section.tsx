@@ -13,7 +13,7 @@ export function VisionSection() {
   return (
     <section
       id="vision"
-      className="scroll-mt-16 bg-[#f8f7f5] page-gutter section"
+      className="bg-[#f8f7f5] page-gutter section"
     >
       <div className="container-marketing">
         <h2

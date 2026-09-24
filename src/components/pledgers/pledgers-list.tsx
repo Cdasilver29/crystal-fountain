@@ -204,7 +204,7 @@ export function PledgersList({ initial, initialCursor, renderedAt }: Props) {
               // The list is append only and a pledge can repeat a name, an
               // amount and a date, so position is the only stable key here.
               key={`${entry.createdAt}-${index}`}
-              className="col-span-full grid grid-cols-subgrid items-baseline py-4 sm:py-5"
+              className="row-tint col-span-full grid grid-cols-subgrid items-baseline py-4 sm:py-5"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium text-navy">

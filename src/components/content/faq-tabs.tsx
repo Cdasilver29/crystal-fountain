@@ -98,7 +98,7 @@ export function FaqTabs({ categories }: { categories: readonly FaqCategory[] }) 
                   aria-expanded={isOpen}
                   aria-controls={answerId}
                   onClick={() => setOpen(isOpen ? null : index)}
-                  className="flex w-full cursor-pointer items-start justify-between gap-4 py-5 text-left focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-inset focus-visible:outline-none"
+                  className="faq-row -mx-3 flex w-[calc(100%+1.5rem)] cursor-pointer items-start justify-between gap-4 rounded-lg px-3 py-5 text-left focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-inset focus-visible:outline-none"
                 >
                   <span className="text-base font-medium text-navy sm:text-lg">
                     {item.question}

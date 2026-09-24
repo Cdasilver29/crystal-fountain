@@ -6,7 +6,7 @@ import { formatKES, formatKESCompact, formatNumber } from "@/lib/format";
 import { onEnter, worthAnimating } from "@/lib/on-enter";
 
 /** Short, because every figure on the page is arriving at once. */
-const COUNT_MS = 400;
+const COUNT_MS = 280;
 
 const FORMATS = {
   kes: (value: bigint) => formatKES(value),

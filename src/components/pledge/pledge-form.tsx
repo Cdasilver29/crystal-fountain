@@ -952,7 +952,7 @@ function AmountChip({
       aria-pressed={selected}
       onClick={() => onSelect(tierKey, amount)}
       className={cn(
-        "flex items-baseline justify-center gap-1 border transition-colors",
+        "chip flex items-baseline justify-center gap-1 border",
         "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
         premium ? "rounded-xl px-3.5 py-2.5" : "rounded-full px-3 py-1.5",
         selected

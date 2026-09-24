@@ -48,7 +48,7 @@ export function Roadmap({ reveal }: { reveal: React.ReactNode }) {
   return (
     <section
       id="roadmap"
-      className="scroll-mt-16 bg-navy page-gutter section"
+      className="bg-navy page-gutter section"
     >
       <div className="container-marketing">
         <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
@@ -152,7 +152,7 @@ export function RoadmapSteps() {
 
               <div
                 className={cn(
-                  "rounded-2xl border p-4 sm:p-5",
+                  "surface-lift rounded-2xl border p-4 sm:p-5",
                   isCurrent && "border-campfire bg-campfire/15 shadow-lg",
                   isDone && "border-treefrog/40 bg-treefrog/10",
                   !isCurrent && !isDone && "border-white/15 bg-white/5",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { CopyButton } from "@/components/pledge/copy-button";
 import { CONTACT } from "@/content/campaign";
@@ -75,6 +75,31 @@ export function PaymentInstructions({
   const tabId = (id: TabId) => `${baseId}-tab-${id}`;
   const panelId = (id: TabId) => `${baseId}-panel-${id}`;
 
+  /*
+   * Where the underline sits, measured from the chosen tab, so one line can
+   * slide between the two instead of one border switching off as another
+   * switches on. Null until the browser has measured: the server render and a
+   * visitor without JavaScript get the plain border on the chosen tab, which
+   * sits in exactly the same place.
+   */
+  const [underline, setUnderline] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const measure = () => {
+      const tab = document.getElementById(tabId(active));
+      if (tab) setUnderline({ left: tab.offsetLeft, width: tab.offsetWidth });
+    };
+    measure();
+    // The labels change size at the small breakpoint.
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+    // tabId is derived from a stable useId and needs no dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
   return (
     <div className={cn("space-y-5", className)}>
       <noscript>
@@ -88,7 +113,7 @@ export function PaymentInstructions({
       <div
         role="tablist"
         aria-label="Ways to give"
-        className="flex gap-6 border-b border-neutral-200"
+        className="relative flex gap-6 border-b border-neutral-200"
       >
         {TABS.map((tab) => {
           const selected = active === tab.id;
@@ -114,7 +139,7 @@ export function PaymentInstructions({
               className={cn(
                 "-mb-px cursor-pointer border-b-2 px-1 pb-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none sm:text-base",
                 selected
-                  ? "border-campfire text-navy"
+                  ? cn("text-navy", underline ? "border-transparent" : "border-campfire")
                   : "border-transparent text-neutral-500 hover:text-neutral-700",
               )}
             >
@@ -122,6 +147,17 @@ export function PaymentInstructions({
             </button>
           );
         })}
+
+        {underline && (
+          <span
+            aria-hidden
+            className="tab-indicator absolute -bottom-px left-0 h-0.5 bg-campfire"
+            style={{
+              width: underline.width,
+              transform: `translateX(${underline.left}px)`,
+            }}
+          />
+        )}
       </div>
 
       <div
