@@ -85,7 +85,15 @@ export const CATEGORY_TIERS: Record<PledgeCategory, Tier[]> = {
       key: "family_1m_to_10m",
       label: "Family pledge over 3 years",
       range: "KES 1 million to 10 million",
-      amounts: [1_000_000, 2_000_000, 3_000_000, 5_000_000, 7_000_000],
+      // The eight commitment levels under KES 10 million, from
+      // COMMITMENT_TIERS in src/content/project.ts, so every level on the home
+      // page presses a chip here. Written out rather than imported, because
+      // importing the content file would ship all of it to this page.
+      // pnpm db:verify:commitment fails if the two drift apart.
+      amounts: [
+        1_000_000, 1_300_000, 1_600_000, 1_800_000, 2_200_000, 2_700_000,
+        3_670_000, 5_500_000,
+      ],
     },
     {
       key: "family_below_1m",
