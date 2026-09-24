@@ -1294,3 +1294,38 @@
     }
   }
 }
+
+/*
+ * The six commitment levels on the home page open with a height transition.
+ *
+ * interpolate-size is what lets height animate to auto. A browser that does not
+ * know ::details-content drops these rules whole and opens the list at once,
+ * which is the right fallback: the content is there either way. data-restored
+ * is set while a list the member already opened this session is put back, so
+ * it does not slide open a second time.
+ */
+.more-levels {
+  interpolate-size: allow-keywords;
+}
+
+.more-levels::details-content {
+  height: 0;
+  overflow: clip;
+  transition:
+    height 500ms ease-out,
+    content-visibility 500ms allow-discrete;
+}
+
+.more-levels[open]::details-content {
+  height: auto;
+}
+
+.more-levels[data-restored]::details-content {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-levels::details-content {
+    transition: none;
+  }
+}

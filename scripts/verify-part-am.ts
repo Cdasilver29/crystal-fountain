@@ -33,6 +33,7 @@ async function main() {
   );
   const { pledgeAmountParam } = await import("@/server/contracts/pledges");
   const { formatNumber } = await import("@/lib/format");
+  const { CATEGORY_TIERS } = await import("@/components/pledge/pledge-form");
 
   const failures: string[] = [];
   const check = (label: string, ok: boolean, detail?: string) => {
@@ -135,10 +136,38 @@ async function main() {
   const form = async (query: string) =>
     (await fetch(`${BASE}/pledge${query}`)).text();
 
-  const custom = await form("?amount=270000000");
+  const familyChips = CATEGORY_TIERS.family.flatMap((tier) => tier.amounts);
+  check(
+    "every commitment level is a chip on the family tab",
+    COMMITMENT_TIERS.every((tier) =>
+      familyChips.includes(tier.pledgePerFamilyKes),
+    ),
+    COMMITMENT_TIERS.filter(
+      (tier) => !familyChips.includes(tier.pledgePerFamilyKes),
+    )
+      .map((tier) => tier.pledgePerFamilyKes)
+      .join(", "),
+  );
+
+  // Each level, through the served page, presses exactly its own chip.
+  for (const tier of COMMITMENT_TIERS) {
+    const figure = formatNumber(tier.pledgePerFamilyKes);
+    const html = await form(
+      `?amount=${BigInt(tier.pledgePerFamilyKes) * 100n}`,
+    );
+    const pressed = [
+      ...html.matchAll(/aria-pressed="true"[\s\S]*?<\/button>/g),
+    ].map((match) => match[0].replace(/<!-- -->/g, ""));
+    check(
+      `the ${tier.families} family level presses the KES ${figure} chip`,
+      pressed.length === 1 && pressed[0]!.includes(`>${figure}<`),
+    );
+  }
+
+  const custom = await form("?amount=270000100");
   check(
     "an amount no chip carries fills the custom field",
-    /id="amount"[^>]*value="2,700,000"/.test(custom),
+    /id="amount"[^>]*value="2,700,001"/.test(custom),
   );
   check(
     "and presses no chip",
@@ -199,10 +228,12 @@ async function main() {
       .every((link) => link.at > collapseAt),
   );
   check(
-    "the collapsed list is inert until opened",
-    /id="all-levels"[^>]*inert/.test(section) ||
-      /inert[^>]*id="all-levels"/.test(section),
+    "the six sit in a details element, closed, which opens without JavaScript",
+    /<details[^>]*id="all-levels"/.test(section) &&
+      !/<details[^>]*id="all-levels"[^>]*\sopen/.test(section) &&
+      /<summary[^>]*>See all nine levels/.test(section),
   );
+  check("nothing in the section is inert", !section.includes("inert"));
   check("the expand control renders", section.includes("See all nine levels"));
   check(
     "per family is not repeated on the cards",
