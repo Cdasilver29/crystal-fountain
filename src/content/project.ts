@@ -208,6 +208,30 @@ export const BROCHURE_PAGES: readonly { src: string; alt: string }[] = [
 export const VISION_SUMMARY =
   "The Crystal Fountain Development gives our church a permanent, larger home: a sanctuary built for the size and future of this congregation, while creating a mixed-use tower alongside it that generates income to sustain the ministry for years to come.";
 
+/**
+ * About the project, as the church supplied it for /vision. Used exactly as
+ * written; the bold lead-ins of the original are the subheadings.
+ */
+export const ABOUT_PROJECT = {
+  heading: "About the Crystal Fountain Project",
+  intro:
+    "The Crystal Fountain Project is not just a construction or building project. It is a spiritual aspiration. It is a transformative worship experience adventure. We are committed to serve God by impacting community and mission in the City of Nairobi and beyond.",
+  parts: [
+    {
+      heading: "A sanctuary for worship. A home for generations.",
+      text: "In Upper Hill, Nairobi, the Crystal Fountain Project embodies Newlife SDA Church's vision for a place where faith deepens, families connect and lives are shaped for service. At its heart is a new sanctuary, a welcoming home for worship, fellowship and sharing the hope of Christ.",
+    },
+    {
+      heading: "Enterprise in service of ministry.",
+      text: "Alongside the sanctuary, Advent Tower and Centre is envisioned as a commercial wing that can generate income to support ministry and community outreach. This integrated development brings together worship, ethical enterprise and service, creating a centre of influence whose purpose reaches beyond its walls.",
+    },
+    {
+      heading: "A shared vision. A part for each of us.",
+      text: "Our goal is to mobilise KSh 550 million in three years for the sanctuary alone, while building partnerships for the wider development. Members, neighbours, sister churches, SDA agencies and ethical businesses are invited to partner with us and help turn this vision into reality. Pray with us, give, fundraise and connect us with potential partners. Together, we can build a lasting legacy of faith and service.",
+    },
+  ],
+} as const;
+
 export type VisionSection = {
   id: string;
   heading: string;

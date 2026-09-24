@@ -8,6 +8,7 @@ import { RoadmapReveal } from "@/components/vision/roadmap-reveal";
 import { Roadmap, RoadmapSteps } from "@/components/vision/roadmap";
 import { CD_FUND } from "@/content/cd-fund";
 import {
+  ABOUT_PROJECT,
   ACCOUNTABILITY,
   BROCHURE_HEIGHT,
   BROCHURE_PAGES,
@@ -51,6 +52,32 @@ export default function VisionPage() {
               {SCRIPTURE_HAGGAI.reference}
             </cite>
           </blockquote>
+        </div>
+      </section>
+
+      {/*
+        The church's own statement of the project, straight after the hero so
+        it is the first thing read below the video.
+      */}
+      <section id="about" className="bg-white page-gutter section">
+        <div className="container-prose">
+          <h2 className="text-2xl font-semibold tracking-tight text-balance text-navy sm:text-3xl">
+            {ABOUT_PROJECT.heading}
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-neutral-700 sm:text-lg">
+            {ABOUT_PROJECT.intro}
+          </p>
+
+          {ABOUT_PROJECT.parts.map((part) => (
+            <div key={part.heading} className="mt-8">
+              <h3 className="text-lg font-semibold text-navy">
+                {part.heading}
+              </h3>
+              <p className="mt-2 text-base leading-relaxed text-neutral-700">
+                {part.text}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
