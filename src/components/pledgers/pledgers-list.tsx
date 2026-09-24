@@ -146,10 +146,12 @@ export function PledgersList({ initial, initialCursor, renderedAt }: Props) {
     query.trim().length > 0 && query.trim().length < MIN_SEARCH_LENGTH;
 
   return (
-    // One column across the page's full 1200px. People come here to find their
-    // own name among fifty, and a single column scans top to bottom. The
-    // search keeps the 640px form measure, on the same left edge as the names.
-    <div>
+    // One column, centred in the page's 1200px at 880px: wide enough to use
+    // the screen, narrow enough that each amount stays close to its name.
+    // People come here to find their own name among fifty, and a single
+    // column scans top to bottom. The search keeps the 640px form measure, on
+    // the same left edge as the names.
+    <div className="mx-auto w-full max-w-[880px]">
       <div className="container-form relative mx-0">
         <label htmlFor="pledger-search" className="sr-only">
           Search pledgers by first name
