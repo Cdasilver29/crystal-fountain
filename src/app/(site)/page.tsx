@@ -39,6 +39,9 @@ export const metadata: Metadata = pageMetadata({
   path: "/",
 });
 
+/** How many feed entries are rendered on the server. See RecentPledges. */
+const RECENT_PLEDGES_IN_HTML = 12;
+
 export default async function HomePage() {
   // Read on the server so the first paint carries real numbers and the page is
   // correct with JavaScript disabled. LiveTracker takes over after hydration.
@@ -82,12 +85,18 @@ export default async function HomePage() {
         Directly under the hero and on the same navy, with no band of its own,
         because the figure above says what the congregation has done together
         and this says who is doing it. Given a white background and a section
-        heading it competed with the tracker; kept as three drifting lines on
+        heading it competed with the tracker; kept as five drifting lines on
         the same colour it reads as the tracker's last line, which is what it
         is. The case for why still follows both.
       */}
+      {/*
+        Only the newest few go into the HTML. The band fetches the rest once it
+        has hydrated, so every consented name is still in the loop, but the
+        first paint no longer carries every name twice ahead of the hero's own
+        bytes on a phone.
+      */}
       <RecentPledges
-        initial={recentPledges}
+        initial={recentPledges.slice(0, RECENT_PLEDGES_IN_HTML)}
         renderedAt={new Date().toISOString()}
       />
       {/*

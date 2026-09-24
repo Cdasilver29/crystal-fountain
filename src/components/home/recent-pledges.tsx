@@ -29,12 +29,23 @@ import { formatKES, formatRelativeTime } from "@/lib/format";
  * somebody who saw a name go by can go back for it. A minute after they let go
  * it returns to the newest entry and picks the drift back up.
  *
- * The server renders every consented entry, up to the ceiling set by
- * RECENT_PLEDGE_LIMIT, so the page is right on first
- * paint and with JavaScript switched off. After hydration it polls the same
- * endpoint on the same interval as the tracker above it, and an entry that
- * arrives on a poll fades in. The entries that were already there do not,
- * because they did not just happen.
+ * The server renders the newest twelve, so the page is right on first paint and
+ * with JavaScript switched off, where they show as a plain list. Every name at
+ * once cost the home page about 17 kB of HTML ahead of anything a phone could
+ * use, twice over for the loop. Straight after hydration the band fetches the
+ * whole feed, every consented entry up to RECENT_PLEDGE_LIMIT, and loops all of
+ * it from then on; until then it loops the twelve it has.
+ *
+ * After that it polls the same endpoint on the same interval as the tracker
+ * above it, and an entry newer than anything already shown fades in. The rest
+ * of the feed arriving does not, because none of it just happened.
+ *
+ * A new list never lands while the join between the two copies is in the
+ * window. Past the join the second copy starts again from the newest entry, and
+ * a longer list puts different names there, so a list that arrived at that
+ * moment would swap rows in front of the reader. It waits, at most a few
+ * seconds, until the window is entirely inside the first copy, and the drift is
+ * then carried across by the entry at the top of the window, so nothing moves.
  *
  * The section removes itself when there are fewer than six consented entries.
  * An empty "recent pledges" heading on a church home page reads as though
@@ -94,12 +105,33 @@ export function RecentPledges({
 
   const seen = useRef(new Set(initial.map((entry) => entry.id)));
 
+  /** The newest entry shown so far. Anything newer is a pledge that just came in. */
+  const newestSeen = useRef(initial[0]?.createdAt ?? "");
+
+  /** A fetched list waiting for the drift to reach a safe moment to show it. */
+  const pending = useRef<RecentPledgeDto[] | null>(null);
+
+  /**
+   * Shows the pending list when it is safe to. The drift replaces this with a
+   * check against where the column is; without the drift, any moment is safe.
+   */
+  const offer = useRef(() => {
+    if (pending.current) setEntries(pending.current);
+    pending.current = null;
+  });
+
+  /** Where the drift had got to, kept across the rebuild a new list causes. */
+  const position = useRef<{ offset: number; id?: string; within?: number }>({
+    offset: 0,
+  });
+
   const viewportRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const copyRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let lastBody = "";
 
     async function refresh() {
       if (cancelled) return;
@@ -116,13 +148,25 @@ export function RecentPledges({
         });
         if (!response.ok) return;
 
-        const next = (await response.json()) as RecentPledgeDto[];
-        if (cancelled) return;
+        // A poll that brings back exactly what is showing changes nothing, so
+        // it does not cost the drift a rebuild either.
+        const body = await response.text();
+        if (cancelled || body === lastBody) return;
+        lastBody = body;
+        const next = JSON.parse(body) as RecentPledgeDto[];
 
-        const fresh = next.filter((entry) => !seen.current.has(entry.id));
+        // ISO strings in one zone compare as the instants they name.
+        const fresh = next.filter(
+          (entry) =>
+            !seen.current.has(entry.id) && entry.createdAt > newestSeen.current,
+        );
         for (const entry of next) seen.current.add(entry.id);
+        if (next[0] && next[0].createdAt > newestSeen.current) {
+          newestSeen.current = next[0].createdAt;
+        }
 
-        setEntries(next);
+        pending.current = next;
+        offer.current();
         if (fresh.length > 0) {
           setArrived(new Set(fresh.map((entry) => entry.id)));
         }
@@ -131,6 +175,9 @@ export function RecentPledges({
         // emptying a section that says pledges are arriving.
       }
     }
+
+    // The rest of the feed, straight away rather than on the first poll.
+    void refresh();
 
     const timer = setInterval(refresh, POLL_INTERVAL_MS);
     document.addEventListener("visibilitychange", refresh);
@@ -162,11 +209,27 @@ export function RecentPledges({
      */
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    /** How far up the column has drifted, in pixels, always >= 0. */
-    let offset = 0;
-
     /** The height of one copy of the list. The loop resets on this. */
     let copyHeight = copyRef.current?.offsetHeight ?? 0;
+
+    /** Rows are one fixed height, so a row's place is its index times this. */
+    const rowHeight = () => copyHeight / Math.max(entries.length, 1);
+
+    /**
+     * How far up the column has drifted, in pixels, always >= 0.
+     *
+     * Picked up from before the list changed, by the entry that was at the top
+     * of the window: if newer entries arrived above it, the column moves up by
+     * exactly their height and the reader sees the same rows in the same place.
+     */
+    let offset = position.current.offset;
+    {
+      const { id, within = 0 } = position.current;
+      const index = id ? entries.findIndex((entry) => entry.id === id) : -1;
+      if (index >= 0) offset = index * rowHeight() + within;
+      if (copyHeight > 0) offset %= copyHeight;
+    }
+    track.style.transform = `translate3d(0, ${-offset}px, 0)`;
 
     /** True while a cursor, finger or focus is on the window. */
     let engaged = false;
@@ -212,6 +275,16 @@ export function RecentPledges({
       if (offset >= copyHeight) offset %= copyHeight;
 
       paint();
+      showPendingIfClear();
+    }
+
+    /** A new list lands only while the window is clear of the join. */
+    function showPendingIfClear() {
+      if (!pending.current || !viewport) return;
+      if (offset + viewport.clientHeight > copyHeight) return;
+      const next = pending.current;
+      pending.current = null;
+      setEntries(next);
     }
 
     function start() {
@@ -337,12 +410,25 @@ export function RecentPledges({
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("resize", onResize);
 
+    // While this runs, a fetched list waits for the frame loop to find a safe
+    // moment rather than landing the instant it arrives.
+    const showNow = offer.current;
+    offer.current = () => {};
+
     measure();
     start();
 
     return () => {
       stop();
       clearIdle();
+      offer.current = showNow;
+      const height = rowHeight();
+      const index = height > 0 ? Math.floor(offset / height) : 0;
+      position.current = {
+        offset,
+        id: entries[index]?.id,
+        within: offset - index * height,
+      };
       viewport.removeEventListener("pointerenter", engage);
       viewport.removeEventListener("pointerleave", armIdle);
       viewport.removeEventListener("touchstart", engage);
@@ -353,9 +439,10 @@ export function RecentPledges({
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("resize", onResize);
     };
-    // The list length changes what one copy measures, so the loop is rebuilt
-    // when it does. The list changes a few times an hour at most.
-  }, [entries.length]);
+    // A new list changes what one copy measures, so the loop is rebuilt when one
+    // lands, carrying its position across. That is once after hydration, and
+    // then once a poll at most.
+  }, [entries]);
 
   if (entries.length < MINIMUM_ENTRIES) return null;
 
@@ -445,6 +532,21 @@ export function RecentPledges({
               {rows}
             </ul>
           </div>
+
+          {/*
+            Without JavaScript nothing drifts and the rest of the feed never
+            arrives, so the twelve rows in the HTML become a plain list the
+            reader scrolls, as with reduced motion, and the copy made for the
+            loop goes.
+          */}
+          <noscript>
+            <style
+              dangerouslySetInnerHTML={{
+                __html:
+                  ".cf-feed-window{overflow-y:auto!important}.cf-feed-clone{display:none!important}",
+              }}
+            />
+          </noscript>
         </div>
       </div>
     </section>
