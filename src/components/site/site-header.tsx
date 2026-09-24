@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { MobileNav } from "@/components/site/mobile-nav";
@@ -29,6 +30,7 @@ import { NAV_LINKS } from "@/content/project";
  */
 export function SiteHeader() {
   const [solid, setSolid] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const hero = document.getElementById("hero");
@@ -47,7 +49,8 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`page-gutter fixed inset-x-0 top-0 z-50 h-16 border-b transition-colors duration-300 ${
+      data-solid={solid ? "" : undefined}
+      className={`site-header page-gutter fixed inset-x-0 top-0 z-50 h-16 border-b ${
         solid ? "border-white/10 bg-navy" : "border-transparent"
       }`}
     >
@@ -78,7 +81,8 @@ export function SiteHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded px-2.5 py-1.5 text-sm text-white/80 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              aria-current={pathname === link.href ? "page" : undefined}
+              className="nav-link rounded px-2.5 py-1.5 text-sm text-white/80 hover:text-white aria-[current=page]:text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
             >
               {link.label}
             </Link>
@@ -92,7 +96,8 @@ export function SiteHeader() {
           */}
           <Link
             href={CD_FUND.href}
-            className="rounded px-2.5 py-1.5 text-sm text-white/80 underline-offset-4 hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+            aria-current={pathname === CD_FUND.href ? "page" : undefined}
+            className="nav-link rounded px-2.5 py-1.5 text-sm text-white/80 hover:text-white aria-[current=page]:text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
           >
             {CD_FUND.label}
           </Link>

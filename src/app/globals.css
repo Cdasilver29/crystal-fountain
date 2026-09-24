@@ -766,10 +766,15 @@
  * ordering is the whole reduced motion story: the rules are not overridden for
  * those visitors, they are never applied.
  */
+:root {
+  /* A slight overshoot that settles, shared by every entrance on the site. */
+  --ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @keyframes roadmap-step-in {
   from {
     opacity: 0;
-    transform: translateY(1.25rem);
+    transform: translateY(16px);
   }
 }
 
@@ -803,12 +808,12 @@
   [data-roadmap="shown"] .roadmap-step {
     /* Backwards fill, so a card waiting out its delay is still hidden rather
        than appearing and then animating in again. */
-    animation: roadmap-step-in 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
-    animation-delay: calc(var(--step) * 110ms);
+    animation: roadmap-step-in 280ms var(--ease-reveal) both;
+    animation-delay: calc(var(--step) * 35ms);
   }
 
   [data-roadmap="shown"] .roadmap-line {
-    animation: roadmap-line-draw 1100ms ease-out both;
+    animation: roadmap-line-draw 280ms ease-out both;
   }
 }
 
@@ -839,9 +844,13 @@
  * none of these rules exists and nothing is ever hidden.
  *
  * Two forms. A plain data-reveal element rises itself. One that also carries
- * data-stagger stays still and its children rise in turn, 60ms apart and capped
- * at the sixth, so a long row is finished in well under a second. The two are
- * never nested, since a rising child inside a rising parent would travel 24px.
+ * data-stagger stays still and its children rise in turn, 35ms apart and capped
+ * at the sixth, so the last of a long row starts 175ms after the first. The two
+ * are never nested, since a rising child inside a rising parent would travel
+ * twice as far.
+ *
+ * 280ms on a curve that overshoots slightly and settles. Short and a little
+ * further reads as arriving on purpose; long and near reads as hesitating.
  *
  * Opacity and transform only, which move nothing else on the page, so there is
  * no layout shift. Backwards fill and no forwards fill: a child waiting out its
@@ -851,7 +860,7 @@
 @keyframes reveal-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
   }
 }
 
@@ -871,23 +880,23 @@
 
   [data-reveal="shown"]:not([data-stagger]),
   [data-reveal="shown"][data-stagger] > * {
-    animation: reveal-in 400ms ease-out backwards;
+    animation: reveal-in 280ms var(--ease-reveal) backwards;
   }
 
   [data-reveal="shown"][data-stagger] > :nth-child(2) {
-    animation-delay: 60ms;
+    animation-delay: 35ms;
   }
   [data-reveal="shown"][data-stagger] > :nth-child(3) {
-    animation-delay: 120ms;
+    animation-delay: 70ms;
   }
   [data-reveal="shown"][data-stagger] > :nth-child(4) {
-    animation-delay: 180ms;
+    animation-delay: 105ms;
   }
   [data-reveal="shown"][data-stagger] > :nth-child(5) {
-    animation-delay: 240ms;
+    animation-delay: 140ms;
   }
   [data-reveal="shown"][data-stagger] > :nth-child(n + 6) {
-    animation-delay: 300ms;
+    animation-delay: 175ms;
   }
 
   /*
@@ -897,20 +906,21 @@
    * pulse is named again because this declaration would otherwise replace it.
    */
   [data-reveal="shown"] .milestone-dot {
-    animation: milestone-in 300ms ease-out backwards;
-    animation-delay: calc(200ms + var(--i) * 80ms);
+    animation: milestone-in 280ms var(--ease-reveal) backwards;
+    animation-delay: calc(40ms + var(--i) * 30ms);
   }
 
   [data-reveal="shown"] .milestone-dot.milestone-pulse {
     animation:
-      milestone-in 300ms ease-out backwards,
+      milestone-in 280ms var(--ease-reveal) backwards,
       milestone-pulse 2.4s ease-out infinite;
-    animation-delay: calc(200ms + var(--i) * 80ms), 0ms;
+    animation-delay: calc(40ms + var(--i) * 30ms), 0ms;
   }
 }
 
 /*
- * Cards that link somewhere lift under the cursor and press on a tap.
+ * Cards that link somewhere lift under the cursor and press on a tap. Surfaces
+ * that are not links, such as the road map cards, lift without the press.
  *
  * The transition names the colour properties too, because this rule outranks
  * the transition-colors utility on the same element and would otherwise drop
@@ -922,7 +932,8 @@
  * a card left floating 2px up is a card that looks stuck. The press does not
  * wait, since that is the part a tap is for.
  */
-.card-lift {
+.card-lift,
+.surface-lift {
   transition:
     transform 150ms ease-out,
     box-shadow 150ms ease-out,
@@ -931,7 +942,8 @@
 }
 
 @media (prefers-reduced-motion: no-preference) and (hover: hover) {
-  .card-lift:hover {
+  .card-lift:hover,
+  .surface-lift:hover {
     transform: translateY(-2px);
     box-shadow:
       var(--tw-ring-offset-shadow, 0 0 #0000),
@@ -951,8 +963,237 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card-lift {
+  .card-lift,
+  .surface-lift {
     transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Interactive feedback on the public site.
+ *
+ * Everything below answers a pointer, a tap or a scroll, and every piece of
+ * movement in it sits under no-preference, so a visitor who has asked for less
+ * movement gets the colour changes that say what is under the cursor and none
+ * of the motion. Rules that would also reach the admin portal are scoped to
+ * [data-site], which the public layout puts around its pages; the admin shares
+ * the button classes and is not part of this.
+ * ------------------------------------------------------------------------- */
+
+/*
+ * Clear of the fixed header when the page scrolls to an anchor or to a field
+ * that takes focus, so the target never lands underneath it. Once, on the
+ * scroller, rather than a scroll margin on each target.
+ */
+html:has([data-site]) {
+  scroll-padding-top: 4rem;
+}
+
+/*
+ * The header fades to navy rather than swapping, and takes a shadow as it goes
+ * solid, which is what separates it from a page scrolling underneath.
+ */
+.site-header {
+  transition:
+    background-color 200ms ease-out,
+    border-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.site-header[data-solid] {
+  box-shadow: 0 4px 16px -6px rgb(5 34 82 / 0.45);
+}
+
+/*
+ * Header links: an underline that grows from the left. Drawn in full on the
+ * current page. A pseudo element rather than text-decoration, since a text
+ * decoration cannot be grown. Under reduced motion it still appears on hover,
+ * just without the growth.
+ */
+.nav-link {
+  position: relative;
+  transition: color 150ms ease;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  right: 0.625rem;
+  bottom: 0.25rem;
+  left: 0.625rem;
+  height: 2px;
+  border-radius: 1px;
+  background: #e36520;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.nav-link:hover::after,
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
+/*
+ * Primary buttons on the public site lift 2px and press 1px, the same as the
+ * level cards. The admin keeps the base 1px lift defined with the buttons.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .nav-link::after {
+    transition: transform 180ms var(--ease-reveal);
+  }
+
+  [data-site] .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      inset 0 1px 0 rgb(255 255 255 / 0.28),
+      0 10px 22px -6px rgb(5 34 82 / 0.4);
+  }
+
+  [data-site] .btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+/*
+ * The amount chips on /pledge. A small swell under the cursor, and the pressed
+ * one settles back to its own size as it fills, over the same 150ms as the
+ * colour, so the choice arrives rather than appearing.
+ */
+.chip,
+.chip > * {
+  transition:
+    transform 150ms ease-out,
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .chip:hover {
+    transform: scale(1.03);
+  }
+}
+
+.chip[aria-pressed="true"] {
+  transform: none;
+}
+
+/* The payment tabs: one underline that slides to the chosen tab. */
+@media (prefers-reduced-motion: no-preference) {
+  .tab-indicator {
+    transition:
+      transform 200ms var(--ease-reveal),
+      width 200ms var(--ease-reveal);
+  }
+}
+
+/*
+ * FAQ rows lighten under the cursor, and the plus turns into a cross over
+ * 200ms, which the utility on the icon already sets.
+ */
+.faq-row {
+  transition: background-color 150ms ease;
+}
+
+.faq-row:hover {
+  background-color: #f8f7f5;
+}
+
+/* Pledger rows take a tint as the eye and the cursor run down the list. */
+.row-tint {
+  transition: background-color 120ms ease;
+}
+
+.row-tint:hover {
+  background-color: rgb(5 34 82 / 0.03);
+}
+
+/*
+ * The phone drawer assembles as it slides in: each link follows the last by
+ * 30ms, in the order they are read.
+ */
+@keyframes drawer-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .drawer-item {
+    animation: drawer-item-in 200ms var(--ease-reveal) backwards;
+    animation-delay: calc(var(--i) * 30ms);
+  }
+}
+
+/*
+ * Reading progress. A 2px campfire line across the top of the viewport, above
+ * the header, grown from the left as the page scrolls. The only motion on the
+ * site tied to scroll position, because it tells the reader how much is left.
+ *
+ * Driven by a scroll timeline where the browser has one, so no script runs on
+ * scroll at all. Elsewhere ScrollProgress sets --scroll-progress once a frame.
+ * With neither it rests at zero width, which is to say it is not there.
+ * Removed outright under reduced motion.
+ */
+@keyframes scroll-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  height: 2px;
+  background: #e36520;
+  transform: scaleX(var(--scroll-progress, 0));
+  transform-origin: left;
+  pointer-events: none;
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    animation: scroll-progress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-progress {
+    display: none;
+  }
+
+  .site-header,
+  .nav-link,
+  .nav-link::after,
+  .chip,
+  .chip > *,
+  .faq-row,
+  .faq-row svg,
+  .row-tint {
+    transition: none;
+  }
+}
+
+/*
+ * Plain links change colour over 150ms rather than at once. In the base layer,
+ * so any link that sets its own transition keeps it and every class above
+ * outranks it.
+ */
+@layer base {
+  [data-site] a {
+    transition:
+      color 150ms ease,
+      text-decoration-color 150ms ease;
   }
 }
 
@@ -1088,8 +1329,8 @@
  */
 .brochure-card {
   transition:
-    transform 200ms ease-out,
-    box-shadow 200ms ease-out;
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
 }
 
 @media (prefers-reduced-motion: no-preference) {

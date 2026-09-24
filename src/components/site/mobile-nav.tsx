@@ -123,26 +123,29 @@ export function MobileNav() {
             <div className="flex flex-col gap-2.5">
               <Link
                 href="/pledge"
-                className="btn-primary flex h-12 items-center justify-center bg-campfire text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+                style={{ "--i": 0 } as React.CSSProperties}
+                className="drawer-item btn-primary flex h-12 items-center justify-center bg-campfire text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
               >
                 Make a pledge
               </Link>
 
               <Link
                 href="/redeem"
-                className="btn-primary flex h-12 items-center justify-center bg-denim text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
+                style={{ "--i": 1 } as React.CSSProperties}
+                className="drawer-item btn-primary flex h-12 items-center justify-center bg-denim text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-navy focus-visible:outline-none"
               >
                 Redeem your pledge
               </Link>
             </div>
 
             <nav aria-label="Menu" className="flex flex-col">
-              {NAV_LINKS.map((link) => (
+              {NAV_LINKS.map((link, index) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   aria-current={pathname === link.href ? "page" : undefined}
-                  className="border-b border-white/10 py-3.5 text-lg text-white/90 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none aria-[current=page]:text-campfire"
+                  style={{ "--i": index + 2 } as React.CSSProperties}
+                  className="drawer-item border-b border-white/10 py-3.5 text-lg text-white/90 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none aria-[current=page]:text-campfire"
                 >
                   {link.label}
                 </Link>
@@ -158,7 +161,8 @@ export function MobileNav() {
             <Link
               href={CD_FUND.href}
               aria-current={pathname === CD_FUND.href ? "page" : undefined}
-              className="-mt-2 flex items-center gap-2.5 py-3.5 text-base text-white/80 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none aria-[current=page]:text-campfire"
+              style={{ "--i": NAV_LINKS.length + 2 } as React.CSSProperties}
+              className="drawer-item -mt-2 flex items-center gap-2.5 py-3.5 text-base text-white/80 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none aria-[current=page]:text-campfire"
             >
               <FileText aria-hidden className="size-4 shrink-0" />
               {CD_FUND.label}
