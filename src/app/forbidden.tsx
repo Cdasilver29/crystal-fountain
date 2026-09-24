@@ -16,7 +16,6 @@ import { STATUS_PRIMARY, StatusPage } from "@/components/site/status-page";
 export default function Forbidden() {
   return (
     <StatusPage
-      width="container-table"
       title="Your account cannot open this"
       lead="This screen is limited to administrators. If you think that is wrong, ask an administrator to check your role."
       actions={

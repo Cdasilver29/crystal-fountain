@@ -136,7 +136,12 @@ export function PledgersList({ initial, initialCursor }: Props) {
     query.trim().length > 0 && query.trim().length < MIN_SEARCH_LENGTH;
 
   return (
-    <div>
+    // One column at the prose measure, centred in the page's 1200px. People
+    // come here to find their own name among fifty, and a single column scans
+    // top to bottom where a grid makes the eye jump. Holding it to 680px keeps
+    // each amount close to its name. The search sits in the same column so
+    // its left edge lines up with the names below it.
+    <div className="container-prose">
       <div className="container-form relative mx-0">
         <label htmlFor="pledger-search" className="sr-only">
           Search pledgers by first name
@@ -175,16 +180,16 @@ export function PledgersList({ initial, initialCursor }: Props) {
             : "No pledges are listed yet."}
         </p>
       ) : (
-        // Columns at wider screens, so a name and its amount stay close enough
-        // to read as one entry. At 1200px one row per pledge would put the
-        // amount a whole screen's width from the name it belongs to.
-        <ul className="mt-6 grid border-t border-neutral-200 md:grid-cols-2 md:gap-x-12 lg:grid-cols-3">
+        // A hairline between rows rather than alternating tint: at fifty rows
+        // tint bands pull the eye along the band, while a divider keeps each
+        // name and amount reading as one entry.
+        <ul className="mt-6 divide-y divide-neutral-200 border-y border-neutral-200">
           {entries.map((entry, index) => (
             <li
               // The list is append only and a pledge can repeat a name, an
               // amount and a date, so position is the only stable key here.
               key={`${entry.createdAt}-${index}`}
-              className="flex items-baseline justify-between gap-4 border-b border-neutral-200 py-4"
+              className="flex items-baseline justify-between gap-4 py-4 sm:py-5"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium text-navy">
