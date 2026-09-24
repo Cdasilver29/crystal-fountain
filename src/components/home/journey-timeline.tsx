@@ -21,7 +21,10 @@ export function JourneyTimeline() {
   return (
     <section className="bg-[#0a2c63] page-gutter section">
       <div className="container-marketing">
-        <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
+        <h2
+          data-reveal=""
+          className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-4xl"
+        >
           From vision to reality
         </h2>
 
@@ -33,7 +36,9 @@ export function JourneyTimeline() {
             which the heading beside it already says. It is cut at the dark rim
             of the plinth, so the model sits on its own base.
           */}
-          <div className="relative aspect-[1254/1028] w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/10">
+          <div
+            data-reveal=""
+            className="relative aspect-[1254/1028] w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-white/10">
             <FadeImage
               src="/images/gallery/vision-reality.jpg"
               alt="The scale model of the Crystal Fountain Cathedral and Centre, the sanctuary in front of the tower, on its plinth in the church lobby"
@@ -45,7 +50,12 @@ export function JourneyTimeline() {
             />
           </div>
 
-          <ol className="relative">
+          {/*
+            Its own reveal rather than a stagger with the picture, because on a
+            phone the list sits a screen below it and its dots would draw
+            themselves off screen.
+          */}
+          <ol data-reveal="" className="relative">
             <div
               aria-hidden
               className="absolute top-0 bottom-0 left-[7px] w-0.5 bg-white/30"
@@ -67,8 +77,9 @@ export function JourneyTimeline() {
 
                   <span
                     aria-hidden
+                    style={{ "--i": index } as React.CSSProperties}
                     className={cn(
-                      "absolute top-1 left-0 size-3.5 rounded-full",
+                      "milestone-dot absolute top-1 left-0 size-3.5 rounded-full",
                       isCurrent && "milestone-pulse scale-125 bg-campfire",
                       isPast && "bg-white",
                       !isCurrent && !isPast && "border-2 border-white/50",

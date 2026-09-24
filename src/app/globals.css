@@ -829,6 +829,134 @@
 }
 
 /*
+ * Section reveals on the home page.
+ *
+ * The same shape as the road map above. The resting state of every element is
+ * its finished state, and a bare data-reveal from the server is that resting
+ * state. RevealOnScroll sets "armed" on an element still below the fold, which
+ * hides it, and "shown" as it approaches, which runs the entrance. All of it
+ * sits under no-preference, so for a visitor who has asked for less movement
+ * none of these rules exists and nothing is ever hidden.
+ *
+ * Two forms. A plain data-reveal element rises itself. One that also carries
+ * data-stagger stays still and its children rise in turn, 60ms apart and capped
+ * at the sixth, so a long row is finished in well under a second. The two are
+ * never nested, since a rising child inside a rising parent would travel 24px.
+ *
+ * Opacity and transform only, which move nothing else on the page, so there is
+ * no layout shift. Backwards fill and no forwards fill: a child waiting out its
+ * delay stays hidden, and once the animation ends nothing is left holding a
+ * transform that could fight a hover.
+ */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* The timeline milestones, each dot settling into place in order. */
+@keyframes milestone-in {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal="armed"]:not([data-stagger]),
+  [data-reveal="armed"][data-stagger] > * {
+    opacity: 0;
+  }
+
+  [data-reveal="shown"]:not([data-stagger]),
+  [data-reveal="shown"][data-stagger] > * {
+    animation: reveal-in 400ms ease-out backwards;
+  }
+
+  [data-reveal="shown"][data-stagger] > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+  [data-reveal="shown"][data-stagger] > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+  [data-reveal="shown"][data-stagger] > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+  [data-reveal="shown"][data-stagger] > :nth-child(5) {
+    animation-delay: 240ms;
+  }
+  [data-reveal="shown"][data-stagger] > :nth-child(n + 6) {
+    animation-delay: 300ms;
+  }
+
+  /*
+   * Down the path in order, starting as the list itself lands. The standalone
+   * scale property rather than a transform, so the current milestone grows to
+   * the scale-125 it already carries instead of snapping to it at the end. The
+   * pulse is named again because this declaration would otherwise replace it.
+   */
+  [data-reveal="shown"] .milestone-dot {
+    animation: milestone-in 300ms ease-out backwards;
+    animation-delay: calc(200ms + var(--i) * 80ms);
+  }
+
+  [data-reveal="shown"] .milestone-dot.milestone-pulse {
+    animation:
+      milestone-in 300ms ease-out backwards,
+      milestone-pulse 2.4s ease-out infinite;
+    animation-delay: calc(200ms + var(--i) * 80ms), 0ms;
+  }
+}
+
+/*
+ * Cards that link somewhere lift under the cursor and press on a tap.
+ *
+ * The transition names the colour properties too, because this rule outranks
+ * the transition-colors utility on the same element and would otherwise drop
+ * the background fade the card already had. The hover shadow composes the ring
+ * variables for the reason given on the buttons below: a bare box-shadow here
+ * would delete the focus ring.
+ *
+ * The lift waits for a real pointer. On a phone :hover sticks after a tap, and
+ * a card left floating 2px up is a card that looks stuck. The press does not
+ * wait, since that is the part a tap is for.
+ */
+.card-lift {
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out,
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 12px 28px -8px rgb(0 0 0 / 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card-lift:active {
+    transform: translateY(1px);
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000),
+      var(--tw-ring-shadow, 0 0 #0000),
+      0 2px 6px -2px rgb(0 0 0 / 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift {
+    transition: none;
+  }
+}
+
+/*
  * Native selects, dressed to match the inputs beside them.
  *
  * These are still native `select` elements and nothing here changes that: the

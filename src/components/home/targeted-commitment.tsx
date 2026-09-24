@@ -55,7 +55,10 @@ export function TargetedCommitment({
   return (
     <section className="bg-navy page-gutter section">
       <div className="container-marketing">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+        <div
+          data-reveal=""
+          className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8"
+        >
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
               {COMMITMENT_COPY.heading}
@@ -89,7 +92,7 @@ export function TargetedCommitment({
           the last, a sixth of the width in from each side, so it starts and
           stops on a marker rather than at the edge of the row.
         */}
-        <div className="relative mt-8">
+        <div data-reveal="" className="relative mt-8">
           <div
             aria-hidden
             className="absolute top-4 right-[16.667%] left-[16.667%] h-0.5 -translate-y-1/2 rounded-full bg-white/20"
@@ -122,7 +125,11 @@ export function TargetedCommitment({
           </ol>
         </div>
 
-        <ol className="mt-12 grid gap-3 sm:grid-cols-3 sm:items-center sm:gap-4">
+        <ol
+          data-reveal=""
+          data-stagger=""
+          className="mt-12 grid gap-3 sm:grid-cols-3 sm:items-center sm:gap-4"
+        >
           {featured.map(({ tier, count }) => (
             <li key={tier.families}>
               <LevelCard tier={tier} count={count} />
@@ -184,7 +191,7 @@ function LevelCard({
         // Two to a row on a phone leaves about 150px a card, so the side
         // padding comes in until the small breakpoint to keep the widest
         // figure, KES 10,000,000, on one line.
-        "group block h-full rounded-xl border px-3 py-4 transition-colors sm:px-4",
+        "card-lift group block h-full rounded-xl border px-3 py-4 sm:px-4",
         "focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none",
         tier.lead
           ? "border-2 border-campfire bg-campfire/15 py-5 shadow-lg shadow-black/30 hover:bg-campfire/20 sm:-translate-y-2 sm:py-7"

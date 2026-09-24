@@ -16,11 +16,18 @@ export function VisionSection() {
       className="scroll-mt-16 bg-[#f8f7f5] page-gutter section"
     >
       <div className="container-marketing">
-        <h2 className="text-2xl font-semibold tracking-tight text-balance text-navy sm:text-4xl">
+        <h2
+          data-reveal=""
+          className="text-2xl font-semibold tracking-tight text-balance text-navy sm:text-4xl"
+        >
           More than a building project
         </h2>
 
-        <div className="mt-5 grid gap-10 md:grid-cols-[3fr_2fr] md:items-start md:gap-16">
+        <div
+          data-reveal=""
+          data-stagger=""
+          className="mt-5 grid gap-10 md:grid-cols-[3fr_2fr] md:items-start md:gap-16"
+        >
           <div>
             <p className="text-base leading-loose text-neutral-700 sm:text-lg">
               {VISION_SUMMARY}

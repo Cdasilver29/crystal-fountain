@@ -10,6 +10,7 @@ import { JourneyTimeline } from "@/components/home/journey-timeline";
 import { RecentPledges } from "@/components/home/recent-pledges";
 import { TargetedCommitment } from "@/components/home/targeted-commitment";
 import { VisionSection } from "@/components/home/vision-section";
+import { RevealOnScroll } from "@/components/motion/reveal-on-scroll";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CAMPAIGN, CONTACT } from "@/content/campaign";
 import { db } from "@/db";
@@ -98,7 +99,7 @@ export default async function HomePage() {
       <BrochureGallery />
 
       <section className="bg-white page-gutter section">
-        <div className="container-marketing">
+        <div data-reveal="" className="container-marketing">
           <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
             How to give
           </h2>
@@ -116,6 +117,12 @@ export default async function HomePage() {
       <Accountability />
 
       <FinalCta />
+
+      {/*
+        Arms the section reveals below the fold. Renders nothing; the sections
+        above carry data-reveal and are complete without it.
+      */}
+      <RevealOnScroll />
     </>
   );
 }

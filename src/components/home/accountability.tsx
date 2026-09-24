@@ -18,7 +18,11 @@ export function Accountability() {
   return (
     <section className="bg-[#f8f7f5] page-gutter section">
       <div className="container-marketing">
-        <div className="grid gap-10 md:grid-cols-[9fr_11fr] md:items-start md:gap-16">
+        <div
+          data-reveal=""
+          data-stagger=""
+          className="grid gap-10 md:grid-cols-[9fr_11fr] md:items-start md:gap-16"
+        >
           {/*
             The file's own ratio at every width, rather than a fixed height on a
             phone and three by two above it. Both of those cropped the model,

@@ -49,13 +49,18 @@ export function BrochureGallery() {
   return (
     <section className="bg-[#f8f7f5] page-gutter section">
       <div className="container-marketing">
-        <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-4xl">
+        <h2
+          data-reveal=""
+          className="text-2xl font-semibold tracking-tight text-navy sm:text-4xl"
+        >
           The development plan
         </h2>
 
         <div className="relative mt-5">
           <ul
             ref={stripRef}
+            data-reveal=""
+            data-stagger=""
             onScroll={syncArrows}
             className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:thin]"
           >
