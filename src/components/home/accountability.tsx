@@ -43,7 +43,7 @@ export function Accountability() {
             </h2>
 
             {leader.statement.length > 0 && (
-              <blockquote className="mt-3 max-w-2xl space-y-2 border-l-2 border-campfire pl-5 text-lg leading-snug text-pretty text-navy sm:text-xl">
+              <blockquote className="font-display mt-3 max-w-2xl space-y-2 border-l-2 border-campfire pl-5 text-lg leading-snug font-normal text-pretty text-navy sm:text-xl">
                 {leader.statement.map((line) => (
                   <p key={line}>{line}</p>
                 ))}

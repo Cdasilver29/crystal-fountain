@@ -95,7 +95,7 @@ export default async function ProgressPage() {
     <div className="flex flex-1 flex-col bg-neutral-50">
       <header className="bg-navy page-gutter section-feature">
         <div className="container-marketing">
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">
             Campaign progress
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-white/80">
@@ -111,7 +111,7 @@ export default async function ProgressPage() {
           <section aria-labelledby="summary-heading">
             <h2
               id="summary-heading"
-              className="mb-4 text-xl font-semibold tracking-tight text-navy"
+              className="font-display mb-4 text-xl font-semibold text-navy"
             >
               Where we are
             </h2>
@@ -165,7 +165,7 @@ export default async function ProgressPage() {
           <section aria-labelledby="cumulative-heading">
             <h2
               id="cumulative-heading"
-              className="text-xl font-semibold tracking-tight text-navy"
+              className="font-display text-xl font-semibold text-navy"
             >
               Pledges over time
             </h2>
@@ -197,7 +197,7 @@ export default async function ProgressPage() {
           <section aria-labelledby="monthly-heading">
             <h2
               id="monthly-heading"
-              className="text-xl font-semibold tracking-tight text-navy"
+              className="font-display text-xl font-semibold text-navy"
             >
               Pledged each month
             </h2>
@@ -225,7 +225,7 @@ export default async function ProgressPage() {
           <section aria-labelledby="metrics-heading">
             <h2
               id="metrics-heading"
-              className="mb-4 text-xl font-semibold tracking-tight text-navy"
+              className="font-display mb-4 text-xl font-semibold text-navy"
             >
               The shape of the giving
             </h2>
@@ -282,7 +282,7 @@ export default async function ProgressPage() {
           </section>
 
           <section className="rounded-2xl bg-navy px-6 py-10 text-center sm:px-10">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">
+            <h2 className="font-display text-2xl font-semibold text-white">
               Add your pledge to these figures
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/80">

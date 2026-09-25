@@ -10,6 +10,7 @@ import {
   StatusPage,
 } from "@/components/site/status-page";
 import { CONTACT } from "@/content/campaign";
+import { frauncesStatus } from "@/lib/fonts-status";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -22,12 +23,12 @@ export const metadata: Metadata = {
  * It lives at the root rather than under (site) because only a root not-found
  * catches URLs that match no route at all. The root layout has no site chrome,
  * so the header and footer are added here the same way the (site) layout adds
- * them. The most common way to land here is a pledge link with a mistyped or
+ * them, along with the display serif. The most common way to land here is a pledge link with a mistyped or
  * truncated token, which is what the footnote is for.
  */
 export default function NotFound() {
   return (
-    <>
+    <div className={`${frauncesStatus.variable} contents`}>
       <SiteHeader />
       <div aria-hidden className="h-16" />
       <div className="flex flex-1 flex-col">
@@ -64,6 +65,6 @@ export default function NotFound() {
         />
       </div>
       <SiteFooter />
-    </>
+    </div>
   );
 }

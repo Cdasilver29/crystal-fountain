@@ -423,7 +423,7 @@ export function PledgeForm({
         <h2
           ref={headingRef}
           tabIndex={-1}
-          className="text-xl font-semibold tracking-tight text-navy outline-none"
+          className="font-display text-xl font-semibold text-navy outline-none"
         >
           {step === 0 && "How much would you like to pledge?"}
           {step === 1 && "Your details"}

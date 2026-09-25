@@ -4,6 +4,7 @@ import { PointerMotion } from "@/components/motion/pointer-motion";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteHeader } from "@/components/site/site-header";
+import { fraunces } from "@/lib/fonts";
 
 /**
  * Chrome for the public pages only.
@@ -14,11 +15,12 @@ import { SiteHeader } from "@/components/site/site-header";
  * The data-site wrapper is what the public motion rules in globals.css are
  * scoped to, since the admin shares the button classes. display: contents, so
  * it adds a selector and no box: the header, page and footer are still laid out
- * by the body exactly as before.
+ * by the body exactly as before. It also carries the display serif's variable,
+ * which custom properties inherit through a contents box like any other.
  */
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
-    <div data-site="" className="contents">
+    <div data-site="" className={`${fraunces.variable} contents`}>
       <ScrollProgress />
       <PointerMotion />
       <SiteHeader />

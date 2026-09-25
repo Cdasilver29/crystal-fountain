@@ -6,8 +6,10 @@ import type { ReactNode } from "react";
  *
  * Built from the same page head, gutter and container as every other page, so
  * a missing page or a failed render still looks like part of the site rather
- * than a crash. Takes no error, message or stack on purpose: nothing about
- * what went wrong is ever shown to a visitor.
+ * than a crash. The heading is in the display serif wherever the page sets
+ * its variable; the admin error screen passes serif={false} and keeps the
+ * sans the rest of the portal uses. Takes no error, message or stack on
+ * purpose: nothing about what went wrong is ever shown to a visitor.
  */
 export function StatusPage({
   title,
@@ -15,18 +17,22 @@ export function StatusPage({
   actions,
   footnote,
   width = "container-marketing",
+  serif = true,
 }: {
   title: string;
   lead: string;
   actions: ReactNode;
   footnote?: ReactNode;
   width?: "container-marketing" | "container-table";
+  serif?: boolean;
 }) {
   return (
     <div className="flex flex-1 flex-col bg-white">
       <header className="bg-navy page-gutter section-feature">
         <div className={width}>
-          <h1 className="text-3xl font-semibold tracking-tight text-white">
+          <h1
+            className={`text-3xl font-semibold text-white ${serif ? "font-display" : "tracking-tight"}`}
+          >
             {title}
           </h1>
           <p className="container-prose mx-0 mt-2 text-white/70">{lead}</p>

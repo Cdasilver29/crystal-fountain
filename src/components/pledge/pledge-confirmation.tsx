@@ -98,12 +98,12 @@ export function PledgeConfirmation({
             heading.
           */}
           {justCreated ? (
-            <p className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            <p className="font-display mt-4 text-2xl font-semibold text-white sm:text-3xl">
               Crystal Fountain
             </p>
           ) : (
             <>
-              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              <h1 className="font-display mt-4 text-2xl font-semibold text-white sm:text-3xl">
                 Pledge acknowledgement
               </h1>
 
@@ -130,7 +130,7 @@ export function PledgeConfirmation({
                 somebody believing they have just paid cannot be the one place
                 that blurs the two.
               */}
-              <h1 className="mt-4 text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+              <h1 className="font-display mt-4 text-2xl font-semibold text-navy sm:text-3xl">
                 {isAddition
                   ? "Thank you. Your pledge is updated."
                   : "Thank you. Your pledge is recorded."}
@@ -205,7 +205,7 @@ export function PledgeConfirmation({
             an evening matching by hand.
           */}
           <section className="rounded-2xl border border-amber-300/70 bg-amber-50 p-5 shadow-sm sm:p-7">
-            <h2 className="text-lg font-semibold tracking-tight text-navy">
+            <h2 className="font-display text-lg font-semibold text-navy">
               Save your pledge reference
             </h2>
 
@@ -291,7 +291,7 @@ export function PledgeConfirmation({
           </section>
 
           <section>
-            <h2 className="mb-4 text-lg font-semibold tracking-tight text-navy">
+            <h2 className="font-display mb-4 text-lg font-semibold text-navy">
               How to pay your pledge
             </h2>
             <PaymentInstructions details={details} reference={pledge.reference} />
@@ -308,7 +308,7 @@ export function PledgeConfirmation({
             changes it on the settings screen.
           */}
           <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7">
-            <h2 className="text-lg font-semibold tracking-tight text-navy">
+            <h2 className="font-display text-lg font-semibold text-navy">
               What to do next
             </h2>
 

@@ -77,7 +77,7 @@ export function TargetedCommitment({
           <div>
             <h2
               id="commitment-heading"
-              className="text-xl font-semibold tracking-tight text-balance text-white sm:text-2xl"
+              className="font-display text-xl font-semibold text-balance text-white sm:text-2xl"
             >
               {COMMITMENT_COPY.heading}
             </h2>

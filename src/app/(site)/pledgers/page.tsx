@@ -44,7 +44,7 @@ export default async function PledgersPage() {
     <div className="bg-white">
       <header className="bg-navy page-gutter section">
         <div className="container-marketing">
-          <h1 className="text-3xl font-semibold tracking-tight text-white">
+          <h1 className="font-display text-3xl font-semibold text-white">
             Pledgers
           </h1>
           <p className="mt-2 text-white/70">

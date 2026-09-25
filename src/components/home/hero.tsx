@@ -146,11 +146,11 @@ export function Hero({
       />
 
       <div className="hero-lift-soft relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center py-8 text-center">
-        <p className="hero-lift text-xl font-extrabold tracking-tight text-balance text-campfire sm:text-3xl">
+        <p className="font-display hero-lift text-xl font-bold text-balance text-campfire sm:text-3xl">
           {CAMPAIGN.tagline}
         </p>
 
-        <h1 className="hero-lift mt-3 text-3xl font-bold tracking-tight text-balance text-white sm:text-5xl">
+        <h1 className="font-display hero-lift mt-3 text-3xl leading-tight font-bold text-balance text-white sm:text-5xl sm:leading-[1.1] sm:tracking-[-0.01em]">
           {CAMPAIGN.name}
         </h1>
 

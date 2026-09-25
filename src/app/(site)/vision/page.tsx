@@ -32,7 +32,7 @@ export default function VisionPage() {
     <>
       <section className="bg-navy page-gutter section-feature">
         <div className="container-marketing">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
             More than a building project
           </h1>
 
@@ -61,7 +61,7 @@ export default function VisionPage() {
       */}
       <section id="about" className="bg-white page-gutter section">
         <div className="container-prose">
-          <h2 className="text-2xl font-semibold tracking-tight text-balance text-navy sm:text-3xl">
+          <h2 className="font-display text-2xl font-semibold text-balance text-navy sm:text-3xl">
             {ABOUT_PROJECT.heading}
           </h2>
           <p className="mt-4 text-base leading-relaxed text-neutral-700 sm:text-lg">
@@ -70,7 +70,7 @@ export default function VisionPage() {
 
           {ABOUT_PROJECT.parts.map((part) => (
             <div key={part.heading} className="mt-8">
-              <h3 className="text-lg font-semibold text-navy">
+              <h3 className="font-display text-lg font-semibold text-navy">
                 {part.heading}
               </h3>
               <p className="mt-2 text-base leading-relaxed text-neutral-700">
@@ -97,7 +97,7 @@ export default function VisionPage() {
           >
             <div className="container-marketing grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-start md:gap-16">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+                <h2 className="font-display text-2xl font-semibold text-navy sm:text-3xl">
                   {section.heading}
                 </h2>
 
@@ -143,7 +143,7 @@ export default function VisionPage() {
 
       <section className="bg-white page-gutter section">
         <div className="container-marketing">
-          <h2 className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl">
+          <h2 className="font-display text-2xl font-semibold text-navy sm:text-3xl">
             Oversight and accountability
           </h2>
 

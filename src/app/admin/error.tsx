@@ -20,6 +20,7 @@ export default function AdminError({ reset }: { reset: () => void }) {
   return (
     <StatusPage
       width="container-table"
+      serif={false}
       title="Something went wrong"
       lead="The page could not load. This has been reported and we are looking at it."
       actions={

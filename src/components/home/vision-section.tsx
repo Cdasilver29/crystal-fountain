@@ -28,7 +28,7 @@ export function VisionSection() {
         </div>
 
         <div data-reveal="" className="mt-8 lg:mt-0">
-          <h2 className="text-xl font-semibold tracking-tight text-balance text-navy sm:text-2xl">
+          <h2 className="font-display text-xl font-semibold text-balance text-navy sm:text-2xl">
             More than a building project
           </h2>
 

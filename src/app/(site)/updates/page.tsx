@@ -16,7 +16,7 @@ export default function UpdatesPage() {
     <>
       <section className="bg-navy page-gutter section">
         <div className="container-prose">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
             Project updates
           </h1>
         </div>

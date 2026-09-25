@@ -24,7 +24,7 @@ export default function CdFundPage() {
     <div className="bg-white">
       <header className="bg-navy page-gutter section">
         <div className="container-prose">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
             {CD_FUND_PAGE.title}
           </h1>
 
@@ -37,7 +37,7 @@ export default function CdFundPage() {
       <main className="page-gutter section">
         <div className="container-prose">
           <section>
-            <h2 className="text-lg font-semibold tracking-tight text-navy">
+            <h2 className="font-display text-lg font-semibold text-navy">
               {CD_FUND_PAGE.introHeading}
             </h2>
 
@@ -51,7 +51,7 @@ export default function CdFundPage() {
             ))}
           </section>
 
-          <h2 className="mt-12 text-2xl font-semibold tracking-tight text-navy">
+          <h2 className="font-display mt-12 text-2xl font-semibold text-navy">
             {CD_FUND_PAGE.pillarsHeading}
           </h2>
 
@@ -76,7 +76,7 @@ export default function CdFundPage() {
                   </span>
 
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold tracking-tight text-balance text-navy">
+                    <h3 className="font-display text-lg font-semibold text-balance text-navy">
                       {pillar.heading}
                     </h3>
 

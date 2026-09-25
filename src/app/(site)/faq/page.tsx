@@ -45,7 +45,7 @@ export default async function FaqPage() {
         />
 
         <div className="container-prose relative z-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
             Frequently asked questions
           </h1>
 

@@ -10,7 +10,7 @@ export function PledgeCta({ heading }: { heading: string }) {
   return (
     <section className="bg-navy page-gutter section-feature">
       <div className="container-marketing">
-        <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl">
+        <h2 className="font-display text-2xl font-semibold text-balance text-white sm:text-3xl">
           {heading}
         </h2>
 

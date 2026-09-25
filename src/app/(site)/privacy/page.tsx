@@ -18,7 +18,7 @@ export default function PrivacyPage() {
     <div className="bg-white">
       <header className="bg-navy page-gutter section">
         <div className="container-prose">
-          <h1 className="text-3xl font-semibold tracking-tight text-white">
+          <h1 className="font-display text-3xl font-semibold text-white">
             Privacy
           </h1>
           <p className="mt-2 text-white/70">
@@ -120,7 +120,7 @@ export default function PrivacyPage() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold tracking-tight text-navy">{title}</h2>
+      <h2 className="font-display text-lg font-semibold text-navy">{title}</h2>
       <div className="mt-2 leading-relaxed text-neutral-700">{children}</div>
     </section>
   );

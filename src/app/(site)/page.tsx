@@ -114,7 +114,7 @@ export default async function HomePage() {
 
       <section className="page-gutter section">
         <div data-reveal="" className="container-marketing">
-          <h2 className="text-xl font-semibold tracking-tight text-navy sm:text-2xl">
+          <h2 className="font-display text-xl font-semibold text-navy sm:text-2xl">
             How to give
           </h2>
           <p className="container-prose mx-0 mt-2 text-base leading-relaxed text-neutral-700">

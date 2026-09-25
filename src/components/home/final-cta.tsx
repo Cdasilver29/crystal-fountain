@@ -10,7 +10,7 @@ export function FinalCta() {
   return (
     <section className="bg-campfire page-gutter section-feature">
       <div className="container-marketing flex flex-col items-center text-center">
-        <h2 className="text-2xl font-semibold tracking-tight text-balance text-white sm:text-4xl">
+        <h2 className="font-display text-2xl font-semibold text-balance text-white sm:text-4xl">
           Ready to make your pledge?
         </h2>
 

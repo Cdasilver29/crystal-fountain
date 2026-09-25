@@ -32,7 +32,7 @@ export function JourneyTimeline() {
         <div className="grid gap-8 md:grid-cols-[38fr_62fr] md:grid-rows-[auto_1fr] md:gap-x-16 md:gap-y-6">
           <h2
             data-reveal=""
-            className="text-xl font-semibold tracking-tight text-balance text-white sm:text-3xl md:col-start-1 md:row-start-1"
+            className="font-display text-xl font-semibold text-balance text-white sm:text-3xl md:col-start-1 md:row-start-1"
           >
             From vision to reality
           </h2>

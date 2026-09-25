@@ -130,7 +130,7 @@ export function RedeemLookup({
       <section aria-labelledby="lookup-heading">
         <h2
           id="lookup-heading"
-          className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl"
+          className="font-display text-2xl font-semibold text-navy sm:text-3xl"
         >
           Look up your pledge
         </h2>
@@ -317,7 +317,7 @@ export function RedeemLookup({
       <section aria-labelledby="pay-heading">
         <h2
           id="pay-heading"
-          className="text-2xl font-semibold tracking-tight text-navy sm:text-3xl"
+          className="font-display text-2xl font-semibold text-navy sm:text-3xl"
         >
           How to pay
         </h2>

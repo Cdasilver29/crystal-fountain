@@ -51,7 +51,7 @@ export function BrochureGallery() {
       <div className="container-marketing">
         <h2
           data-reveal=""
-          className="text-xl font-semibold tracking-tight text-balance text-navy sm:text-3xl"
+          className="font-display text-xl font-semibold text-balance text-navy sm:text-3xl"
         >
           What we are building, in five pages
         </h2>

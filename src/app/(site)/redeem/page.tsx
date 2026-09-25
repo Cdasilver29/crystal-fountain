@@ -40,7 +40,7 @@ export default async function RedeemPage() {
             Crystal Fountain Development Project
           </Link>
 
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          <h1 className="font-display mt-4 text-2xl font-semibold text-white sm:text-3xl">
             Redeem your pledge
           </h1>
 
