@@ -8,14 +8,14 @@ const nextConfig: NextConfig = {
     authInterrupts: true,
   },
   /*
-   * The share card reads its two Geist faces off disk at request time, and
-   * nothing imports them, so tracing has no way to know the route needs them.
-   * Without this they are left out of the deployed function and every card
-   * falls back to the font next/og bundles.
+   * The share card and the default preview read their Geist and Fraunces faces
+   * off disk at request time, and nothing imports them, so tracing has no way
+   * to know the routes need them. Without this they are left out of the
+   * deployed functions and every card falls back to the font next/og bundles.
    */
   outputFileTracingIncludes: {
-    "/api/pledges/[token]/card.png": ["./src/assets/fonts/*.ttf"],
-    "/api/og/default.png": ["./src/assets/fonts/*.ttf"],
+    "/api/pledges/[token]/card.png": ["./src/assets/fonts/*.{ttf,woff}"],
+    "/api/og/default.png": ["./src/assets/fonts/*.{ttf,woff}"],
   },
 
   images: {

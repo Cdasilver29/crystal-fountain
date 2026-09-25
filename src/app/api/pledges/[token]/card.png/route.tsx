@@ -66,7 +66,7 @@ const BAR_HEIGHT = 20;
 const CARD_MAX_AGE_SECONDS = 300;
 const CARD_STALE_SECONDS = 3600;
 
-/** The typeface the rest of the site is set in. See the README beside them. */
+/** The typefaces the rest of the site is set in. See the README beside them. */
 const FONT_DIR = join(process.cwd(), "src", "assets", "fonts");
 
 type CardFonts = NonNullable<
@@ -74,7 +74,7 @@ type CardFonts = NonNullable<
 >["fonts"];
 
 /**
- * The two faces, read once per instance rather than once per card.
+ * The faces, read once per instance rather than once per card.
  *
  * Memoised on the promise rather than on the result, so several cards drawn at
  * the same moment on a cold instance wait on one read instead of racing to
@@ -91,13 +91,17 @@ function cardFonts(): Promise<CardFonts> {
   fonts ??= Promise.all([
     readFile(join(FONT_DIR, "Geist-Regular.ttf")),
     readFile(join(FONT_DIR, "Geist-Bold.ttf")),
+    readFile(join(FONT_DIR, "Fraunces-Bold.woff")),
   ])
-    .then(([regular, bold]): CardFonts => [
+    .then(([regular, bold, display]): CardFonts => [
       // Copied into their own ArrayBuffers. A Buffer from readFile is a view
       // onto a shared pool, and handing Satori the pool rather than the font
       // is a class of bug that only shows up under load.
       { name: "Geist", data: Uint8Array.from(regular).buffer, weight: 400, style: "normal" },
       { name: "Geist", data: Uint8Array.from(bold).buffer, weight: 700, style: "normal" },
+      // The display serif the site sets its headings in, for the headline and
+      // the reference. Bold only: nothing on the card is Fraunces at 400.
+      { name: "Fraunces", data: Uint8Array.from(display).buffer, weight: 700, style: "normal" },
     ])
     .catch((error) => {
       /*
@@ -207,10 +211,10 @@ export async function GET(
             <div
               style={{
                 display: "flex",
+                fontFamily: "Fraunces",
                 fontSize: "52px",
                 fontWeight: 700,
                 color: CAMPFIRE,
-                letterSpacing: "-1px",
               }}
             >
               This is My Pledge
@@ -220,10 +224,11 @@ export async function GET(
             <div
               style={{
                 display: "flex",
+                fontFamily: "Fraunces",
                 fontSize: "128px",
                 fontWeight: 700,
                 color: "#ffffff",
-                letterSpacing: "-2px",
+                letterSpacing: "-1px",
                 marginTop: "18px",
                 lineHeight: 1.1,
               }}

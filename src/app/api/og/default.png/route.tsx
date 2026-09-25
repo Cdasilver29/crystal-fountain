@@ -22,8 +22,8 @@ export const dynamic = "force-dynamic";
  * at 1200 by 630, the shape those apps actually show.
  *
  * Built the same way as the pledge share card beside it in
- * api/pledges/[token]/card.png: next/og, flexbox with inline styles, Geist read
- * from src/assets/fonts. Aggregates only. Nothing on it belongs to any one
+ * api/pledges/[token]/card.png: next/og, flexbox with inline styles, Geist and
+ * the Fraunces headings read from src/assets/fonts. Aggregates only. Nothing on it belongs to any one
  * person.
  */
 
@@ -56,10 +56,12 @@ function cardFonts(): Promise<CardFonts> {
   fonts ??= Promise.all([
     readFile(join(FONT_DIR, "Geist-Regular.ttf")),
     readFile(join(FONT_DIR, "Geist-Bold.ttf")),
+    readFile(join(FONT_DIR, "Fraunces-Bold.woff")),
   ])
-    .then(([regular, bold]): CardFonts => [
+    .then(([regular, bold, display]): CardFonts => [
       { name: "Geist", data: Uint8Array.from(regular).buffer, weight: 400, style: "normal" },
       { name: "Geist", data: Uint8Array.from(bold).buffer, weight: 700, style: "normal" },
+      { name: "Fraunces", data: Uint8Array.from(display).buffer, weight: 700, style: "normal" },
     ])
     .catch((error) => {
       Sentry.captureException(error, { tags: { area: "default_og_fonts" } });
@@ -120,10 +122,10 @@ export async function GET() {
             <div
               style={{
                 display: "flex",
+                fontFamily: "Fraunces",
                 fontSize: "108px",
                 fontWeight: 700,
                 color: CAMPFIRE,
-                letterSpacing: "-2px",
                 lineHeight: 1.05,
               }}
             >
@@ -133,11 +135,11 @@ export async function GET() {
             <div
               style={{
                 display: "flex",
+                fontFamily: "Fraunces",
                 fontSize: "46px",
                 fontWeight: 700,
                 color: "#ffffff",
                 marginTop: "22px",
-                letterSpacing: "-0.5px",
               }}
             >
               Crystal Fountain Development Project
