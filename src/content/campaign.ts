@@ -81,7 +81,7 @@ export const CONTACT = {
  * because CLAUDE.md rules em dashes out of all copy.
  */
 export const PROJECT_SUMMARY =
-  "The Crystal Fountain Development is more than a building project. It is a permanent home for this congregation: a sanctuary designed for 3,000 to 5,000 worshippers, with basement parking for 700 vehicles, classrooms, a library, offices, and landscaped grounds. Alongside the sanctuary, a mixed-use tower will generate income to sustain the ministry for generations.";
+  "The Crystal Fountain Development is more than a building project. It is a permanent home for this congregation: a sanctuary designed for 3,000 to 5,000 worshippers, with basement parking for 700 vehicles, classrooms, a library, offices, and landscaped grounds. Alongside the sanctuary, Advent Tower and Centre will generate income to sustain the ministry for generations.";
 
 export type ProjectStat = { value: string; label: string };
 

@@ -206,10 +206,10 @@ export const BROCHURE_PAGES: readonly { src: string; alt: string }[] = [
 
 /**
  * The short vision statement used on the home page. /vision has its own,
- * VISION_PAGE_SUMMARY, which names the tower.
+ * VISION_PAGE_SUMMARY, which also describes what the tower is.
  */
 export const VISION_SUMMARY =
-  "The Crystal Fountain Development gives our church a permanent, larger home: a sanctuary built for the size and future of this congregation, while creating a mixed-use tower alongside it that generates income to sustain the ministry for years to come.";
+  "The Crystal Fountain Development gives our church a permanent, larger home: a sanctuary built for the size and future of this congregation, while creating Advent Tower and Centre alongside it, which generates income to sustain the ministry for years to come.";
 
 /** The short vision statement at the top of /vision. */
 export const VISION_PAGE_SUMMARY =
