@@ -94,6 +94,8 @@ Architecture:
   for a reason unrelated to what it is testing.
 - Never run two sweeps against the same database branch at once. They overwrite each other's
   fixtures and produce failures that do not reproduce.
+- Layout changes are measured at 1280px as well as at 1920px and 360px, because 1280px is
+  where most laptops sit and a layout checked only at the extremes can be wrong in between.
 - Do not install a dependency without saying why and pinning the exact version.
 - Do not refactor code you were not asked to touch.
 - If something is ambiguous, ask one question and wait. Do not guess and build.
