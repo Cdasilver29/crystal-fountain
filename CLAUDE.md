@@ -139,6 +139,12 @@ run by the user.
   migration disappears from drizzle/ and a subsequent db:migrate will silently apply
   nothing. State this in the summary whenever a revert touches a commit that carried a
   migration.
+- The Neon project is on the paid Launch plan with autoscaling capped at 1 CU. Every compute
+  hour on production and on branches is billed. Test branches are created per session and
+  deleted at the end of that session, never left running. State in the summary which branch
+  was created and that it was deleted.
+- Never raise the autoscaling maximum or turn on always-on compute. If a task seems to need
+  more compute, stop and ask.
 
 ## Not in v1
 
