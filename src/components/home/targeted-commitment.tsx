@@ -121,11 +121,16 @@ export function TargetedCommitment({
           The line runs from the centre of the first column to the centre of
           the last, a sixth of the width in from each side, so it starts and
           stops on a marker rather than at the edge of the row.
+
+          The numerals are 20px bold, which WCAG counts as large text. White
+          on campfire is 3.42:1 and on treefrog 4.14:1: short of the 4.5:1
+          small text needs, clear of the 3:1 large text needs. The circles
+          grew from 32px to 36px to hold them, and the line moved with them.
         */}
         <div data-reveal="" className="relative mt-8">
           <div
             aria-hidden
-            className="absolute top-4 right-[16.667%] left-[16.667%] h-0.5 -translate-y-1/2 rounded-full bg-white/20"
+            className="absolute top-[18px] right-[16.667%] left-[16.667%] h-0.5 -translate-y-1/2 rounded-full bg-white/20"
           />
           <ol className="relative grid grid-cols-3 gap-3 sm:gap-6">
             {PLEDGE_STEPS.map((step, index) => (
@@ -136,7 +141,7 @@ export function TargetedCommitment({
                 <span
                   aria-hidden
                   className={cn(
-                    "tabular flex size-8 items-center justify-center rounded-full text-sm font-semibold text-white ring-4 ring-navy",
+                    "tabular flex size-9 items-center justify-center rounded-full text-xl font-bold text-white ring-4 ring-navy",
                     index === 0 && "bg-campfire",
                     index === 1 && "bg-treefrog",
                     index === 2 && "bg-denim",
