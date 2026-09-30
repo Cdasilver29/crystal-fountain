@@ -1372,8 +1372,16 @@ html:has([data-site]) {
   }
 }
 
-[data-tab-hidden] .phrase-reel {
+[data-tab-hidden] .phrase-reel,
+[data-motion-paused] .phrase-reel {
   animation-play-state: paused;
+}
+
+/* Nothing moves by itself under reduced motion, so there is nothing to pause. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-toggle {
+    display: none;
+  }
 }
 
 /*

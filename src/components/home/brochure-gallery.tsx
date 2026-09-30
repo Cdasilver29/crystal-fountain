@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { FadeImage } from "@/components/media/fade-image";
+import { MOTION_PAUSED, MotionToggle } from "@/components/motion/motion-toggle";
 import {
   BROCHURE_HEIGHT,
   BROCHURE_PAGES,
@@ -44,7 +45,7 @@ function placement(angle: number, index: number) {
  * The printed trifold, as a ring of pages that turns, with a detail panel.
  *
  * The five pages go round a circle and the ring turns slowly on its own.
- * A touch or the mouse over it stops it, and a drag spins it either way, one
+ * A touch, the mouse over it or the pause switch stops it, and a drag spins it either way, one
  * page for a card's width of travel. Let go and it carries on for a moment,
  * rests, and then turns again in whichever direction it was last spun. The
  * arrows turn it a page at a time, and a card that takes keyboard focus is
@@ -125,6 +126,7 @@ export function BrochureGallery() {
       } else if (
         !still &&
         !Object.values(holds).some(Boolean) &&
+        !document.documentElement.hasAttribute(MOTION_PAUSED) &&
         time >= resumeAt
       ) {
         angle += direction * DRIFT * dt;
@@ -291,6 +293,7 @@ export function BrochureGallery() {
           </h2>
 
           <div className="flex shrink-0 gap-2">
+            <MotionToggle className="size-10 border border-navy/15 bg-white text-navy shadow-sm transition-colors hover:bg-neutral-100" />
             <RoundButton
               label="Turn to the previous page"
               disabled={false}

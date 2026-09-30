@@ -2,6 +2,7 @@ import { FileText } from "lucide-react";
 import Link from "next/link";
 
 import { LiveTracker } from "@/components/campaign/live-tracker";
+import { MotionToggle } from "@/components/motion/motion-toggle";
 import { CAMPAIGN, SCRIPTURE } from "@/content/campaign";
 import { CD_FUND } from "@/content/cd-fund";
 import { HERO_PHRASES } from "@/content/home";
@@ -167,17 +168,25 @@ export function Hero({
           A screen reader gets the three phrases once, as one sentence, and
           the moving copy is hidden from it so it is not read out on every
           turn.
+
+          The pause switch hangs off the right of the line rather than sitting
+          in the row with it, so the line stays centred under the headline.
         */}
-        <p className="mt-3 text-base text-white/80 sm:text-xl">
-          <span className="sr-only">{HERO_PHRASES.join(" ")}</span>
-          <span aria-hidden className="phrase-window">
-            <span className="phrase-reel">
-              {[...HERO_PHRASES, HERO_PHRASES[0]].map((phrase, index) => (
-                <span key={index}>{phrase}</span>
-              ))}
-            </span>
-          </span>
-        </p>
+        <div className="mt-3">
+          <div className="relative inline-block">
+            <p className="text-base text-white/80 sm:text-xl">
+              <span className="sr-only">{HERO_PHRASES.join(" ")}</span>
+              <span aria-hidden className="phrase-window">
+                <span className="phrase-reel">
+                  {[...HERO_PHRASES, HERO_PHRASES[0]].map((phrase, index) => (
+                    <span key={index}>{phrase}</span>
+                  ))}
+                </span>
+              </span>
+            </p>
+            <MotionToggle className="absolute top-1/2 left-full ml-2 size-7 -translate-y-1/2 text-white/50 hover:bg-white/10 hover:text-white" />
+          </div>
+        </div>
 
         <p className="mt-1 text-base text-balance text-white/80 sm:text-xl">
           {CAMPAIGN.subheading}

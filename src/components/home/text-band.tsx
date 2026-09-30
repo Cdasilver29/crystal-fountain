@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
+import { MOTION_PAUSED } from "@/components/motion/motion-toggle";
 import { TEXT_BAND_WORDS } from "@/content/home";
 
 /*
@@ -20,7 +21,8 @@ const SPEED = 35;
  * Texture rather than a headline: the serif large and faint on navy, drifting
  * left on its own. A drag or a swipe moves it either way, back from left to
  * right as well, and it drifts on from wherever it was let go. It stops under
- * the mouse. One requestAnimationFrame loop writes one transform, and only
+ * the mouse, and with the pause switch in the hero or beside the brochure.
+ * One requestAnimationFrame loop writes one transform, and only
  * while the band is on screen; a hidden tab gets no frames. Under reduced
  * motion it does not drift, but can still be dragged.
  *
@@ -57,7 +59,8 @@ export function TextBand() {
     };
 
     const tick = (time: number) => {
-      if (last && !still && !over && !held) {
+      const paused = document.documentElement.hasAttribute(MOTION_PAUSED);
+      if (last && !still && !over && !held && !paused) {
         x -= (SPEED * Math.min(time - last, 50)) / 1000;
       }
       last = time;
