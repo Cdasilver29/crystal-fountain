@@ -9,7 +9,9 @@ import { Hero } from "@/components/home/hero";
 import { JourneyTimeline } from "@/components/home/journey-timeline";
 import { RecentPledges } from "@/components/home/recent-pledges";
 import { TargetedCommitment } from "@/components/home/targeted-commitment";
+import { TextBand } from "@/components/home/text-band";
 import { VisionSection } from "@/components/home/vision-section";
+import { PauseWhenHidden } from "@/components/motion/pause-when-hidden";
 import { RevealOnScroll } from "@/components/motion/reveal-on-scroll";
 import { JsonLd } from "@/components/seo/json-ld";
 import { CAMPAIGN, CONTACT } from "@/content/campaign";
@@ -109,6 +111,7 @@ export default async function HomePage() {
         targetMinor={totals.targetMinor}
         bandCounts={bandCounts}
       />
+      <TextBand />
       <JourneyTimeline />
       <BrochureGallery />
 
@@ -137,6 +140,8 @@ export default async function HomePage() {
         above carry data-reveal and are complete without it.
       */}
       <RevealOnScroll />
+      {/* Pauses the hero line and the text band while the tab is hidden. */}
+      <PauseWhenHidden />
     </>
   );
 }

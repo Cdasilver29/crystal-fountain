@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LiveTracker } from "@/components/campaign/live-tracker";
 import { CAMPAIGN, SCRIPTURE } from "@/content/campaign";
 import { CD_FUND } from "@/content/cd-fund";
+import { HERO_PHRASES } from "@/content/home";
 import type { CampaignTotalsDto } from "@/lib/campaign";
 
 /**
@@ -154,7 +155,31 @@ export function Hero({
           {CAMPAIGN.name}
         </h1>
 
-        <p className="mt-3 text-base text-balance text-white/80 sm:text-xl">
+        {/*
+          A line that turns over every few seconds, set exactly like the
+          subheading so it reads as part of the heading block rather than a
+          new thing competing with the tracker. The phrases stack in a window
+          one line tall and a CSS animation slides the stack up a line at a
+          time; the last is the first again, so the loop has no seam. It is
+          not the largest text on the screen, so it cannot become the LCP
+          element, and it needs no script to start.
+
+          A screen reader gets the three phrases once, as one sentence, and
+          the moving copy is hidden from it so it is not read out on every
+          turn.
+        */}
+        <p className="mt-3 text-base text-white/80 sm:text-xl">
+          <span className="sr-only">{HERO_PHRASES.join(" ")}</span>
+          <span aria-hidden className="phrase-window">
+            <span className="phrase-reel">
+              {[...HERO_PHRASES, HERO_PHRASES[0]].map((phrase, index) => (
+                <span key={index}>{phrase}</span>
+              ))}
+            </span>
+          </span>
+        </p>
+
+        <p className="mt-1 text-base text-balance text-white/80 sm:text-xl">
           {CAMPAIGN.subheading}
         </p>
 

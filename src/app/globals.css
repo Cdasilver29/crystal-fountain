@@ -1362,6 +1362,72 @@ html:has([data-site]) {
 }
 
 /*
+ * The hero's turning line. A window one line tall over a stack of four lines,
+ * the last a repeat of the first. Each phrase holds for 3s, then the stack
+ * slides up a line over 400ms: 3.4s a phrase, 10.2s a turn, and the jump from
+ * the repeat back to the start moves nothing on screen.
+ */
+.phrase-window {
+  display: block;
+  height: 1.5em;
+  overflow: hidden;
+  line-height: 1.5em;
+}
+
+.phrase-reel,
+.phrase-reel > span {
+  display: block;
+}
+
+.phrase-reel > span {
+  height: 1.5em;
+}
+
+@keyframes phrase-turn {
+  0%,
+  29.41% {
+    transform: translateY(0);
+  }
+  33.33%,
+  62.75% {
+    transform: translateY(-25%);
+  }
+  66.67%,
+  96.08% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(-75%);
+  }
+}
+
+/*
+ * The text band. The track holds two identical copies and slides left by one
+ * of them, about 35px a second: a copy is about 2,440px wide, so 70s.
+ */
+@keyframes band-drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .phrase-reel {
+    animation: phrase-turn 10.2s ease-in-out infinite;
+  }
+
+  .text-band-track {
+    animation: band-drift 70s linear infinite;
+  }
+}
+
+.text-band:hover .text-band-track,
+[data-tab-hidden] .text-band-track,
+[data-tab-hidden] .phrase-reel {
+  animation-play-state: paused;
+}
+
+/*
  * A mouse drag on the brochure row. Snapping is off while it is held and while
  * the release glides to a card; BrochureGallery sets and clears the attribute.
  */
