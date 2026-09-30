@@ -5,6 +5,7 @@ import { Sparkline } from "@/components/campaign/sparkline";
 import { Accountability } from "@/components/home/accountability";
 import { BrochureGallery } from "@/components/home/brochure-gallery";
 import { FinalCta } from "@/components/home/final-cta";
+import { GiftProtection } from "@/components/home/gift-protection";
 import { Hero } from "@/components/home/hero";
 import { JourneyTimeline } from "@/components/home/journey-timeline";
 import { RecentPledges } from "@/components/home/recent-pledges";
@@ -114,6 +115,7 @@ export default async function HomePage() {
       <TextBand />
       <JourneyTimeline />
       <BrochureGallery />
+      <GiftProtection />
 
       <section className="page-gutter section">
         <div data-reveal="" className="container-marketing">

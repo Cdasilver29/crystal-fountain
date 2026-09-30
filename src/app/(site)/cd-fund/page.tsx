@@ -59,6 +59,7 @@ export default function CdFundPage() {
             {CD_FUND_PAGE.pillars.map((pillar) => (
               <section
                 key={pillar.number}
+                id={`pillar-${pillar.number}`}
                 className="rounded-2xl border border-navy/10 bg-navy/[0.03] p-5 sm:p-6"
               >
                 {/*

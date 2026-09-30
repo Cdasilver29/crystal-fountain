@@ -28,3 +28,58 @@ export const TEXT_BAND_WORDS = [
   "This is My Pledge",
   "#CrystalFountain",
 ] as const;
+
+/**
+ * How your gift is protected: six facts from the CD-Fund policy, each linking
+ * to the pillar it comes from on /cd-fund. The wording is taken from
+ * CD_FUND_PAGE in src/content/cd-fund.ts, shortened to fit a tile and never
+ * added to. A tile with a number shows it as its picture; the others name a
+ * lucide icon.
+ */
+export type ProtectionFact = {
+  readonly headline: string;
+  readonly line: string;
+  /** The pillar's number on /cd-fund, which is its anchor: #pillar-<n>. */
+  readonly pillar: number;
+  readonly figure?: string;
+  readonly icon?: "ring-fenced" | "segregation" | "audit" | "investment";
+};
+
+export const PROTECTION_FACTS: readonly ProtectionFact[] = [
+  {
+    figure: "3",
+    headline: "Authorised sign-offs on every payment",
+    line: "All financial payments, whether digital or physical, require three authorised sign-offs.",
+    pillar: 5,
+  },
+  {
+    icon: "segregation",
+    headline: "No one person controls a payment",
+    line: "No single individual or committee can initiate, authorise, and execute the same payment.",
+    pillar: 5,
+  },
+  {
+    figure: "7",
+    headline: "Years every record is kept",
+    line: "All accounting ledgers, vouchers, and contracts are archived physically and digitally for a statutory period of 7 years.",
+    pillar: 5,
+  },
+  {
+    icon: "ring-fenced",
+    headline: "The fund is ring-fenced",
+    line: "Its assets are separated from the church's day-to-day operational budgets.",
+    pillar: 1,
+  },
+  {
+    icon: "audit",
+    headline: "An independent audit committee",
+    line: "Church experts, excluding board or treasury staff, audit the receipt books, bank reconciliation trails, and mobile logs.",
+    pillar: 5,
+  },
+  {
+    icon: "investment",
+    headline: "No speculative investments",
+    line: "Equities and stocks, cryptocurrencies, and derivatives are explicitly banned.",
+    pillar: 3,
+  },
+];

@@ -1355,8 +1355,16 @@ html:has([data-site]) {
   transition: transform 150ms ease-out;
 }
 
+/* The bento tiles in "How your gift is protected" lift the same way. */
+.bento-tile {
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
 @media (prefers-reduced-motion: no-preference) and (hover: hover) {
-  .brochure-card:hover {
+  .brochure-card:hover,
+  .bento-tile:hover {
     transform: translateY(-2px);
   }
 }
