@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { SectionBackground } from "@/components/media/section-background";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { SOCIAL_LINKS, UPDATES_PLACEHOLDER } from "@/content/project";
 import { pageMetadata } from "@/lib/metadata";
@@ -14,8 +15,15 @@ export const metadata: Metadata = pageMetadata({
 export default function UpdatesPage() {
   return (
     <>
-      <section className="bg-navy page-gutter section">
-        <div className="container-prose">
+      <section className="relative isolate overflow-hidden bg-navy page-gutter section">
+        <SectionBackground
+          src="/images/heroes/updates.jpg"
+          overlayClassName="bg-navy/[0.75]"
+          position="30% 50%"
+          priority
+        />
+
+        <div className="container-prose relative z-10">
           <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
             Project updates
           </h1>

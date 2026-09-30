@@ -33,6 +33,10 @@ import { cn } from "@/lib/utils";
  *
  * Motion lives in globals.css, keyed off the data-roadmap attribute that
  * RoadmapReveal toggles, and is switched off wholesale under reduced motion.
+ *
+ * background is an optional backdrop layer, a SectionBackground in practice,
+ * passed in rendered so this component does not decide which photograph sits
+ * behind it. The section is isolated so the content's z-10 stays inside it.
  */
 const ICONS: Record<RoadmapIcon, React.ComponentType<{ className?: string }>> =
   {
@@ -44,16 +48,24 @@ const ICONS: Record<RoadmapIcon, React.ComponentType<{ className?: string }>> =
     dedication: Church,
   };
 
-export function Roadmap({ reveal }: { reveal: React.ReactNode }) {
+export function Roadmap({
+  reveal,
+  background,
+}: {
+  reveal: React.ReactNode;
+  background?: React.ReactNode;
+}) {
   return (
     // Clipped sideways because a card can be pulled 40px toward the edge, and
     // on a narrow window that would otherwise widen the page mid drag. clip
     // rather than hidden, so the section does not become a scroll container.
     <section
       id="roadmap"
-      className="bg-navy page-gutter section overflow-x-clip"
+      className="relative isolate bg-navy page-gutter section overflow-x-clip"
     >
-      <div className="container-marketing">
+      {background}
+
+      <div className="container-marketing relative z-10">
         <h2 className="font-display text-2xl font-semibold text-balance text-white sm:text-3xl">
           {ROADMAP.heading}
         </h2>
@@ -165,9 +177,9 @@ export function RoadmapSteps() {
                 <p
                   className={cn(
                     "text-sm font-medium",
-                    isCurrent && "text-campfire",
+                    isCurrent && "text-apricot",
                     isDone && "text-white/70",
-                    !isCurrent && !isDone && "text-white/50",
+                    !isCurrent && !isDone && "text-white/70",
                   )}
                 >
                   {step.ordinal}
@@ -183,13 +195,13 @@ export function RoadmapSteps() {
                 </h3>
 
                 {isCurrent && (
-                  <p className="mt-2 text-sm font-medium text-campfire">
+                  <p className="mt-2 text-sm font-medium text-apricot">
                     We are here
                   </p>
                 )}
 
                 {isDone && (
-                  <p className="mt-2 text-sm text-white/60">Complete</p>
+                  <p className="mt-2 text-sm text-white/70">Complete</p>
                 )}
               </div>
             </li>

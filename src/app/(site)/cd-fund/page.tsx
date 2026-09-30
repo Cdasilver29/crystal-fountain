@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Download } from "lucide-react";
 import Link from "next/link";
 
+import { SectionBackground } from "@/components/media/section-background";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { CD_FUND_PAGE } from "@/content/cd-fund";
 import { FUND_SUMMARY } from "@/content/project";
@@ -22,8 +23,18 @@ export const metadata: Metadata = pageMetadata({
 export default function CdFundPage() {
   return (
     <div className="bg-white">
-      <header className="bg-navy page-gutter section">
-        <div className="container-prose">
+      {/* The tagline wraps to two lines where the FAQ's intro takes one, so the
+          padding gives back that line and the banner is no taller than the
+          FAQ's on a laptop. */}
+      <header className="relative isolate overflow-hidden bg-navy page-gutter section lg:py-12">
+        <SectionBackground
+          src="/images/heroes/cd-fund.jpg"
+          overlayClassName="bg-navy/[0.75]"
+          position="55% 18%"
+          priority
+        />
+
+        <div className="container-prose relative z-10">
           <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
             {CD_FUND_PAGE.title}
           </h1>

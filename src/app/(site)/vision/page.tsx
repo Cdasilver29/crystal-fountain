@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { FadeImage } from "@/components/media/fade-image";
 import Link from "next/link";
 
+import { SectionBackground } from "@/components/media/section-background";
 import { YouTubeEmbed } from "@/components/media/youtube-embed";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { RoadmapReveal } from "@/components/vision/roadmap-reveal";
@@ -136,6 +137,13 @@ export default function VisionPage() {
         component contributes is the observer that starts the animation.
       */}
       <Roadmap
+        background={
+          <SectionBackground
+            src="/images/heroes/vision.jpg"
+            overlayClassName="bg-navy/[0.85]"
+            position="55% 60%"
+          />
+        }
         reveal={
           <RoadmapReveal className="relative mt-10 sm:mt-12">
             <RoadmapSteps />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MonthlyChart } from "@/components/campaign/progress-charts";
 import { StatCount } from "@/components/campaign/stat-count";
 import { CumulativeChart } from "@/components/charts/cumulative-chart";
+import { SectionBackground } from "@/components/media/section-background";
 import { db } from "@/db";
 import { CAMPAIGN_SLUG, getCampaignTotals } from "@/lib/campaign";
 import { formatNumber, formatPercent } from "@/lib/format";
@@ -93,8 +94,18 @@ export default async function ProgressPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50">
-      <header className="bg-navy page-gutter section-feature">
-        <div className="container-marketing">
+      {/* Three lines of intro where the FAQ has one, so the padding gives back
+          the difference and the banner is no taller than the FAQ's on a
+          laptop. */}
+      <header className="relative isolate overflow-hidden bg-navy page-gutter section lg:py-10">
+        <SectionBackground
+          src="/images/heroes/progress.jpg"
+          overlayClassName="bg-navy/[0.75]"
+          position="50% 35%"
+          priority
+        />
+
+        <div className="container-marketing relative z-10">
           <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">
             Campaign progress
           </h1>

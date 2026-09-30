@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SectionBackground } from "@/components/media/section-background";
 import { PledgersList } from "@/components/pledgers/pledgers-list";
 import { db } from "@/db";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
@@ -42,8 +43,15 @@ export default async function PledgersPage() {
 
   return (
     <div className="bg-white">
-      <header className="bg-navy page-gutter section">
-        <div className="container-marketing">
+      <header className="relative isolate overflow-hidden bg-navy page-gutter section">
+        <SectionBackground
+          src="/images/heroes/pledgers.jpg"
+          overlayClassName="bg-navy/[0.82]"
+          position="45% 60%"
+          priority
+        />
+
+        <div className="container-marketing relative z-10">
           <h1 className="font-display text-3xl font-semibold text-white">
             Pledgers
           </h1>
