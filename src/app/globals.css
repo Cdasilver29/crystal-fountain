@@ -1155,50 +1155,7 @@ html:has([data-site]) {
   }
 }
 
-/*
- * Reading progress. A 2px campfire line across the top of the viewport, above
- * the header, grown from the left as the page scrolls. The only motion on the
- * site tied to scroll position, because it tells the reader how much is left.
- *
- * Driven by a scroll timeline where the browser has one, so no script runs on
- * scroll at all. Elsewhere ScrollProgress sets --scroll-progress once a frame.
- * With neither it rests at zero width, which is to say it is not there.
- * Removed outright under reduced motion.
- */
-@keyframes scroll-progress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.scroll-progress {
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 60;
-  height: 2px;
-  background: #e36520;
-  transform: scaleX(var(--scroll-progress, 0));
-  transform-origin: left;
-  pointer-events: none;
-}
-
-@supports (animation-timeline: scroll()) {
-  .scroll-progress {
-    animation: scroll-progress linear both;
-    animation-timeline: scroll(root);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .scroll-progress {
-    display: none;
-  }
-
   .nav-link,
   .chip,
   .chip > *,
