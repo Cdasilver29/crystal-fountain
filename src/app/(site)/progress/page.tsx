@@ -102,6 +102,7 @@ export default async function ProgressPage() {
           src="/images/heroes/progress.jpg"
           overlayClassName="bg-navy/[0.75]"
           position="50% 35%"
+          quality={50}
           priority
         />
 

@@ -23,6 +23,10 @@ import { cn } from "@/lib/utils";
  * first thing on its page: a page banner passes priority, so the picture is
  * requested with the document instead of after layout has found it.
  *
+ * quality defaults to 65. A photograph full of fine texture, such as rebar,
+ * can pass a lower figure: under the overlay the detail it loses is not
+ * visible, and the file it saves is.
+ *
  * The caller is responsible for two things: the section must be relative and
  * overflow hidden, and the content must sit on a higher layer.
  */
@@ -31,11 +35,13 @@ export function SectionBackground({
   overlayClassName,
   position = "center",
   priority = false,
+  quality = 65,
 }: {
   src: string;
   overlayClassName: string;
   position?: string;
   priority?: boolean;
+  quality?: number;
 }) {
   return (
     <>
@@ -44,7 +50,7 @@ export function SectionBackground({
         alt=""
         fill
         sizes="100vw"
-        quality={65}
+        quality={quality}
         {...(priority
           ? { priority: true, fetchPriority: "high" as const }
           : { loading: "lazy" as const })}
