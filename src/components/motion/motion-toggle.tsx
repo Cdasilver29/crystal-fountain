@@ -18,9 +18,10 @@ const CHANGED = "cf-motion-changed";
  * moves for more than five seconds beside other content needs one, and hover
  * or touch is not enough for somebody on a keyboard or a screen magnifier.
  *
- * One setting on the html element, so the copies of this button in the hero
- * and beside the brochure always agree. It is remembered in this browser only,
- * a per-visitor convenience, and read in a try because storage can be blocked.
+ * One setting on the html element, so the one button, beside the brochure,
+ * pauses the hero line and the text band as well. It is remembered in this
+ * browser only, a per-visitor convenience, and read in a try because storage
+ * can be blocked.
  * Hidden under reduced motion, where nothing moves by itself to pause.
  */
 export function MotionToggle({ className = "" }: { className?: string }) {
