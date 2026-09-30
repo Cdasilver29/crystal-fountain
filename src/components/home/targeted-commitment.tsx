@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SectionBackground } from "@/components/media/section-background";
 import {
   COMMITMENT_COPY,
   COMMITMENT_TIERS,
@@ -12,7 +13,12 @@ import { cn } from "@/lib/utils";
 import { MoreLevels } from "./more-levels";
 
 /**
- * The targeted commitment guide, on navy.
+ * The targeted commitment guide, on navy over a photograph of an open Bible.
+ *
+ * Small text here is white/70 and apricot rather than white/50 and campfire.
+ * Campfire at card size was already under 4.5:1 on flat navy, and white/50
+ * only just cleared it, so neither holds over a photograph. The lead figure is
+ * large text and keeps campfire.
  *
  * It opens on one figure rather than a heading: the lead level at display
  * size, so a household has somewhere obvious to place itself before it reads
@@ -59,9 +65,15 @@ export function TargetedCommitment({
   return (
     <section
       aria-labelledby="commitment-heading"
-      className="bg-navy page-gutter section"
+      className="relative isolate overflow-hidden bg-navy page-gutter section"
     >
-      <div className="container-marketing">
+      <SectionBackground
+        src="/images/heroes/family-give.jpg"
+        overlayClassName="bg-navy/[0.85]"
+        position="50% 50%"
+      />
+
+      <div className="container-marketing relative z-10">
         {/*
           The section opens on one figure rather than a heading: the lead
           level, the second largest thing on the page after the hero total.
@@ -94,7 +106,7 @@ export function TargetedCommitment({
             <span className="tabular block text-lg font-semibold text-white sm:text-xl">
               {total}
             </span>
-            <span className="mt-0.5 block text-xs text-white/50">
+            <span className="mt-0.5 block text-xs text-white/70">
               campaign target
             </span>
           </p>
@@ -155,7 +167,7 @@ export function TargetedCommitment({
           ))}
         </ol>
 
-        <p className="mt-4 text-sm text-white/50">
+        <p className="mt-4 text-sm text-white/70">
           {COMMITMENT_COPY.sweetSpotNote}
         </p>
 
@@ -219,7 +231,7 @@ function LeadLevel({
         {tier.sweetSpot && (
           <>
             {" "}
-            <span className="ml-1 inline-block rounded-full bg-campfire/20 px-2 py-0.5 align-middle text-[10px] font-medium text-campfire">
+            <span className="ml-1 inline-block rounded-full bg-campfire/20 px-2 py-0.5 align-middle text-[10px] font-medium text-apricot">
               Sweet spot
             </span>
           </>
@@ -261,7 +273,7 @@ function LevelCard({
             : "border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10",
       )}
     >
-      <span className="flex items-center justify-between gap-2 text-xs text-white/60">
+      <span className="flex items-center justify-between gap-2 text-xs text-white/70">
         {/*
           Built as one string rather than an expression beside literal text, so
           the figure and its unit reach the page as a single text node.
@@ -270,7 +282,7 @@ function LevelCard({
         {tier.sweetSpot && (
           <>
             {" "}
-            <span className="shrink-0 rounded-full bg-campfire/20 px-2 py-0.5 text-[10px] font-medium text-campfire">
+            <span className="shrink-0 rounded-full bg-campfire/20 px-2 py-0.5 text-[10px] font-medium text-apricot">
               Sweet spot
             </span>
           </>
@@ -278,18 +290,18 @@ function LevelCard({
       </span>
 
       <span
-        className="tabular mt-1 block text-base font-semibold whitespace-nowrap text-campfire sm:text-xl"
+        className="tabular mt-1 block text-base font-semibold whitespace-nowrap text-apricot sm:text-xl"
       >
         {`KES ${formatNumber(tier.pledgePerFamilyKes)}`}
       </span>
 
       {count !== null && (
-        <span className="mt-1 block text-xs text-white/60">
+        <span className="mt-1 block text-xs text-white/70">
           {`${formatNumber(count)} families at this level`}
         </span>
       )}
 
-      <span className="mt-3 block text-xs font-medium whitespace-nowrap text-white/50 transition-colors group-hover:text-white">
+      <span className="mt-3 block text-xs font-medium whitespace-nowrap text-white/70 transition-colors group-hover:text-white">
         Pledge this amount <span aria-hidden>&rarr;</span>
       </span>
     </Link>
