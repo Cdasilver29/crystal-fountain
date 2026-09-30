@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PledgeConfirmation } from "@/components/pledge/pledge-confirmation";
-import { db } from "@/db";
 import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
 import { paymentDetails } from "@/lib/payment-details";
-import { publicTokenInput } from "@/server/contracts/pledges";
-import * as pledges from "@/server/services/pledges";
+import {
+  findPledgeByToken,
+  TOKEN_NOT_FOUND_TITLE,
+} from "@/lib/pledge-by-token";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,10 @@ export const dynamic = "force-dynamic";
  * The card WhatsApp draws for this particular pledge.
  *
  * Static metadata before, because nothing on the page's title depended on which
- * pledge it was. The og:image does, so this reads the token. It is only the
- * token: no lookup happens here, because the image route does its own and a
- * page that is about to fetch the pledge anyway should not fetch it twice.
+ * pledge it was. The og:image does, so this reads the token, and it looks the
+ * pledge up so a token that matches nothing gets "Page not found" in the tab
+ * as well as on the page. findPledgeByToken is cached for the request, so the
+ * page below reuses this lookup rather than making a second one.
  *
  * Still noIndex. An unguessable token is not a reason to invite a crawler, and
  * og tags are read by link scrapers regardless of robots directives, which is
@@ -30,20 +32,26 @@ export async function generateMetadata({
   params: Promise<{ token: string }>;
 }): Promise<Metadata> {
   const { token } = await params;
-  const parsed = publicTokenInput.safeParse({ publicToken: token });
+  const found = await findPledgeByToken(token);
+
+  if (!found) {
+    return pageMetadata({
+      title: TOKEN_NOT_FOUND_TITLE,
+      path: "/",
+      noIndex: true,
+    });
+  }
 
   return pageMetadata({
     title: "Pledge acknowledgement",
     path: "/",
     noIndex: true,
-    image: parsed.success
-      ? {
-          path: `/api/pledges/${parsed.data.publicToken}/card.png`,
-          width: 1200,
-          height: 630,
-          alt: "Crystal Fountain Development Project pledge card, showing the pledge reference and the campaign's progress toward its goal",
-        }
-      : undefined,
+    image: {
+      path: `/api/pledges/${found.publicToken}/card.png`,
+      width: 1200,
+      height: 630,
+      alt: "Crystal Fountain Development Project pledge card, showing the pledge reference and the campaign's progress toward its goal",
+    },
   });
 }
 
@@ -58,23 +66,20 @@ export default async function PublicPledgePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const parsed = publicTokenInput.safeParse({ publicToken: token });
-
-  if (!parsed.success) notFound();
-
-  const [pledge, totals, details] = await Promise.all([
-    pledges.getByPublicToken(db, { publicToken: parsed.data.publicToken }),
+  // The same lookup the title made, reused rather than repeated.
+  const [found, totals, details] = await Promise.all([
+    findPledgeByToken(token),
     getCampaignTotals(),
     paymentDetails(),
   ]);
 
-  if (!pledge) notFound();
+  if (!found) notFound();
 
   return (
     <PledgeConfirmation
-      pledge={pledge}
+      pledge={found.pledge}
       totals={totals}
-      token={parsed.data.publicToken}
+      token={found.publicToken}
       siteUrl={env.NEXT_PUBLIC_SITE_URL}
       details={details}
     />
