@@ -17,6 +17,11 @@ const ICONS = {
  * the full height of the block on the left and the seven years run across two
  * columns, and the rest fill the gaps. Dense packing does the placing, so on
  * two columns the wide tiles take a row each and the small ones pair up.
+ *
+ * On a phone every tile is one of a pair, the two figures first, and a tile
+ * shows only its headline: six explanations in one column made the block
+ * taller than a phone screen and a half. The line stays in the markup for a
+ * screen reader, and the tile still links to the full pillar.
  */
 type Shape = "tall" | "wide" | "small";
 
@@ -30,8 +35,8 @@ const SHAPES: readonly Shape[] = [
 ];
 
 const PLACEMENT: Record<Shape, string> = {
-  tall: "sm:col-span-2 lg:col-span-1 lg:row-span-2",
-  wide: "sm:col-span-2",
+  tall: "max-sm:order-first sm:col-span-2 lg:col-span-1 lg:row-span-2",
+  wide: "max-sm:order-first sm:col-span-2",
   small: "",
 };
 
@@ -69,7 +74,7 @@ export function GiftProtection() {
         <ul
           data-reveal=""
           data-stagger=""
-          className="mt-6 grid grid-flow-row-dense gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          className="mt-6 grid grid-flow-row-dense grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
         >
           {PROTECTION_FACTS.map((fact, index) => (
             <li key={fact.headline} className={PLACEMENT[SHAPES[index]]}>
@@ -90,25 +95,27 @@ function Tile({ fact, shape }: { fact: ProtectionFact; shape: Shape }) {
   return (
     <Link
       href={`${CD_FUND.href}#pillar-${fact.pillar}`}
-      className={`bento-tile flex h-full rounded-2xl p-5 hover:shadow-elevate-lg focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none ${
+      className={`bento-tile flex h-full rounded-2xl p-4 sm:p-5 hover:shadow-elevate-lg focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none ${
         tall
           ? "flex-col bg-navy text-white"
           : "border border-navy/10 bg-[#f8f7f5] text-navy"
-      } ${wide ? "items-center gap-5" : "flex-col"}`}
+      } ${wide ? "flex-col sm:flex-row sm:items-center sm:gap-5" : "flex-col"}`}
     >
       {fact.figure ? (
         <span
           aria-hidden
           className={`tabular shrink-0 leading-none font-semibold text-campfire ${
-            tall ? "text-7xl sm:text-8xl" : "text-6xl"
+            tall ? "text-5xl sm:text-8xl" : "text-5xl sm:text-6xl"
           }`}
         >
           {fact.figure}
         </span>
       ) : null}
 
-      <span className={`flex flex-col ${tall ? "mt-auto pt-6" : ""}`}>
-        <span className="flex items-start gap-2.5">
+      <span
+        className={`flex flex-col ${tall ? "mt-auto pt-3 sm:pt-6" : ""} ${wide ? "mt-auto pt-3 sm:mt-0 sm:pt-0" : ""}`}
+      >
+        <span className="flex flex-col items-start gap-2 sm:flex-row sm:gap-2.5">
           {Icon ? (
             <Icon
               aria-hidden
@@ -119,7 +126,7 @@ function Tile({ fact, shape }: { fact: ProtectionFact; shape: Shape }) {
           <span
             className={
               tall
-                ? "font-display text-xl font-semibold text-balance"
+                ? "text-base font-semibold text-balance sm:font-display sm:text-xl"
                 : "text-base font-semibold text-balance"
             }
           >
@@ -131,7 +138,7 @@ function Tile({ fact, shape }: { fact: ProtectionFact; shape: Shape }) {
           </span>
         </span>
         <span
-          className={`mt-1.5 text-sm leading-relaxed ${
+          className={`sr-only text-sm leading-relaxed sm:not-sr-only sm:mt-1.5 ${
             tall ? "text-white/75" : "text-neutral-600"
           }`}
         >
