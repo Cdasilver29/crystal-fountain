@@ -89,7 +89,7 @@ export default async function PledgersPage() {
             renderedAt={new Date().toISOString()}
           />
 
-          <div className="mt-14 border-t border-neutral-200 pt-10 text-center">
+          <div className="mt-12 border-t border-neutral-200 pt-10 text-center">
             <p className="text-base text-neutral-700">
               A pledge is a promise to give. The treasurer&apos;s receipt is the
               only receipt.

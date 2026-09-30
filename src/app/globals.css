@@ -1802,32 +1802,36 @@ html:has([data-site]) {
    * Vertical rhythm. The hero and the closing call to action get more room than
    * the sections between them, so the page has a start and an end rather than
    * reading as a stack of equal boxes.
+   *
+   * Set for a 1280 by 720 laptop rather than a 1920 monitor, so a section
+   * scrolled to shows its heading and its content together. A heading sits at
+   * most 24px from its content, and related blocks at most 48px apart.
    */
   .section {
     padding-block: 3rem;
   }
 
   .section-feature {
-    padding-block: 4.5rem;
+    padding-block: 4rem;
   }
 
   @media (min-width: 640px) {
     .section {
-      padding-block: 4rem;
+      padding-block: 3.5rem;
     }
 
     .section-feature {
-      padding-block: 6rem;
+      padding-block: 5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .section {
-      padding-block: 4.5rem;
+      padding-block: 4rem;
     }
 
     .section-feature {
-      padding-block: 7rem;
+      padding-block: 5.5rem;
     }
   }
 

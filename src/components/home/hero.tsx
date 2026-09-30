@@ -166,7 +166,7 @@ export function Hero({
           part of the centred column of copy. It still stops 8px short of the
           viewport edge, so nothing overflows.
         */}
-        <div className="-mx-2 mt-12 sm:mx-0 sm:mt-16">
+        <div className="-mx-2 mt-12 sm:mx-0">
           <LiveTracker initial={totals} sparkline={sparkline} />
         </div>
 
