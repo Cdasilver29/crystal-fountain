@@ -142,7 +142,7 @@ export default async function HomePage() {
         above carry data-reveal and are complete without it.
       */}
       <RevealOnScroll />
-      {/* Pauses the hero line and the text band while the tab is hidden. */}
+      {/* Pauses the hero line while the tab is hidden. */}
       <PauseWhenHidden />
     </>
   );

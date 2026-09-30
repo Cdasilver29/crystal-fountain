@@ -26,7 +26,7 @@ export const TEXT_BAND_WORDS = [
   "Pledge",
   "Redeem",
   "This is My Pledge",
-  "#CrystalFountain",
+  "Crystal Fountain Sanctuary & Centre of Influence",
 ] as const;
 
 /**

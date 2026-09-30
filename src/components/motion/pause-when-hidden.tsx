@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 
 /**
- * Marks the page while its tab is hidden, so the looping CSS animations on the
- * home page (the hero line and the text band) pause rather than run on unseen
- * and pick up mid move when the tab comes back. Renders nothing.
+ * Marks the page while its tab is hidden, so the looping CSS animation on the
+ * home page (the hero line) pauses rather than running on unseen and picking up
+ * mid move when the tab comes back. Renders nothing.
  */
 export function PauseWhenHidden() {
   useEffect(() => {

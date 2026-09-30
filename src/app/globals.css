@@ -1366,58 +1366,83 @@ html:has([data-site]) {
   }
 }
 
-/*
- * The text band. The track holds two identical copies and slides left by one
- * of them, about 35px a second: a copy is about 2,440px wide, so 70s.
- */
-@keyframes band-drift {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .phrase-reel {
     animation: phrase-turn 10.2s ease-in-out infinite;
   }
-
-  .text-band-track {
-    animation: band-drift 70s linear infinite;
-  }
 }
 
-.text-band:hover .text-band-track,
-[data-tab-hidden] .text-band-track,
 [data-tab-hidden] .phrase-reel {
   animation-play-state: paused;
 }
 
 /*
- * A mouse drag on the brochure row. Snapping is off while it is held and while
- * the release glides to a card; BrochureGallery sets and clears the attribute.
+ * The text band. TextBand moves the track by writing its transform; a drag or
+ * swipe moves it either way and a vertical swipe still scrolls the page.
  */
-.brochure-track {
+.text-band {
+  touch-action: pan-y;
   cursor: grab;
-}
-
-.brochure-track[data-dragging] {
-  scroll-snap-type: none;
   user-select: none;
 }
 
-.brochure-track[data-dragging] * {
+.text-band[data-dragging] {
   cursor: grabbing;
 }
 
-/* The row's progress bar is empty until the script has measured the row. */
-.brochure-progress {
-  transform: scaleX(0);
+/*
+ * The brochure ring. The pages go round a circle and always face the reader:
+ * BrochureGallery sets each card's --x (the sine of its place on the circle,
+ * -1 to 1), --s (its scale, smaller at the back), opacity and z-index, and the
+ * spread turns --x into pixels. The stage clips at the container edge and
+ * leaves a vertical swipe to scroll the page.
+ */
+.brochure-stage {
+  --card-w: 180px;
+  --spread: 115px;
+  position: relative;
+  height: calc(var(--card-w) * 1.185 + 5rem);
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .brochure-progress {
-    transition: transform 120ms linear;
+@media (min-width: 640px) {
+  .brochure-stage {
+    --card-w: 220px;
+    --spread: 250px;
   }
+}
+
+@media (min-width: 1024px) {
+  .brochure-stage {
+    --card-w: 240px;
+    --spread: 380px;
+  }
+}
+
+.brochure-stage[data-dragging],
+.brochure-stage[data-dragging] * {
+  cursor: grabbing;
+}
+
+.brochure-slot {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  width: var(--card-w);
+  margin-left: calc(var(--card-w) / -2);
+  transform: translateX(calc(var(--x, 0) * var(--spread))) scale(var(--s, 1));
+  transform-origin: 50% 40%;
+}
+
+/*
+ * Only the page at the front is captioned; the others' titles fade out as
+ * they turn away, from --d, the card's depth, 1 at the front.
+ */
+.brochure-caption {
+  opacity: clamp(0, calc((var(--d, 1) - 0.85) * 6.67), 1);
 }
 
 /* The page behind the brochure panel does not scroll under it. */
