@@ -1,280 +1,387 @@
 "use client";
 
-import { FadeImage } from "@/components/media/fade-image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
+import { FadeImage } from "@/components/media/fade-image";
 import {
   BROCHURE_HEIGHT,
   BROCHURE_PAGES,
   BROCHURE_WIDTH,
-} from "@/content/project";
+} from "@/content/brochure";
+
+const LAST = BROCHURE_PAGES.length - 1;
+
+/** The gap between cards, gap-4, which a step of the track has to include. */
+const GAP = 16;
 
 /**
- * The printed trifold, as a snapping strip with a lightbox.
+ * The printed trifold, as a row of cards with a detail panel.
  *
- * The source scans are 1688x2000 and roughly 300kB each, so nothing here links
- * a raw file: every image goes through next/image with an explicit sizes hint,
- * and a phone is served a card sized version rather than the full scan.
+ * The row is a native scroller with mandatory snapping, so a thumb swipes it
+ * and a trackpad scrolls it with nothing added. A mouse gets a drag on top:
+ * snapping is switched off while the button is held, and on release the row
+ * carries on for about 300ms of the release speed, at most a card further, and
+ * settles on the nearest card. The row stays inside the container and the next card is cut at its
+ * edge, which is what says there is more.
  *
- * Arrows appear from the medium breakpoint up. On a phone the snap points do
- * the work and there is nothing extra to tap.
+ * A card opens one native dialog. It is modal, so the page behind is inert and
+ * Escape closes it without a listener here; the arrow keys move between pages,
+ * and focus goes back to the card that opened it.
+ *
+ * The source scans are 1688x2000 and roughly 300kB each, so every image goes
+ * through next/image with an explicit sizes hint.
  */
 export function BrochureGallery() {
-  const stripRef = useRef<HTMLUListElement>(null);
+  const trackRef = useRef<HTMLUListElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
-  const [openAt, setOpenAt] = useState<number | null>(null);
+  const [shown, setShown] = useState(0);
+  const page = BROCHURE_PAGES[shown];
 
-  const syncArrows = useCallback(() => {
-    const strip = stripRef.current;
-    if (!strip) return;
-    setAtStart(strip.scrollLeft <= 4);
-    setAtEnd(strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 4);
-  }, []);
+  const sync = () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const { scrollLeft, scrollWidth, clientWidth } = track;
+    setAtStart(scrollLeft <= 4);
+    setAtEnd(scrollLeft >= scrollWidth - clientWidth - 4);
+    // How much of the row has come into view, so the bar starts part full
+    // and fills as the last card arrives.
+    barRef.current?.style.setProperty(
+      "transform",
+      `scaleX(${(scrollLeft + clientWidth) / scrollWidth})`,
+    );
+  };
+
+  const step = () =>
+    (trackRef.current?.querySelector("li")?.offsetWidth ?? 280) + GAP;
+
+  const behavior = (): ScrollBehavior =>
+    matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
   useEffect(() => {
-    syncArrows();
-    window.addEventListener("resize", syncArrows);
-    return () => window.removeEventListener("resize", syncArrows);
-  }, [syncArrows]);
+    const track = trackRef.current;
+    if (!track) return;
+    sync();
+    window.addEventListener("resize", sync);
 
-  const scrollByCard = (direction: 1 | -1) => {
-    const strip = stripRef.current;
-    if (!strip) return;
-    const card = strip.querySelector("li");
-    const step = card ? card.getBoundingClientRect().width + 16 : 300;
-    strip.scrollBy({ left: direction * step, behavior: "smooth" });
+    let startX = 0;
+    let startLeft = 0;
+    let lastX = 0;
+    let lastTime = 0;
+    let speed = 0;
+    let held = false;
+    let dragged = false;
+
+    const down = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" || event.button !== 0) return;
+      held = true;
+      dragged = false;
+      startX = lastX = event.clientX;
+      lastTime = event.timeStamp;
+      startLeft = track.scrollLeft;
+      speed = 0;
+    };
+
+    const move = (event: PointerEvent) => {
+      if (!held) return;
+      const dx = event.clientX - startX;
+      // A few pixels of wobble is still a click.
+      if (!dragged && Math.abs(dx) < 5) return;
+      if (!dragged) {
+        dragged = true;
+        track.setPointerCapture(event.pointerId);
+        track.dataset.dragging = "";
+      }
+      track.scrollLeft = startLeft - dx;
+      const dt = event.timeStamp - lastTime;
+      if (dt > 0) speed = (event.clientX - lastX) / dt;
+      lastX = event.clientX;
+      lastTime = event.timeStamp;
+    };
+
+    const up = () => {
+      if (!held) return;
+      held = false;
+      if (!dragged) return;
+      const release = () => delete track.dataset.dragging;
+      const card = step();
+      const max = track.scrollWidth - track.clientWidth;
+      // A little momentum: 300ms of the release speed, never more than a card.
+      const carry = Math.min(card, Math.max(-card, -speed * 300));
+      const landing = Math.round((track.scrollLeft + carry) / card) * card;
+      const target = Math.min(max, Math.max(0, landing));
+      // Snapping stays off until the glide has landed on a card, or the
+      // browser would snap first and glide from there. A target the row is
+      // already at never fires scrollend, so that case releases at once.
+      if (Math.abs(target - track.scrollLeft) < 1) return release();
+      if ("onscrollend" in track) {
+        track.addEventListener("scrollend", release, { once: true });
+      } else {
+        setTimeout(release, 600);
+      }
+      track.scrollTo({ left: target, behavior: behavior() });
+    };
+
+    // The click that ends a drag is not a request to open the card under it.
+    const click = (event: MouseEvent) => {
+      if (!dragged) return;
+      dragged = false;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    track.addEventListener("pointerdown", down);
+    track.addEventListener("pointermove", move);
+    track.addEventListener("pointerup", up);
+    track.addEventListener("pointercancel", up);
+    track.addEventListener("click", click, true);
+    return () => {
+      window.removeEventListener("resize", sync);
+      track.removeEventListener("pointerdown", down);
+      track.removeEventListener("pointermove", move);
+      track.removeEventListener("pointerup", up);
+      track.removeEventListener("pointercancel", up);
+      track.removeEventListener("click", click, true);
+    };
+  }, []);
+
+  const scrollByCard = (direction: 1 | -1) =>
+    trackRef.current?.scrollBy({
+      left: direction * step(),
+      behavior: behavior(),
+    });
+
+  const open = (index: number, opener: HTMLButtonElement) => {
+    openerRef.current = opener;
+    setShown(index);
+    dialogRef.current?.showModal();
   };
+
+  const go = (index: number) => setShown(Math.min(LAST, Math.max(0, index)));
 
   return (
     <section className="bg-[#f8f7f5] page-gutter section">
       <div className="container-marketing">
-        <h2
-          data-reveal=""
-          className="font-display text-xl font-semibold text-balance text-navy sm:text-3xl"
-        >
-          What we are building, in five pages
-        </h2>
-
-        <div className="relative mt-5">
-          <ul
-            ref={stripRef}
+        <div className="flex items-end justify-between gap-4">
+          <h2
             data-reveal=""
-            data-stagger=""
-            onScroll={syncArrows}
-            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:thin]"
+            className="font-display text-xl font-semibold text-balance text-navy sm:text-3xl"
           >
-            {BROCHURE_PAGES.map((page, index) => (
-              <li key={page.src} className="w-[280px] shrink-0 snap-start md:w-[360px]">
-                <button
-                  type="button"
-                  onClick={() => setOpenAt(index)}
-                  aria-label={`Open ${page.alt} larger`}
-                  className="brochure-card block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-black/5 bg-white shadow-elevate hover:shadow-elevate-lg focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
+            What we are building, in five pages
+          </h2>
+
+          <div className="flex shrink-0 gap-2">
+            <RoundButton
+              label="Previous pages"
+              disabled={atStart}
+              onClick={() => scrollByCard(-1)}
+              path="M15 18l-6-6 6-6"
+            />
+            <RoundButton
+              label="Next pages"
+              disabled={atEnd}
+              onClick={() => scrollByCard(1)}
+              path="M9 18l6-6-6-6"
+            />
+          </div>
+        </div>
+
+        <ul
+          ref={trackRef}
+          data-reveal=""
+          data-stagger=""
+          onScroll={sync}
+          className="brochure-track mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pt-2 pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {BROCHURE_PAGES.map((card, index) => (
+            <li
+              key={card.src}
+              className="w-[260px] shrink-0 snap-start sm:w-[300px]"
+            >
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={(event) => open(index, event.currentTarget)}
+                className="brochure-card group block w-full rounded-2xl text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-campfire"
+              >
+                {/*
+                  The page's contents are in the panel as text and in its alt
+                  text there, so the small copy here is decoration.
+                */}
+                <span className="block overflow-hidden rounded-2xl border border-black/5 bg-white shadow-elevate group-hover:shadow-elevate-lg">
                   <FadeImage
-                    src={page.src}
-                    alt={page.alt}
+                    src={card.src}
+                    alt=""
                     width={BROCHURE_WIDTH}
                     height={BROCHURE_HEIGHT}
                     loading="lazy"
-                    sizes="(max-width: 768px) 280px, 360px"
+                    draggable={false}
+                    sizes="(min-width: 640px) 300px, 260px"
                     className="h-auto w-full"
                   />
-                </button>
-              </li>
-            ))}
-          </ul>
+                </span>
+                <span className="mt-3 block px-1 text-base font-semibold text-navy">
+                  {card.title}
+                </span>
+                <span className="tabular block px-1 text-sm text-neutral-500">
+                  Page {index + 1} of {BROCHURE_PAGES.length}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
 
-          <Arrow side="left" hidden={atStart} onClick={() => scrollByCard(-1)} />
-          <Arrow side="right" hidden={atEnd} onClick={() => scrollByCard(1)} />
+        <div
+          aria-hidden
+          className="h-0.5 overflow-hidden rounded-full bg-navy/10"
+        >
+          <div
+            ref={barRef}
+            className="brochure-progress h-full origin-left bg-campfire"
+          />
         </div>
 
-        <p className="mt-2 text-sm text-neutral-500">
-          Five pages from the printed brochure. Select one to view it larger.
+        <p className="mt-3 text-sm text-neutral-500">
+          Five pages from the printed brochure. Select one to read what it
+          covers.
         </p>
       </div>
 
-      {openAt !== null && (
-        <Lightbox
-          index={openAt}
-          onClose={() => setOpenAt(null)}
-          onNavigate={setOpenAt}
-        />
-      )}
+      {/*
+        Full screen on a phone, the page above its text; a centred panel with
+        the page beside the text from the medium breakpoint up. A click on the
+        backdrop lands on the dialog itself, since the content fills it, and
+        closes it.
+      */}
+      <dialog
+        ref={dialogRef}
+        aria-labelledby="brochure-panel-title"
+        onClose={() => openerRef.current?.focus()}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) dialogRef.current?.close();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight") go(shown + 1);
+          if (event.key === "ArrowLeft") go(shown - 1);
+        }}
+        className="brochure-panel m-0 h-full max-h-none w-full max-w-none overflow-y-auto bg-white p-0 text-neutral-800 backdrop:bg-black/70 md:m-auto md:h-auto md:max-h-[90vh] md:w-[min(64rem,calc(100%-3rem))] md:rounded-2xl"
+      >
+        <div className="relative grid md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => dialogRef.current?.close()}
+            className="absolute top-3 right-3 z-10 flex size-10 items-center justify-center rounded-full bg-white/90 text-navy shadow-md transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+          >
+            <Icon path="M6 6l12 12M18 6L6 18" />
+          </button>
+
+          <div className="flex items-center justify-center bg-[#f8f7f5] p-4 md:p-6">
+            <FadeImage
+              key={page.src}
+              src={page.src}
+              alt={page.alt}
+              width={BROCHURE_WIDTH}
+              height={BROCHURE_HEIGHT}
+              sizes="(min-width: 768px) 440px, 100vw"
+              className="h-auto max-h-[70svh] w-auto max-w-full object-contain md:max-h-[calc(90vh-3rem)]"
+            />
+          </div>
+
+          <div className="flex flex-col p-5 sm:p-8">
+            <p className="tabular text-sm text-neutral-500">
+              Page {shown + 1} of {BROCHURE_PAGES.length}
+            </p>
+            <h2
+              id="brochure-panel-title"
+              className="font-display mt-1 pr-10 text-2xl font-semibold text-balance text-navy"
+            >
+              {page.title}
+            </h2>
+            <p className="mt-3 text-base leading-relaxed text-neutral-700">
+              {page.summary}
+            </p>
+
+            <h3 className="mt-6 text-sm font-semibold text-navy">
+              What this page covers
+            </h3>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-base leading-relaxed text-neutral-700 marker:text-campfire">
+              {page.covers.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+
+            <div className="mt-auto flex flex-wrap items-center gap-3 pt-8">
+              <Link
+                href="/pledge"
+                className="btn-primary cta-sweep inline-flex h-11 items-center justify-center bg-campfire px-6 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                Make a pledge
+              </Link>
+
+              <div className="ml-auto flex gap-2">
+                <RoundButton
+                  label="Previous page"
+                  disabled={shown === 0}
+                  onClick={() => go(shown - 1)}
+                  path="M15 18l-6-6 6-6"
+                />
+                <RoundButton
+                  label="Next page"
+                  disabled={shown === LAST}
+                  onClick={() => go(shown + 1)}
+                  path="M9 18l6-6-6-6"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </dialog>
     </section>
   );
 }
 
-function Arrow({
-  side,
-  hidden,
-  onClick,
-}: {
-  side: "left" | "right";
-  hidden: boolean;
-  onClick: () => void;
-}) {
-  if (hidden) return null;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={side === "left" ? "Scroll left" : "Scroll right"}
-      className={`absolute top-1/2 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-navy shadow-md transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none md:flex ${
-        side === "left" ? "-left-4" : "-right-4"
-      }`}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-        className="size-5"
-      >
-        <path d={side === "left" ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
-      </svg>
-    </button>
-  );
-}
-
-/**
- * The lightbox.
- *
- * A fixed overlay, a contained image and three listeners. Focus is held inside
- * by keeping it on the panel and cycling Tab between the controls, and the
- * page behind cannot scroll while it is open.
- */
-function Lightbox({
-  index,
-  onClose,
-  onNavigate,
-}: {
-  index: number;
-  onClose: () => void;
-  onNavigate: (next: number) => void;
-}) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const page = BROCHURE_PAGES[index];
-  const last = BROCHURE_PAGES.length - 1;
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    panelRef.current?.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-      if (event.key === "ArrowRight") onNavigate(index === last ? 0 : index + 1);
-      if (event.key === "ArrowLeft") onNavigate(index === 0 ? last : index - 1);
-      if (event.key === "Tab") {
-        // Keep focus inside: cycle through the panel's own controls.
-        const focusable = panelRef.current?.querySelectorAll<HTMLElement>("button");
-        if (!focusable || focusable.length === 0) return;
-        const list = [...focusable];
-        const current = list.indexOf(document.activeElement as HTMLElement);
-        event.preventDefault();
-        const next = event.shiftKey
-          ? (current <= 0 ? list.length : current) - 1
-          : (current + 1) % list.length;
-        list[next]?.focus();
-      }
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
-    };
-  }, [index, last, onClose, onNavigate]);
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={page.alt}
-      ref={panelRef}
-      tabIndex={-1}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 focus:outline-none"
-    >
-      <FadeImage
-        src={page.src}
-        alt={page.alt}
-        width={BROCHURE_WIDTH}
-        height={BROCHURE_HEIGHT}
-        sizes="90vw"
-        onClick={(event) => event.stopPropagation()}
-        className="max-h-[90vh] w-auto max-w-full object-contain"
-      />
-
-      <LightboxButton label="Close" onClick={onClose} className="top-4 right-4">
-        <path d="M6 6l12 12M18 6L6 18" />
-      </LightboxButton>
-
-      <LightboxButton
-        label="Previous page"
-        onClick={() => onNavigate(index === 0 ? last : index - 1)}
-        className="top-1/2 left-4 -translate-y-1/2"
-      >
-        <path d="M15 18l-6-6 6-6" />
-      </LightboxButton>
-
-      <LightboxButton
-        label="Next page"
-        onClick={() => onNavigate(index === last ? 0 : index + 1)}
-        className="top-1/2 right-4 -translate-y-1/2"
-      >
-        <path d="M9 18l6-6-6-6" />
-      </LightboxButton>
-
-      <p className="tabular absolute bottom-5 left-1/2 -translate-x-1/2 text-sm text-white/70">
-        {index + 1} of {BROCHURE_PAGES.length}
-      </p>
-    </div>
-  );
-}
-
-function LightboxButton({
+function RoundButton({
   label,
+  disabled,
   onClick,
-  className,
-  children,
+  path,
 }: {
   label: string;
+  disabled: boolean;
   onClick: () => void;
-  className: string;
-  children: React.ReactNode;
+  path: string;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      className={`absolute flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none ${className}`}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex size-10 items-center justify-center rounded-full border border-navy/15 bg-white text-navy shadow-sm transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white"
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-        className="size-5"
-      >
-        {children}
-      </svg>
+      <Icon path={path} />
     </button>
+  );
+}
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="size-5"
+    >
+      <path d={path} />
+    </svg>
   );
 }

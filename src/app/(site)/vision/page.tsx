@@ -6,13 +6,15 @@ import { YouTubeEmbed } from "@/components/media/youtube-embed";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { RoadmapReveal } from "@/components/vision/roadmap-reveal";
 import { Roadmap, RoadmapSteps } from "@/components/vision/roadmap";
+import {
+  BROCHURE_HEIGHT,
+  BROCHURE_PAGES,
+  BROCHURE_WIDTH,
+} from "@/content/brochure";
 import { CD_FUND } from "@/content/cd-fund";
 import {
   ABOUT_PROJECT,
   ACCOUNTABILITY,
-  BROCHURE_HEIGHT,
-  BROCHURE_PAGES,
-  BROCHURE_WIDTH,
   LAUNCH_VIDEO,
   SCRIPTURE_HAGGAI,
   VISION_SECTIONS,

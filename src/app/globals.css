@@ -1348,20 +1348,50 @@ html:has([data-site]) {
 }
 
 /*
- * The brochure cards lift a little under the cursor. They open a lightbox, so
- * they have to read as something to press, and the strip is the one place on
- * the page where several of them sit in a row and a small scale is legible.
+ * The brochure cards lift 2px under the cursor, the same as the level cards.
+ * They open a panel, so they have to read as something to press.
  */
 .brochure-card {
-  transition:
-    transform 150ms ease-out,
-    box-shadow 150ms ease-out;
+  transition: transform 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .brochure-card:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/*
+ * A mouse drag on the brochure row. Snapping is off while it is held and while
+ * the release glides to a card; BrochureGallery sets and clears the attribute.
+ */
+.brochure-track {
+  cursor: grab;
+}
+
+.brochure-track[data-dragging] {
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.brochure-track[data-dragging] * {
+  cursor: grabbing;
+}
+
+/* The row's progress bar is empty until the script has measured the row. */
+.brochure-progress {
+  transform: scaleX(0);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .brochure-card:hover {
-    transform: scale(1.02);
+  .brochure-progress {
+    transition: transform 120ms linear;
   }
+}
+
+/* The page behind the brochure panel does not scroll under it. */
+html:has(.brochure-panel[open]) {
+  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
