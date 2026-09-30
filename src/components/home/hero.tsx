@@ -57,7 +57,7 @@ export function Hero({
   return (
     <section
       id="hero"
-      className="relative isolate -mt-16 flex min-h-[100svh] flex-col overflow-hidden bg-navy page-gutter pt-16 pb-24 lg:pb-32"
+      className="relative isolate -mt-20 flex min-h-[100svh] flex-col overflow-hidden bg-navy page-gutter pt-16 pb-24 lg:pb-32"
     >
       {/*
         Order matters and is not alphabetical. A browser takes the first source

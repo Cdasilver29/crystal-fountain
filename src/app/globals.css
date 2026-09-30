@@ -989,54 +989,78 @@
 /*
  * Clear of the fixed header when the page scrolls to an anchor or to a field
  * that takes focus, so the target never lands underneath it. Once, on the
- * scroller, rather than a scroll margin on each target.
+ * scroller, rather than a scroll margin on each target. 4rem is the compact
+ * header, which is the one showing whenever the page has scrolled to a target:
+ * the full 5rem header only shows in the first 40px of the page.
  */
 html:has([data-site]) {
   scroll-padding-top: 4rem;
 }
 
 /*
- * The header fades to navy rather than swapping, and takes a shadow as it goes
- * solid, which is what separates it from a page scrolling underneath.
+ * The header. Its box is always 5rem; compacting slides the background up by
+ * 1rem and the contents by half that, so they stay centred in the 4rem that
+ * shows, and the logo lockup scales to 80 per cent. All of it transforms, so
+ * nothing on the page moves and nothing is laid out again. The box itself
+ * takes no pointer events, so the strip it no longer covers is clickable.
  */
 .site-header {
-  transition:
-    background-color 200ms ease-out,
-    border-color 200ms ease-out,
-    box-shadow 200ms ease-out;
+  pointer-events: none;
 }
 
-.site-header[data-solid] {
+.site-header nav > * {
+  pointer-events: auto;
+}
+
+.site-header[data-compact] .site-header-bg {
+  transform: translateY(-1rem);
+}
+
+.site-header[data-compact] .header-shift {
+  transform: translateY(-0.5rem);
+}
+
+.header-logo {
+  transform-origin: left center;
+}
+
+.site-header[data-compact] .header-logo {
+  transform: translateY(-0.5rem) scale(0.8);
+}
+
+.site-header[data-solid] .site-header-bg {
   box-shadow: 0 4px 16px -6px rgb(5 34 82 / 0.45);
 }
 
-/*
- * Header links: an underline that grows from the left. Drawn in full on the
- * current page. A pseudo element rather than text-decoration, since a text
- * decoration cannot be grown. Under reduced motion it still appears on hover,
- * just without the growth.
- */
 .nav-link {
-  position: relative;
   transition: color 150ms ease;
 }
 
-.nav-link::after {
-  content: "";
-  position: absolute;
-  right: 0.625rem;
-  bottom: 0.25rem;
-  left: 0.625rem;
-  height: 2px;
-  border-radius: 1px;
-  background: #e36520;
-  transform: scaleX(0);
-  transform-origin: left;
-}
+/*
+ * The nav indicator, one bar that moves between the links. Its position and
+ * width are written by SiteHeader; this is only how fast it gets there. Under
+ * reduced motion it jumps, and the header compacts at once.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .site-header-bg {
+    transition:
+      transform 200ms ease-out,
+      background-color 200ms ease-out,
+      border-color 200ms ease-out,
+      box-shadow 200ms ease-out;
+  }
 
-.nav-link:hover::after,
-.nav-link[aria-current="page"]::after {
-  transform: scaleX(1);
+  .header-shift,
+  .header-logo {
+    transition: transform 200ms ease-out;
+  }
+
+  .nav-indicator {
+    transition:
+      transform 180ms var(--ease-reveal),
+      width 180ms var(--ease-reveal),
+      opacity 180ms ease-out;
+  }
 }
 
 /*
@@ -1044,9 +1068,6 @@ html:has([data-site]) {
  * level cards. The admin keeps the base 1px lift defined with the buttons.
  */
 @media (prefers-reduced-motion: no-preference) {
-  .nav-link::after {
-    transition: transform 180ms var(--ease-reveal);
-  }
 
   [data-site] .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
@@ -1178,9 +1199,7 @@ html:has([data-site]) {
     display: none;
   }
 
-  .site-header,
   .nav-link,
-  .nav-link::after,
   .chip,
   .chip > *,
   .faq-row,

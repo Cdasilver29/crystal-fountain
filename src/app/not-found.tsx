@@ -30,7 +30,7 @@ export default function NotFound() {
   return (
     <div className={`${frauncesStatus.variable} contents`}>
       <SiteHeader />
-      <div aria-hidden className="h-16" />
+      <div aria-hidden className="h-20" />
       <div className="flex flex-1 flex-col">
         <StatusPage
           title="Page not found"

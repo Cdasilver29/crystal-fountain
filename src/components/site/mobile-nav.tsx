@@ -58,7 +58,7 @@ export function MobileNav() {
         onClick={() => setOpen(true)}
         aria-label="Open menu"
         aria-expanded={open}
-        className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+        className="header-shift flex size-9 cursor-pointer items-center justify-center rounded-lg text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
       >
         <svg
           viewBox="0 0 24 24"

@@ -26,7 +26,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       <SiteHeader />
       {/* The header is fixed, so its height is reserved here once rather than
           in the top padding of every page. The hero cancels this out. */}
-      <div aria-hidden className="h-16" />
+      <div aria-hidden className="h-20" />
       <div className="flex flex-1 flex-col">{children}</div>
       <SiteFooter />
     </div>
