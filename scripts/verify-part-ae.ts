@@ -615,8 +615,8 @@ async function main() {
       requests.CHANGE_REQUEST_PLEDGE_WINDOW_SECONDS === 86_400,
   );
   check(
-    "ten per address per hour",
-    requests.CHANGE_REQUEST_IP_LIMIT === 10 &&
+    "three hundred per address per hour",
+    requests.CHANGE_REQUEST_IP_LIMIT === 300 &&
       requests.CHANGE_REQUEST_IP_WINDOW_SECONDS === 3_600,
   );
 
@@ -736,7 +736,7 @@ async function main() {
       and created_at > now() - make_interval(secs => 3600)
   `);
   check(
-    "ten rows now sit on the one address",
+    "a full limit of rows now sits on the one address",
     (onAddress.rows[0] as { n: number }).n ===
       requests.CHANGE_REQUEST_IP_LIMIT,
     `${(onAddress.rows[0] as { n: number }).n} rows`,
@@ -753,11 +753,11 @@ async function main() {
       campaignSlug: CAMPAIGN_SLUG,
       request: { ip: IP_LIMIT_IP, userAgent: "verify-part-ae" },
     });
-    check("an eleventh from one address in the hour is refused", false, "accepted");
+    check("one more from the address in the hour is refused", false, "accepted");
   } catch (error) {
     const service = isServiceError(error) ? error : null;
     check(
-      "an eleventh from one address in the hour is refused",
+      "one more from the address in the hour is refused",
       service?.code === "change_request_ip_limited",
       service?.code ?? String(error),
     );

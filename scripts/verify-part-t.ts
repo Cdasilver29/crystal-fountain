@@ -219,12 +219,27 @@ async function main() {
   );
 
   // 6. The rate limit.
-  heading("6. ten attempts a minute");
+  heading("6. three hundred attempts an hour");
   await db.execute(sql`delete from pledge_lookups where ip is null`);
   const ip = "203.0.113.42";
+  await db.execute(sql`delete from pledge_lookups where ip = ${ip}::inet`);
+  /*
+   * Seeded to two short of the limit rather than walked there one lookup at a
+   * time. Three hundred round trips to Neon prove nothing the last few do not.
+   */
+  const seeded = pledges.LOOKUP_RATE_LIMIT - 2;
+  await db.execute(sql`
+    insert into pledge_lookups (ip, found)
+    select ${ip}::inet, false from generate_series(1, ${seeded})
+  `);
+  check(
+    "the window is an hour and the limit three hundred",
+    pledges.LOOKUP_RATE_LIMIT === 300 &&
+      pledges.LOOKUP_RATE_WINDOW_SECONDS === 3_600,
+  );
   let refused: unknown;
-  let allowed = 0;
-  for (let i = 0; i < pledges.LOOKUP_RATE_LIMIT + 2; i += 1) {
+  let allowed = seeded;
+  for (let i = 0; i < 4; i += 1) {
     try {
       await pledges.lookup(db, {
         input: { reference: "CF26-999999", phone: "+254700000000" },

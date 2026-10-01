@@ -35,11 +35,19 @@ import { escapeLike } from "@/server/sql";
  * caller to pass on.
  */
 
-/** How many requests one address may make to the public list in the window. */
-export const PUBLIC_LIST_RATE_LIMIT = 30;
+/**
+ * How many requests one address may make to the public list in the window.
+ *
+ * Higher than the other backstops because one person browsing makes several
+ * requests: each search and each page is one. A few hundred members on the
+ * church Wi-Fi looking themselves up after a service would have exhausted the
+ * old thirty a minute between them. The list carries consented names and
+ * amounts only, so this guards against scraping load, not against disclosure.
+ */
+export const PUBLIC_LIST_RATE_LIMIT = 3_000;
 
-/** The window that limit is counted over. */
-export const PUBLIC_LIST_RATE_WINDOW_SECONDS = 60;
+/** The window that limit is counted over. An hour. */
+export const PUBLIC_LIST_RATE_WINDOW_SECONDS = 60 * 60;
 
 type PublicRow = {
   id: string;
@@ -147,7 +155,7 @@ async function rateLimit(db: Db, ip: string | null): Promise<void> {
   if ((recent.rows[0] as { requests: number }).requests >= PUBLIC_LIST_RATE_LIMIT) {
     throw tooManyRequests(
       "public_list_rate_limited",
-      "Too many requests from this connection. Please wait a minute and try again.",
+      "Too many requests from this connection. Please wait a while and try again.",
     );
   }
 }

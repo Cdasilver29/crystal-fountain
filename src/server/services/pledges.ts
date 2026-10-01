@@ -113,6 +113,19 @@ export const PLEDGE_RATE_LIMIT = 5;
 /** The window that limit is counted over. */
 export const PLEDGE_RATE_WINDOW_SECONDS = 60 * 60;
 
+/**
+ * How many submissions one address may make to the public form in the window.
+ *
+ * A backstop for automated abuse and nothing more. On an appeal Sabbath the
+ * congregation pledges from the church Wi-Fi at once, all behind one public
+ * address, so this sits where a few hundred members in one hour never meet it.
+ * Turnstile and the per phone limit above are the controls that do the work.
+ */
+export const PLEDGE_IP_LIMIT = 300;
+
+/** The window that limit is counted over. An hour. */
+export const PLEDGE_IP_WINDOW_SECONDS = 60 * 60;
+
 export type CreatePledgeResult = {
   pledgeId: string;
   reference: string;
@@ -187,6 +200,12 @@ export async function create(
   db: Db,
   args: CreatePledgeArgs,
 ): Promise<CreatePledgeResult> {
+  // Only the public form. A treasurer entering pledges from a paper card at an
+  // event is one person at one desk and is not what this limit is for.
+  if ((args.channel ?? "web") === "web") {
+    await enforcePledgeIpLimit(db, args.request?.ip ?? null);
+  }
+
   // Before the transaction, deliberately. Asking Cloudflare is a network round
   // trip, and holding a database transaction open across one would lock the
   // pledger's row for as long as somebody else's service takes to answer.
@@ -197,6 +216,39 @@ export async function create(
   } catch (error) {
     if (!isOneLivePledgeViolation(error)) throw error;
     return createOnce(db, args, trusted);
+  }
+}
+
+/**
+ * Counts the address's window and records this submission, in one statement.
+ *
+ * Before the bot check, so a flood is turned away without each attempt costing
+ * a round trip to Cloudflare. Every attempt is recorded, refused or not, the
+ * same way as the public list: a limiter that stopped counting once it refused
+ * would let an address straight back in. The select in the CTE sees the table
+ * as it stood when the statement began, so this submission is not counted
+ * against itself.
+ */
+async function enforcePledgeIpLimit(db: Db, ip: string | null): Promise<void> {
+  const recent = await db.execute(sql`
+    with window_count as (
+      select count(*)::int as submissions
+      from pledge_submissions
+      where at > now() - make_interval(secs => ${PLEDGE_IP_WINDOW_SECONDS})
+        and ip is not distinct from ${ip}::inet
+    ),
+    recorded as (
+      insert into pledge_submissions (ip) values (${ip}::inet)
+      returning 1
+    )
+    select submissions from window_count, recorded
+  `);
+
+  if ((recent.rows[0] as { submissions: number }).submissions >= PLEDGE_IP_LIMIT) {
+    throw tooManyRequests(
+      "pledge_ip_limited",
+      "Too many pledges from this connection. Please wait a while and try again, or call the treasurer.",
+    );
   }
 }
 
@@ -1328,11 +1380,20 @@ export async function recent(
  * Looking a pledge up on /redeem.
  * ------------------------------------------------------------------------- */
 
-/** How many lookups one address may attempt in the window. */
-export const LOOKUP_RATE_LIMIT = 10;
+/**
+ * How many lookups one address may attempt in the window.
+ *
+ * A backstop against automated guessing, not a per person limit. A
+ * congregation on the church Wi-Fi shares one public address, and so do many
+ * Safaricom customers on mobile data, so this sits where a few hundred members
+ * checking their pledges in one busy hour never reach it. It was ten a minute,
+ * which thirty people after a Sabbath announcement could exhaust between them,
+ * while still letting one address make six hundred guesses an hour.
+ */
+export const LOOKUP_RATE_LIMIT = 300;
 
-/** The window that limit is counted over. */
-export const LOOKUP_RATE_WINDOW_SECONDS = 60;
+/** The window that limit is counted over. An hour. */
+export const LOOKUP_RATE_WINDOW_SECONDS = 60 * 60;
 
 /**
  * What a pledger is shown about their own pledge.
@@ -1421,7 +1482,7 @@ async function enforceLookupLimit(db: Db, ip: string | null): Promise<void> {
   if ((recent.rows[0] as { attempts: number }).attempts >= LOOKUP_RATE_LIMIT) {
     throw tooManyRequests(
       "lookup_rate_limited",
-      "Too many lookups from this connection. Please wait a minute and try again.",
+      "Too many lookups from this connection. Please wait a while and try again.",
     );
   }
 }

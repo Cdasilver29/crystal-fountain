@@ -72,8 +72,15 @@ export const CHANGE_REQUEST_PLEDGE_LIMIT = 3;
 /** The window that limit is counted over. A day. */
 export const CHANGE_REQUEST_PLEDGE_WINDOW_SECONDS = 24 * 60 * 60;
 
-/** How many requests one address may raise in the window. */
-export const CHANGE_REQUEST_IP_LIMIT = 10;
+/**
+ * How many requests one address may raise in the window.
+ *
+ * A backstop against automated abuse only. Members asking from the church
+ * Wi-Fi share one address, and ten an hour would have turned the eleventh
+ * member away. The per pledge limit above is what stops one pledge being
+ * flooded.
+ */
+export const CHANGE_REQUEST_IP_LIMIT = 300;
 
 /** The window that limit is counted over. An hour. */
 export const CHANGE_REQUEST_IP_WINDOW_SECONDS = 60 * 60;

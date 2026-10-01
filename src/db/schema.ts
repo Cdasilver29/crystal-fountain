@@ -939,3 +939,95 @@ export const pledgeChangeRequests = pgTable(
     ),
   ],
 );
+
+/*
+ * Every submission to the public pledge form, for the per address backstop.
+ *
+ * Not counted off pledge_increments, because an increment carries no address
+ * and a refused submission leaves no increment at all. A bot hammering the form
+ * with failing Turnstile tokens is exactly the traffic this has to see.
+ *
+ * The limit it feeds is set for automated abuse only. A congregation pledging
+ * from the church Wi-Fi shares one public address, so the number is high
+ * enough that a few hundred members in one hour never meet it. Turnstile and
+ * the per phone limit do the real work.
+ *
+ * The IP is nullable for the same reason as on pledge_lookups.
+ */
+export const pledgeSubmissions = pgTable(
+  "pledge_submissions",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    ip: inet("ip"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("pledge_submissions_ip_at_idx").on(t.ip, t.at)],
+);
+
+/*
+ * A change to where members' money is sent, waiting for a second person.
+ *
+ * The paybill and bank details are shown to every member at once, so whoever
+ * can change them alone can redirect every future payment. Saving them does
+ * not apply them: it writes a row here, and the campaign keeps its current
+ * details until a different active administrator approves.
+ *
+ * Both sides are kept whole, all eight fields, rather than only what moved.
+ * The email every administrator receives shows the old and new values in full,
+ * and a reviewer comparing an account number digit by digit needs both
+ * complete numbers in front of them.
+ */
+export const paymentDetailChanges = pgTable(
+  "payment_detail_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id),
+    /** The eight payment fields as they stood when the change was asked for. */
+    current: jsonb("current").notNull(),
+    /** The eight payment fields as they would stand once approved. */
+    proposed: jsonb("proposed").notNull(),
+    status: text("status").notNull().default("pending"),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => adminUsers.id),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '7 days'`),
+    /** Null while pending and for an expired change, which nobody decided. */
+    decidedBy: uuid("decided_by").references(() => adminUsers.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [
+    /*
+     * One waiting change per campaign. A second request while one is pending
+     * would let somebody swap the change a reviewer has already read for a
+     * different one, so it is refused rather than replacing the first.
+     */
+    uniqueIndex("payment_detail_changes_one_pending_idx")
+      .on(t.campaignId)
+      .where(sql`status = 'pending'`),
+    check(
+      "payment_detail_changes_status_check",
+      sql`${t.status} in ('pending','approved','rejected','expired')`,
+    ),
+    check(
+      "payment_detail_changes_decided_check",
+      sql`(${t.status} = 'pending') = (${t.decidedAt} is null)
+          and (${t.status} not in ('approved','rejected') or ${t.decidedBy} is not null)`,
+    ),
+    /*
+     * The requester can never approve their own change. Said here as well as
+     * in the service, so no code path, present or future, can be the only
+     * thing standing in the way.
+     */
+    check(
+      "payment_detail_changes_not_self_approved_check",
+      sql`${t.status} <> 'approved' or ${t.decidedBy} <> ${t.requestedBy}`,
+    ),
+  ],
+);
