@@ -43,6 +43,7 @@ export const ADMIN_ACTIONS = [
   "users.resetPassword",
   "users.createAdmin",
   "settings.edit",
+  "settings.approvePaymentChange",
 ] as const;
 
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
@@ -142,6 +143,16 @@ const RULES: Record<AdminAction, Rule> = {
   "pledges.delete": { minRole: "admin", superOnly: true },
   "settings.edit": { minRole: "admin", superOnly: true },
   "users.createAdmin": { minRole: "admin", superOnly: true },
+
+  /*
+   * The second signature on a change to where members' money is sent. Not
+   * super only, on purpose: the super administrator is the one who asks, and
+   * the point is that somebody else answers. An administrator rather than a
+   * treasurer, because this decides where every future payment goes, which is
+   * a bigger thing than any one entry the treasurer makes. The service refuses
+   * the requester whatever their role, and so does the database.
+   */
+  "settings.approvePaymentChange": { minRole: "admin" },
 };
 
 const RANK: Record<AdminRole, number> = { viewer: 1, treasurer: 2, admin: 3 };

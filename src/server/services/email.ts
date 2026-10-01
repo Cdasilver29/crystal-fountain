@@ -210,3 +210,26 @@ export async function sendChangeRequestDecision(
     tag: `change_${args.decision.decision}`,
   });
 }
+
+/* ---------------------------------------------------------------------------
+ * Notices to administrators.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Sends one already rendered message to each administrator separately.
+ *
+ * One send per address rather than one send to all of them, so nobody's
+ * address is shown to the others and one refused address does not stop the
+ * rest. Like everything else here it never throws, and each outcome comes back
+ * for the caller to log.
+ */
+export async function sendAdminNotice(
+  config: EmailConfig,
+  args: { to: string[]; message: RenderedEmail; tag: string },
+): Promise<SendResult[]> {
+  return Promise.all(
+    args.to.map((to) =>
+      deliver(config, { to, message: args.message, tag: args.tag }),
+    ),
+  );
+}

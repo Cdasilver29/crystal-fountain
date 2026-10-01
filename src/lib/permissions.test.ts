@@ -107,3 +107,24 @@ describe("the table as a whole", () => {
     }
   });
 });
+
+describe("settings.approvePaymentChange", () => {
+  it("is refused to a viewer and a treasurer", () => {
+    expect(can(viewer, "settings.approvePaymentChange")).toBe(false);
+    expect(can(treasurer, "settings.approvePaymentChange")).toBe(false);
+  });
+
+  /*
+   * The super administrator asks for a payment change, so the approval has to
+   * be open to an administrator who is not the super, or nobody could ever
+   * give the second signature.
+   */
+  it("is allowed to an administrator without the super flag", () => {
+    expect(can(admin, "settings.approvePaymentChange")).toBe(true);
+  });
+
+  it("is a different right from editing the settings", () => {
+    expect(can(admin, "settings.edit")).toBe(false);
+    expect(can(admin, "settings.approvePaymentChange")).toBe(true);
+  });
+});

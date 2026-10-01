@@ -54,6 +54,9 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "pledge.change_approved": "green",
   "admin.created": "green",
   "admin.reactivated": "green",
+  // The second signature that put new payment details live. Green like every
+  // other approval; the detail line says exactly what moved.
+  "campaign.payment_change_approved": "green",
 
   // Amber: changed, or data leaving the building.
   "pledge.fulfilled": "amber",
@@ -84,6 +87,12 @@ export const AUDIT_TONES: Record<string, Tone> = {
    */
   "campaign.updated": "amber",
   /*
+   * Somebody has asked to change where members' money is sent. Nothing has
+   * moved yet, but this is the row a reviewer most needs to notice, so it is
+   * amber rather than the grey of a request from a member.
+   */
+  "campaign.payment_change_requested": "amber",
+  /*
    * Amber rather than grey, for the same reason as a password reset. Enrolling
    * is routine and the owner chose it; having the second factor cleared away
    * underneath them is a change to how an account is protected that nobody
@@ -100,6 +109,8 @@ export const AUDIT_TONES: Record<string, Tone> = {
   // A refusal, which is what red is for. Nothing was destroyed, and the
   // pledger is about to be told no, which is worth seeing at a glance.
   "pledge.change_declined": "red",
+  // A refusal, the same as a declined change request.
+  "campaign.payment_change_rejected": "red",
   "admin.login_failed": "red",
   "admin.login_locked": "red",
   "admin.forbidden": "red",
@@ -130,6 +141,8 @@ export const AUDIT_TONES: Record<string, Tone> = {
    * the pledge is the one carrying the colour.
    */
   "pledge.change_closed": "grey",
+  // Nobody decided this. Seven days passed and the details stayed as they were.
+  "campaign.payment_change_expired": "grey",
   "admin.login": "grey",
   "admin.logout": "grey",
   "admin.totp_enrolled": "grey",

@@ -2,8 +2,10 @@ import { timingSafeEqual } from "node:crypto";
 
 import { db } from "@/db";
 import { env } from "@/env";
+import { notifyPaymentChanges } from "@/lib/admin-notices";
 import { problem, serviceProblem } from "@/lib/api";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
+import * as paymentChanges from "@/server/services/payment-changes";
 import * as snapshots from "@/server/services/snapshots";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +62,17 @@ export async function GET(request: Request) {
       statDate,
     });
 
+    /*
+     * Payment detail changes past their seven days. Also swept whenever the
+     * settings are saved or a change is decided, but those only happen when
+     * somebody is in the portal, and an expiry nobody hears about is one the
+     * requester may go on waiting for.
+     */
+    const expired = await paymentChanges.expireStale(db);
+    notifyPaymentChanges(expired);
+
     return Response.json({
+      expiredPaymentChanges: expired.length,
       statDate: row.statDate,
       // Amounts cross the wire as integer minor unit strings, per PLAN.md
       // section 13.

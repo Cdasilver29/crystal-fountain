@@ -110,6 +110,9 @@ async function main() {
     "users.resetPassword": [false, false, true, true],
     "users.createAdmin": [false, false, false, true],
     "settings.edit": [false, false, false, true],
+    // The second signature on a payment detail change. Not the super's alone,
+    // because the super is the one who asks.
+    "settings.approvePaymentChange": [false, false, true, true],
   };
 
   check(

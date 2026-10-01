@@ -1,6 +1,7 @@
 import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
+import { notifyPaymentChanges, refuseWithoutNotices } from "@/lib/admin-notices";
 import { requirePermission } from "@/lib/admin-guard";
 import {
   clientIp,
@@ -10,8 +11,12 @@ import {
   validationProblem,
 } from "@/lib/api";
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
-import { campaignSettingsInput } from "@/server/contracts/campaign";
+import {
+  campaignSettingsInput,
+  PAYMENT_DETAIL_FIELDS,
+} from "@/server/contracts/campaign";
 import * as campaign from "@/server/services/campaign";
+import * as paymentChanges from "@/server/services/payment-changes";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +29,11 @@ export const dynamic = "force-dynamic";
  *
  * The audit row is written inside the service, in the same transaction as the
  * change, and carries the before and after of every field that actually moved.
+ *
+ * Payment details are the exception: a save that moves any of them is recorded
+ * as a pending change for a different administrator to approve, and the site
+ * keeps showing the current details until then. Every active administrator is
+ * emailed about it at once.
  */
 export async function PATCH(request: Request) {
   const gate = await requirePermission(request, "settings.edit", {
@@ -45,7 +55,19 @@ export async function PATCH(request: Request) {
     return validationProblem(parsed.error);
   }
 
+  const touchesPayment = PAYMENT_DETAIL_FIELDS.some(
+    (field) => parsed.data[field] !== undefined,
+  );
+
+  if (touchesPayment) {
+    const refusal = refuseWithoutNotices();
+    if (refusal) return refusal;
+  }
+
   try {
+    // A change past its seven days must not block a fresh request.
+    notifyPaymentChanges(await paymentChanges.expireStale(db));
+
     const result = await campaign.updateSettings(db, {
       campaignSlug: CAMPAIGN_SLUG,
       input: parsed.data,
@@ -63,7 +85,20 @@ export async function PATCH(request: Request) {
       revalidateTag(CAMPAIGN_TOTALS_TAG);
     }
 
-    return Response.json({ changed: result.changed });
+    if (result.paymentChange) {
+      notifyPaymentChanges([result.paymentChange]);
+    }
+
+    return Response.json({
+      changed: result.changed,
+      paymentChange: result.paymentChange
+        ? {
+            id: result.paymentChange.changeId,
+            status: "pending",
+            expiresAt: result.paymentChange.expiresAt.toISOString(),
+          }
+        : null,
+    });
   } catch (error) {
     return serviceProblem(error);
   }

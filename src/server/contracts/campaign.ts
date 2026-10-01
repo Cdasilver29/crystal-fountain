@@ -82,3 +82,14 @@ export const PAYMENT_DETAIL_FIELDS = [
 ] as const;
 
 export type PaymentDetailField = (typeof PAYMENT_DETAIL_FIELDS)[number];
+
+/**
+ * Deciding a pending payment detail change. Nothing else travels with it: the
+ * change being decided is the one already stored, so a decision cannot carry
+ * different details from the ones the email showed.
+ */
+export const decidePaymentChangeInput = z.object({
+  decision: z.enum(["approve", "reject"], "Choose approve or reject."),
+});
+
+export type DecidePaymentChangeInput = z.infer<typeof decidePaymentChangeInput>;

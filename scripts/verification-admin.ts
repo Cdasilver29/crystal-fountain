@@ -78,6 +78,17 @@ export async function removeVerificationAdmins(db: Db): Promise<void> {
    * same address and nothing on the screen said why. The cast is the whole
    * fix.
    */
+  // Payment detail changes hold a foreign key to whoever asked and whoever
+  // decided, and only a verification run ever makes one with these accounts.
+  await db.execute(sql`
+    delete from payment_detail_changes
+    where requested_by in (
+            select id from admin_users
+            where email::text like ${VERIFICATION_EMAIL_PATTERN})
+       or decided_by in (
+            select id from admin_users
+            where email::text like ${VERIFICATION_EMAIL_PATTERN})
+  `);
   await db.execute(sql`
     delete from admin_users
     where email::text like ${VERIFICATION_EMAIL_PATTERN}

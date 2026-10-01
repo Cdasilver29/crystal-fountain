@@ -79,6 +79,42 @@ const CLOSURES: Record<string, string> = {
   pledge_deleted: "the pledge was removed",
 };
 
+/** The payment fields in words, for the detail line. */
+const PAYMENT_LABELS: Record<string, string> = {
+  mpesaPaybill: "paybill",
+  mpesaAccountName: "M-Pesa account name",
+  bankName: "bank",
+  bankBranch: "branch",
+  bankAccountName: "bank account name",
+  bankAccount: "account number",
+  bankSwift: "Swift code",
+  bankBranchCode: "branch code",
+};
+
+/**
+ * A payment detail change, with every moved value old and new.
+ *
+ * The values are printed whole. They are the details shown on every public
+ * page, so nothing here is private, and the journal is where somebody checks
+ * after the fact exactly which account number went live and who approved it.
+ */
+function paymentChangePhrase(
+  action: string,
+  b: Record<string, unknown>,
+  a: Record<string, unknown>,
+): string {
+  const changed = Array.isArray(a.changed) ? (a.changed as unknown[]) : [];
+  const moves = changed
+    .filter((field): field is string => typeof field === "string")
+    .map(
+      (field) =>
+        `${PAYMENT_LABELS[field] ?? field} ${str(b[field]) ?? "not set"} → ${str(a[field]) ?? "not set"}`,
+    )
+    .join("; ");
+  const outcome = action.slice("campaign.payment_change_".length);
+  return moves ? `${outcome}: ${moves}` : outcome;
+}
+
 /**
  * What a change request asked for, in one phrase.
  *
@@ -168,6 +204,12 @@ export function summarise(
 
     case "pledge.change_closed":
       return `${changePhrase(a)} closed, ${CLOSURES[str(a.because) ?? ""] ?? "the pledge went away"}`;
+
+    case "campaign.payment_change_requested":
+    case "campaign.payment_change_approved":
+    case "campaign.payment_change_rejected":
+    case "campaign.payment_change_expired":
+      return paymentChangePhrase(action, b, a);
 
     case "pledgers.display_consent_withdrawn": {
       // The reference and nothing else. The name is deliberately not in the

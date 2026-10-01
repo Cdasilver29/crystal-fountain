@@ -10,8 +10,8 @@ config({ path: ".env.local" });
  *
  * The riskiest screen in the portal, so most of this is about consequences
  * rather than about the form working: that a changed target actually moves the
- * public figure, that a changed paybill actually reaches the page telling
- * somebody how to give, that closing the campaign actually closes it, and that
+ * public figure, that a changed paybill reaches the page telling somebody how
+ * to give only once a second administrator has approved it, that closing the campaign actually closes it, and that
  * every one of those changes is readable afterwards in the journal.
  *
  * Everything it changes is put back at the end, including the super admin flag
@@ -153,6 +153,16 @@ async function main() {
       body: JSON.stringify(payload),
     });
 
+  const decidePayment = (cookie: string, id: string, decision: string) =>
+    call(cookie, `/api/admin/settings/payment-changes/${id}`, {
+      method: "POST",
+      body: JSON.stringify({ decision }),
+    });
+
+  /** The id of the pending change a save asked for, or "" when there is none. */
+  const pendingId = (response: { body: Record<string, unknown> | null }) =>
+    String((response.body?.paymentChange as { id?: string } | null)?.id ?? "");
+
   try {
     // 1. Who may.
     heading("1. only the super administrator");
@@ -223,7 +233,7 @@ async function main() {
     );
 
     // 3. The payment details.
-    heading("3. changing the paybill reaches the public pages");
+    heading("3. a changed paybill waits for a second administrator");
     const beforeHome = await get("/");
     check(
       "the home page shows the built in paybill to start with",
@@ -232,10 +242,50 @@ async function main() {
     );
 
     const newPaybill = "999111";
-    await patch(cookies.super, {
+    const asked = await patch(cookies.super, {
       mpesaPaybill: newPaybill,
       bankAccount: "0000000000001",
     });
+    const changeId = pendingId(asked);
+    check(
+      "saving it is accepted as a pending change",
+      asked.status === 200 &&
+        (asked.body?.paymentChange as { status?: string } | null)?.status === "pending",
+      `${asked.status} ${JSON.stringify(asked.body?.paymentChange)}`,
+    );
+
+    const pendingHome = await get("/");
+    check(
+      "and the home page still shows the current paybill",
+      pendingHome.body.includes(MPESA.paybill) && !pendingHome.body.includes(newPaybill),
+    );
+
+    const again = await patch(cookies.super, { mpesaPaybill: "999222" });
+    check(
+      "a second change while one waits is refused",
+      again.status === 409 && again.body?.code === "payment_change_pending",
+      `${again.status} ${String(again.body?.code)}`,
+    );
+
+    const bySelf = await decidePayment(cookies.super, changeId, "approve");
+    check(
+      "the super administrator cannot approve their own change",
+      bySelf.status === 403,
+      `${bySelf.status} ${String(bySelf.body?.code)}`,
+    );
+    const byTreasurerApproval = await decidePayment(cookies.treasurer, changeId, "approve");
+    check(
+      "nor can a treasurer",
+      byTreasurerApproval.status === 403,
+      `${byTreasurerApproval.status}`,
+    );
+
+    const approved = await decidePayment(cookies.admin, changeId, "approve");
+    check(
+      "a different administrator can",
+      approved.status === 200 && approved.body?.status === "approved",
+      `${approved.status} ${approved.text.slice(0, 120)}`,
+    );
 
     const afterHome = await get("/");
     check(
@@ -278,7 +328,8 @@ async function main() {
       fallback.accountName,
     );
 
-    await patch(cookies.super, { mpesaPaybill: "" });
+    const cleared = await patch(cookies.super, { mpesaPaybill: "" });
+    await decidePayment(cookies.admin, pendingId(cleared), "approve");
     const clearedHome = await get("/");
     check(
       "clearing the box on the screen puts the built in value back",
@@ -349,8 +400,8 @@ async function main() {
     const paybillRow = await db.execute(sql`
       select before ->> 'mpesaPaybill' as was, after ->> 'mpesaPaybill' as now
       from audit_log
-      where action = 'campaign.updated' and after ? 'mpesaPaybill'
-      order by id asc limit 1
+      where action = 'campaign.payment_change_approved'
+        and after ->> 'changeId' = ${changeId}
     `);
     show(paybillRow.rows as Record<string, unknown>[]);
     check(

@@ -8,6 +8,7 @@ import {
   PAYMENT_DETAIL_FIELDS,
   type CampaignSettingsInput,
 } from "@/server/contracts/campaign";
+import * as paymentChanges from "@/server/services/payment-changes";
 
 /**
  * Campaign services.
@@ -264,9 +265,16 @@ export type UpdateSettingsArgs = {
 };
 
 export type UpdateSettingsResult = {
+  /** The settings that were applied. Never a payment field. */
   changed: string[];
   /** Whether a public figure moved, so the caller knows to revalidate. */
   affectsTotals: boolean;
+  /**
+   * The payment detail change this save asked for, or null when none of the
+   * payment fields moved. It is pending, not applied: the site keeps showing
+   * the current details until a different administrator approves.
+   */
+  paymentChange: paymentChanges.PaymentChangeNotice | null;
 };
 
 /**
@@ -279,6 +287,11 @@ export type UpdateSettingsResult = {
  *
  * A field that did not move is left out of both columns, so reading the row
  * later shows the change rather than a restatement of everything.
+ *
+ * The payment fields are the exception to applying directly. If any of them
+ * moved, the whole set is written as a pending change for a second
+ * administrator to approve, in this same transaction, and the campaign row's
+ * payment details are left exactly as they were. See payment-changes.ts.
  */
 export async function updateSettings(
   db: Db,
@@ -350,13 +363,27 @@ export async function updateSettings(
       move("isPublic", before.isPublic, input.isPublic);
     }
 
+    const current = {} as paymentChanges.PaymentDetailValues;
+    const proposed = {} as paymentChanges.PaymentDetailValues;
+
     for (const field of PAYMENT_DETAIL_FIELDS) {
-      if (input[field] === undefined) continue;
-      move(field, before[field], input[field] ?? null);
+      current[field] = before[field] ?? null;
+      proposed[field] =
+        input[field] === undefined ? current[field] : (input[field] ?? null);
     }
 
+    const paymentChange = paymentChanges.sameDetails(current, proposed)
+      ? null
+      : await paymentChanges.requestChange(tx, {
+          campaignId: before.id,
+          current,
+          proposed,
+          adminId,
+          request,
+        });
+
     if (changed.length === 0) {
-      return { changed, affectsTotals: false };
+      return { changed, affectsTotals: false, paymentChange };
     }
 
     await tx
@@ -376,16 +403,14 @@ export async function updateSettings(
       userAgent: request?.userAgent ?? null,
     });
 
-    /*
-     * The target and the opening balance are both inside v_campaign_totals, so
-     * either one moves the figure on every public page. The paybill does not:
-     * it changes what the instructions say, not what the tracker reads.
-     */
+    // The target and the opening balance are both inside v_campaign_totals,
+    // so either one moves the figure on every public page.
     return {
       changed,
       affectsTotals:
         changed.includes("targetMinor") ||
         changed.includes("openingBalanceMinor"),
+      paymentChange,
     };
   });
 }
