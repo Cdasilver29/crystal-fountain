@@ -27,6 +27,23 @@ export const EMAIL_LIMITS = {
 
 export type LimitedEmailKind = keyof typeof EMAIL_LIMITS;
 
+/** The label the email limit's key is derived under. Changing it resets every count. */
+const KEY_PURPOSE = "crystal-fountain:email-limit-recipient-key:v1";
+
+/**
+ * The key recipient addresses are hashed under, derived from a server secret.
+ *
+ * Derived under a fixed purpose label rather than using the secret itself,
+ * so the secret that signs admin sessions is not also doing this unrelated
+ * job: nothing produced here can stand in for anything it signs. Undefined
+ * when there is no secret, and reserveEmail then sends nothing.
+ */
+export function emailLimitKey(secret: string | undefined): string | undefined {
+  const s = secret?.trim();
+  if (!s) return undefined;
+  return createHmac("sha256", s).update(KEY_PURPOSE).digest("hex");
+}
+
 /** The address as it is counted: trimmed and lower cased. */
 export function normaliseRecipient(address: string): string {
   return address.trim().toLowerCase();

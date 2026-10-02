@@ -27,7 +27,7 @@ import {
   sendPledgeConfirmation,
   sendRendered,
 } from "@/server/services/email";
-import { reserveEmail } from "@/server/services/email-limits";
+import { emailLimitKey, reserveEmail } from "@/server/services/email-limits";
 import * as pledges from "@/server/services/pledges";
 import { turnstileConfig } from "@/lib/bot-check";
 
@@ -71,7 +71,7 @@ function sendConfirmation(args: {
     const allowed = await reserveEmail(db, {
       to: args.input.email!,
       kind: "pledge_confirmation",
-      key: env.BETTER_AUTH_SECRET,
+      key: emailLimitKey(env.BETTER_AUTH_SECRET),
     });
     if (!allowed) return;
 
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
       ownership: { ownedPledgeIds },
       request: { ip: clientIp(request), userAgent: userAgent(request) },
       // What addresses are counted under for the per recipient email limit.
-      emailKey: env.BETTER_AUTH_SECRET,
+      emailKey: emailLimitKey(env.BETTER_AUTH_SECRET),
       security: {
         token: parsed.data.turnstileToken,
         ...turnstileConfig(),

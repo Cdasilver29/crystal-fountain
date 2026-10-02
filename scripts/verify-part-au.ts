@@ -49,7 +49,8 @@ async function main() {
     console.log(`${ok ? "pass" : "FAIL"}  ${label}${detail ? `  ${detail}` : ""}`);
   };
 
-  const serverKey = process.env.BETTER_AUTH_SECRET!;
+  // The key the server counts under: derived from the secret, not the secret.
+  const serverKey = limits.emailLimitKey(process.env.BETTER_AUTH_SECRET)!;
   const typedHash = limits.recipientHash(TYPED, serverKey);
   const recordHash = limits.recipientHash(RECORD, KEY);
   const raceAddress = `race.${Date.now()}@example.test`;
