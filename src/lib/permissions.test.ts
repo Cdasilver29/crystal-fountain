@@ -109,9 +109,12 @@ describe("the table as a whole", () => {
 });
 
 describe("settings.approvePaymentChange", () => {
-  it("is refused to a viewer and a treasurer", () => {
+  it("is refused to a viewer", () => {
     expect(can(viewer, "settings.approvePaymentChange")).toBe(false);
-    expect(can(treasurer, "settings.approvePaymentChange")).toBe(false);
+  });
+
+  it("is allowed to a treasurer", () => {
+    expect(can(treasurer, "settings.approvePaymentChange")).toBe(true);
   });
 
   /*

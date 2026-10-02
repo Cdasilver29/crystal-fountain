@@ -212,6 +212,7 @@ async function main() {
     await db.execute(sql`update admin_users set is_super = true where id = ${superId}::uuid`);
     const secondId = await make("second", "admin");
     const treasurerId = await make("treasurer", "treasurer");
+    const viewerId = await make("viewer", "viewer");
     const retiredId = await make("retired", "admin");
     await db.execute(sql`update admin_users set is_active = false where id = ${retiredId}::uuid`);
 
@@ -273,10 +274,10 @@ async function main() {
     }
     check("and neither will the database, whatever code asks", dbRefused);
 
-    const byTreasurer = await codeOf(() =>
-      changes.decide(db, { changeId: id, decision: "approve", adminId: treasurerId }),
+    const byViewer = await codeOf(() =>
+      changes.decide(db, { changeId: id, decision: "approve", adminId: viewerId }),
     );
-    check("a treasurer cannot approve", byTreasurer === "403 payment_change_needs_admin", byTreasurer);
+    check("a viewer cannot approve", byViewer === "403 payment_change_needs_treasurer", byViewer);
 
     const byRetired = await codeOf(() =>
       changes.decide(db, { changeId: id, decision: "approve", adminId: retiredId }),
@@ -295,6 +296,23 @@ async function main() {
       changes.decide(db, { changeId: id, decision: "reject", adminId: secondId }),
     );
     check("a decided change cannot be decided again", twice === "409 payment_change_not_pending", twice);
+
+    // A treasurer may give the second signature too.
+    const byTreasurerChange = await campaign.updateSettings(db, {
+      campaignSlug: CAMPAIGN_SLUG,
+      input: { mpesaAccountName: "Treasurer Approved Fund" },
+      adminId: superId,
+    });
+    const byTreasurer = await changes.decide(db, {
+      changeId: byTreasurerChange.paymentChange!.changeId,
+      decision: "approve",
+      adminId: treasurerId,
+    });
+    const afterTreasurer = await campaign.getSettings(db, { campaignSlug: CAMPAIGN_SLUG });
+    check(
+      "a treasurer who did not ask can approve",
+      byTreasurer.event === "approved" && afterTreasurer.mpesaAccountName === "Treasurer Approved Fund",
+    );
 
     // Withdrawn by the person who asked.
     const withdrawn = await campaign.updateSettings(db, {

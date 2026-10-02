@@ -35,7 +35,7 @@ export const dynamic = "force-dynamic";
  * change, and carries the before and after of every field that actually moved.
  *
  * Payment details are the exception: a save that moves any of them is recorded
- * as a pending change for a different administrator to approve, and the site
+ * as a pending change for a treasurer or another administrator to approve, and the site
  * keeps showing the current details until then. Every active administrator is
  * emailed about it at once, and about any other setting that changed, since
  * those are live the moment this returns.

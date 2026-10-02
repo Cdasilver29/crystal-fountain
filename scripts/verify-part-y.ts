@@ -184,9 +184,11 @@ async function main() {
     );
 
     const treasurerPage = await call(cookies.treasurer, "/admin/settings");
+    // A treasurer opens the screen to approve payment changes, and is not
+    // given the form that edits the settings.
     check(
-      "the screen itself is closed to them",
-      treasurerPage.status === 403 || treasurerPage.status === 404,
+      "the screen opens for a treasurer without the settings form",
+      treasurerPage.status === 200 && !treasurerPage.text.includes("Target in shillings"),
       `${treasurerPage.status}`,
     );
 
@@ -286,16 +288,9 @@ async function main() {
       bySelf.status === 403,
       `${bySelf.status} ${String(bySelf.body?.code)}`,
     );
-    const byTreasurerApproval = await decidePayment(cookies.treasurer, changeId, "approve");
+    const approved = await decidePayment(cookies.treasurer, changeId, "approve");
     check(
-      "nor can a treasurer",
-      byTreasurerApproval.status === 403,
-      `${byTreasurerApproval.status}`,
-    );
-
-    const approved = await decidePayment(cookies.admin, changeId, "approve");
-    check(
-      "a different administrator can",
+      "a treasurer who did not ask can",
       approved.status === 200 && approved.body?.status === "approved",
       `${approved.status} ${approved.text.slice(0, 120)}`,
     );

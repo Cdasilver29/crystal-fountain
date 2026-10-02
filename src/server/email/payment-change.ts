@@ -66,7 +66,7 @@ function headline(notice: PaymentChangeNotice): { subject: string; lead: string 
     case "requested":
       return {
         subject: "Payment details change waiting for approval",
-        lead: `${notice.requestedByName} has asked to change the payment details members are told to pay to. Nothing has changed on the site yet. A different administrator must approve it before ${when(notice.expiresAt)}, or it expires.`,
+        lead: `${notice.requestedByName} has asked to change the payment details members are told to pay to. Nothing has changed on the site yet. A treasurer or another administrator must approve it before ${when(notice.expiresAt)}, or it expires.`,
       };
     case "approved":
       return {

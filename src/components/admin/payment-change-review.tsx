@@ -150,7 +150,7 @@ export function PaymentChangeReview({
 
       {isRequester && (
         <p className="mt-4 text-sm text-neutral-700">
-          You asked for this change, so a different administrator has to approve it.
+          You asked for this change, so a treasurer or another administrator has to approve it.
         </p>
       )}
 

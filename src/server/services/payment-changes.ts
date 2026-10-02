@@ -300,10 +300,10 @@ export async function decide(db: Db, args: DecideArgs): Promise<PaymentChangeNot
         );
       }
 
-      if (who.role !== "admin") {
+      if (who.role !== "admin" && who.role !== "treasurer") {
         throw forbidden(
-          "payment_change_needs_admin",
-          "Only an administrator can approve a change to the payment details.",
+          "payment_change_needs_treasurer",
+          "Only a treasurer or an administrator can approve a change to the payment details.",
         );
       }
 

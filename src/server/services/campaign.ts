@@ -277,7 +277,7 @@ export type UpdateSettingsResult = {
   /**
    * The payment detail change this save asked for, or null when none of the
    * payment fields moved. It is pending, not applied: the site keeps showing
-   * the current details until a different administrator approves.
+   * the current details until a treasurer or another administrator approves.
    */
   paymentChange: paymentChanges.PaymentChangeNotice | null;
 };

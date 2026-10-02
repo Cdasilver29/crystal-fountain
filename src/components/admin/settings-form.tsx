@@ -186,7 +186,7 @@ export function SettingsForm({
           {[
             saved.length > 0 ? `Saved. Changed: ${saved.join(", ")}.` : null,
             sentForApproval
-              ? "The payment details were sent for approval. A different administrator must approve them before the site shows them, and every administrator has been emailed."
+              ? "The payment details were sent for approval. A treasurer or another administrator must approve them before the site shows them, and every administrator has been emailed."
               : null,
           ]
             .filter(Boolean)
@@ -302,7 +302,7 @@ export function SettingsForm({
           These appear on every page that tells somebody how to give. A wrong
           digit here sends real money to the wrong account, so read them back
           before saving. Leave a box empty to use the value built into the site.
-          A change here waits for a different administrator to approve it.
+          A change here waits for a treasurer or another administrator to approve it.
         </p>
         {paymentPending && (
           <p className="mt-2 text-sm font-medium text-navy">
