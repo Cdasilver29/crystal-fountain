@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { BotCheck, useBotCheck } from "@/components/pledge/bot-check";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import {
   type ChangeRequestKind,
 } from "@/server/contracts/change-requests";
 import { REDEMPTION_CHOICES, REDEMPTION_PLANS } from "@/server/contracts/pledges";
+import { TURNSTILE_ACTIONS } from "@/server/contracts/turnstile";
 
 /**
  * Asking for something to be changed about your own pledge.
@@ -70,11 +72,14 @@ function planLabel(frequency: string | null): string {
 export function ChangeRequestForm({
   pledge,
   phone,
+  turnstileSiteKey = null,
   onRaised,
 }: {
   pledge: PledgeNow;
   /** The number already proved against this reference by the lookup. */
   phone: string;
+  /** The Turnstile site key, or null when the check is switched off. */
+  turnstileSiteKey?: string | null;
   /** Lets the panel above swap the form for the pending state. */
   onRaised: (raised: { kind: ChangeRequestKind; createdAt: string }) => void;
 }) {
@@ -93,6 +98,7 @@ export function ChangeRequestForm({
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const check = useBotCheck(turnstileSiteKey);
 
   /** What this form will post, before the contract has looked at it. */
   function payload(): Record<string, unknown> {
@@ -156,6 +162,8 @@ export function ChangeRequestForm({
       }
     }
 
+    if (!check.ready()) return;
+
     setErrors({});
     setBusy(true);
 
@@ -163,12 +171,17 @@ export function ChangeRequestForm({
       const response = await fetch("/api/redeem/change-requests", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify({
+          ...parsed.data,
+          turnstileToken: check.token ?? undefined,
+        }),
       });
 
       const body = await response.json().catch(() => null);
 
       if (!response.ok) {
+        // Spent. The corrected attempt needs a fresh one.
+        check.reset();
         if (body?.errors) {
           setErrors(body.errors);
         } else {
@@ -188,6 +201,7 @@ export function ChangeRequestForm({
        */
       onRaised({ kind: body.request.kind, createdAt: body.request.createdAt });
     } catch {
+      check.reset();
       setFormError("We could not reach the server. Check your connection.");
       setBusy(false);
     }
@@ -417,6 +431,8 @@ export function ChangeRequestForm({
           <p className="mt-1.5 text-sm text-red-700">{errors.reason}</p>
         )}
       </div>
+
+      <BotCheck check={check} action={TURNSTILE_ACTIONS.changeRequest} />
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy}>

@@ -20,6 +20,14 @@ config({ path: ".env.local" });
  */
 
 const BASE = process.env.VERIFY_BASE_URL ?? "http://localhost:3000";
+
+/**
+ * The /redeem forms are behind Turnstile. The server under test runs with
+ * Cloudflare's always pass test pair, whose answer carries no action or real
+ * hostname and is accepted only off the production deployment, so any token
+ * shaped string gets through. See turnstileTestingAllowed.
+ */
+const BOT_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
 const CAMPAIGN_SLUG = "crystal-fountain";
 const PHONES = {
   asking: "0799900101",
@@ -112,7 +120,7 @@ async function main() {
     const response = await fetch(`${BASE}/api/redeem/change-requests`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ turnstileToken: BOT_TOKEN, ...body }),
     });
     const payload = await response.json().catch(() => null);
     return { status: response.status, body: payload };
@@ -122,7 +130,7 @@ async function main() {
     const response = await fetch(`${BASE}/api/redeem/lookup`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ reference, phone }),
+      body: JSON.stringify({ reference, phone, turnstileToken: BOT_TOKEN }),
     });
     const payload = await response.json().catch(() => null);
     return { status: response.status, body: payload };

@@ -8,9 +8,11 @@ import {
   userAgent,
   validationProblem,
 } from "@/lib/api";
+import { requireHuman } from "@/lib/bot-check";
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { withdrawDisplayConsentInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
+import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,9 @@ export const dynamic = "force-dynamic";
  * A miss is 200 with found false, not a 404, for the same reason the lookup
  * answers that way: saying which half of the pair was wrong would hand back
  * the fact that requiring both is there to protect.
+ *
+ * Behind Turnstile, with its own action name, so a token solved for the lookup
+ * above it cannot be spent here as well.
  */
 export async function DELETE(request: Request) {
   let body: unknown;
@@ -51,6 +56,12 @@ export async function DELETE(request: Request) {
   }
 
   try {
+    await requireHuman({
+      action: TURNSTILE_ACTIONS.withdrawConsent,
+      token: parsed.data.turnstileToken,
+      ip: clientIp(request),
+    });
+
     const result = await pledges.withdrawDisplayConsent(db, {
       input: parsed.data,
       campaignSlug: CAMPAIGN_SLUG,

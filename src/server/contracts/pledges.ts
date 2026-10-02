@@ -173,6 +173,21 @@ const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
 /**
+ * The Turnstile token, when the form rendered a widget to produce one.
+ *
+ * Optional here on purpose, on every form that carries one. Whether a token is
+ * required is a server side decision that depends on whether Turnstile is
+ * configured, and the schema has no way to know that. Making it required in
+ * the contract would only break the local form, which legitimately has no
+ * widget, while doing nothing to stop a robot that simply posts a token shaped
+ * string.
+ */
+export const turnstileToken = z.preprocess(
+  emptyToUndefined,
+  z.string().max(4096).optional(),
+);
+
+/**
  * The one contract for creating a pledge, shared by the client form and the
  * route handler. Client validation is convenience only. This same schema runs
  * server side on every request.
@@ -231,19 +246,7 @@ export const createPledgeInput = z.object({
   category: z.enum(PLEDGE_CATEGORIES).optional(),
   tier: z.enum(PLEDGE_TIERS).optional(),
 
-  /*
-   * The Turnstile token, when the form rendered a widget to produce one.
-   *
-   * Optional here on purpose. Whether a token is required is a server side
-   * decision that depends on whether Turnstile is configured, and the schema
-   * has no way to know that. Making it required in the contract would only
-   * break the local form, which legitimately has no widget, while doing nothing
-   * to stop a robot that simply posts a token shaped string.
-   */
-  turnstileToken: z.preprocess(
-    emptyToUndefined,
-    z.string().max(4096).optional(),
-  ),
+  turnstileToken,
 
   // The three consents are separate and none of them is pre-ticked.
   // Recording the pledge is the only one that is required.
@@ -329,6 +332,7 @@ export const pledgeReference = z
 export const lookupPledgeInput = z.object({
   reference: pledgeReference,
   phone: kenyanPhone,
+  turnstileToken,
 });
 
 export type LookupPledgeInput = z.infer<typeof lookupPledgeInput>;
@@ -347,6 +351,7 @@ export type LookupPledgeInput = z.infer<typeof lookupPledgeInput>;
 export const withdrawDisplayConsentInput = z.object({
   reference: pledgeReference,
   phone: kenyanPhone,
+  turnstileToken,
 });
 
 export type WithdrawDisplayConsentInput = z.infer<

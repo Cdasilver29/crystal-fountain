@@ -14,8 +14,6 @@ import {
 import {
   conflict,
   notFound,
-  rejected,
-  ServiceError,
   tooManyRequests,
 } from "@/server/errors";
 import type { ChangeRequestKind } from "@/server/contracts/change-requests";
@@ -30,8 +28,9 @@ import {
 } from "@/server/services/change-request-closure";
 import { kesToMinor } from "@/server/money";
 import {
+  assertHuman,
   isTurnstileConfigured,
-  verify as verifyTurnstile,
+  TURNSTILE_ACTIONS,
   type TurnstileKeys,
 } from "@/server/services/turnstile";
 import {
@@ -95,6 +94,15 @@ export type PledgeSecurityArgs = {
    * production, where absent keys are a failed deploy rather than an open door.
    */
   bypassAllowed: boolean;
+  /**
+   * Whether Cloudflare's test secrets and a stand in siteverify are accepted.
+   * Absent means no, which is the production answer.
+   */
+  testingAllowed?: boolean;
+  /** The site's own hostnames. Absent or empty refuses every real token. */
+  allowedHostnames?: readonly string[];
+  /** A stand in siteverify, for a verification run. */
+  siteverifyUrl?: string;
   /** Whole shillings. A pledge total under this is verified without a person. */
   autoApproveLimitKes: number;
 };
@@ -471,36 +479,24 @@ async function checkSecurity(
 ): Promise<boolean> {
   if (!security) return false;
 
-  // Throws on a half configured pair rather than picking one of two bad guesses.
-  if (!isTurnstileConfigured(security.keys)) {
-    if (!security.bypassAllowed) {
-      throw new ServiceError(
-        "turnstile_misconfigured",
-        "The security check is not configured. A pledge cannot be recorded until it is.",
-        500,
-      );
-    }
-    // A laptop with no Cloudflare account. Verification is skipped, and a
-    // pledge under the limit is still approved, so the local form behaves the
-    // way the deployed one does.
-    return true;
-  }
-
-  const result = await verifyTurnstile({
+  /*
+   * The check every public form runs, with this form's own action name. With
+   * no keys somewhere that is allowed, a laptop with no Cloudflare account,
+   * it passes and a pledge under the limit is still approved, so the local
+   * form behaves the way the deployed one does.
+   */
+  await assertHuman({
+    config: {
+      keys: security.keys,
+      bypassAllowed: security.bypassAllowed,
+      testingAllowed: security.testingAllowed ?? false,
+      allowedHostnames: security.allowedHostnames ?? [],
+      siteverifyUrl: security.siteverifyUrl,
+    },
+    action: TURNSTILE_ACTIONS.pledge,
     token: security.token,
-    secretKey: security.keys.secretKey!,
     ip: request?.ip,
   });
-
-  if (!result.ok) {
-    // Cloudflare's codes are for us, not for the pledger. Somebody who has just
-    // typed their name and their phone number gets told what to do next.
-    console.warn("turnstile refused a pledge", result.errorCodes);
-    throw rejected(
-      "turnstile_failed",
-      "The security check did not pass. Please complete it again and resubmit.",
-    );
-  }
 
   return true;
 }

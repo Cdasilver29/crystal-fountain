@@ -6,6 +6,7 @@ import {
   MIN_PLEDGE_KES,
   REDEMPTION_CHOICES,
   pledgeReference,
+  turnstileToken,
 } from "./pledges";
 import { MAX_PAYMENT_KES, MIN_PAYMENT_KES } from "./payments";
 
@@ -152,6 +153,7 @@ const base = {
     .trim()
     .min(MIN_REASON_LENGTH, "Say a little more about why, in a sentence.")
     .max(MAX_REASON_LENGTH, "That is longer than this form accepts."),
+  turnstileToken,
 };
 
 export const changeRequestInput = z.discriminatedUnion("kind", [

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { PaymentInstructions } from "@/components/campaign/payment-instructions";
+import { BotCheck, useBotCheck } from "@/components/pledge/bot-check";
 import { CopyButton } from "@/components/pledge/copy-button";
 import {
   ChangeRequestForm,
@@ -19,6 +20,7 @@ import type { ResolvedPaymentDetails } from "@/lib/payment-details";
 import { redemptionSummary } from "@/lib/redemption";
 import type { ChangeRequestKind } from "@/server/contracts/change-requests";
 import { lookupPledgeInput, REDEMPTION_PLANS } from "@/server/contracts/pledges";
+import { TURNSTILE_ACTIONS } from "@/server/contracts/turnstile";
 
 /**
  * Looking up a pledge in order to pay it.
@@ -65,15 +67,22 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function RedeemLookup({
   details,
+  turnstileSiteKey = null,
 }: {
   /** Where money is sent, read from the campaign row by the page above. */
   details: ResolvedPaymentDetails;
+  /**
+   * The Turnstile site key, or null when the check is switched off. Every form
+   * on this page that reads or changes a pledge is behind it.
+   */
+  turnstileSiteKey?: string | null;
 }) {
   const [reference, setReference] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [state, setState] = useState<State>({ kind: "idle" });
+  const check = useBotCheck(turnstileSiteKey);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -90,6 +99,8 @@ export function RedeemLookup({
       return;
     }
 
+    if (!check.ready()) return;
+
     setErrors({});
     setSubmitting(true);
 
@@ -97,7 +108,10 @@ export function RedeemLookup({
       const response = await fetch("/api/redeem/lookup", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify({
+          ...parsed.data,
+          turnstileToken: check.token ?? undefined,
+        }),
       });
 
       const body = await response.json().catch(() => null);
@@ -118,6 +132,8 @@ export function RedeemLookup({
         form: "We could not reach the server. Check your connection and try again.",
       });
     } finally {
+      // Spent either way. The next lookup needs a fresh one.
+      check.reset();
       setSubmitting(false);
     }
   }
@@ -193,6 +209,8 @@ export function RedeemLookup({
               )}
             </div>
           </div>
+
+          <BotCheck check={check} action={TURNSTILE_ACTIONS.redeemLookup} />
 
           <Button type="submit" disabled={submitting} className="mt-5">
             {submitting ? "Looking…" : "Find my pledge"}
@@ -283,6 +301,7 @@ export function RedeemLookup({
                   installmentFrequency: found.installmentFrequency,
                 }}
                 phone={phone}
+                turnstileSiteKey={turnstileSiteKey}
                 onRaised={(raised) =>
                   setState({
                     kind: "found",
@@ -302,6 +321,7 @@ export function RedeemLookup({
               <WithdrawDisplayConsent
                 reference={found.reference}
                 phone={phone}
+                turnstileSiteKey={turnstileSiteKey}
                 onWithdrawn={() =>
                   setState({
                     kind: "found",

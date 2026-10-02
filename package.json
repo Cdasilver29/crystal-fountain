@@ -58,7 +58,8 @@
     "db:verify:ownership": "tsx scripts/verify-part-ap.ts",
     "db:verify:held-queue": "tsx scripts/verify-part-aq.ts",
     "db:verify:owner-view": "tsx scripts/verify-part-ar.ts",
-    "db:verify:double-submit": "tsx scripts/verify-part-as.ts"
+    "db:verify:double-submit": "tsx scripts/verify-part-as.ts",
+    "db:verify:bot-check": "tsx scripts/verify-part-at.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",

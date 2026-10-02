@@ -82,6 +82,20 @@ const serverSchema = z.object({
   TURNSTILE_SITE_KEY: z.string().optional(),
   TURNSTILE_SECRET_KEY: z.string().optional(),
   /*
+   * A stand in for Cloudflare's siteverify, for verification runs only.
+   *
+   * Cloudflare's test secrets sign no action and report example.com, so the
+   * check that a token belongs to this form on this site can only be shown
+   * against something that answers with real claims. Honoured only off the
+   * production deployment; set there, every bot check refuses rather than
+   * asking an unknown verifier. See turnstileTestingAllowed.
+   */
+  TURNSTILE_SITEVERIFY_URL: z
+    .string()
+    .optional()
+    .transform((value) => (value?.trim() ? value.trim() : undefined))
+    .pipe(z.url("must be a url.").optional()),
+  /*
    * Google, the second way into the admin portal.
    *
    * Both are optional and both are read together, the same shape as the
@@ -208,6 +222,7 @@ function getServerEnv(): ServerEnv {
       OWNER_COOKIE_SECRET: process.env.OWNER_COOKIE_SECRET,
       TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+      TURNSTILE_SITEVERIFY_URL: process.env.TURNSTILE_SITEVERIFY_URL,
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
       PLEDGE_AUTO_APPROVE_LIMIT_KES: process.env.PLEDGE_AUTO_APPROVE_LIMIT_KES,

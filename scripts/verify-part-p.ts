@@ -102,6 +102,9 @@ async function main() {
     token: DUMMY_TOKEN,
     keys,
     bypassAllowed: false,
+    // Cloudflare's test secrets answer with no action and example.com, which
+    // is accepted only off the production deployment.
+    testingAllowed: true,
     autoApproveLimitKes: limitKes,
   });
 

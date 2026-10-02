@@ -24,7 +24,7 @@ import * as campaign from "@/server/services/campaign";
 import { renderAdditionHeldNotice } from "@/server/email/held-addition";
 import { sendPledgeConfirmation, sendRendered } from "@/server/services/email";
 import * as pledges from "@/server/services/pledges";
-import { turnstileBypassAllowed } from "@/server/services/turnstile";
+import { turnstileConfig } from "@/lib/bot-check";
 
 export const dynamic = "force-dynamic";
 
@@ -228,11 +228,7 @@ export async function POST(request: Request) {
       request: { ip: clientIp(request), userAgent: userAgent(request) },
       security: {
         token: parsed.data.turnstileToken,
-        keys: {
-          siteKey: env.TURNSTILE_SITE_KEY,
-          secretKey: env.TURNSTILE_SECRET_KEY,
-        },
-        bypassAllowed: turnstileBypassAllowed(process.env.NODE_ENV),
+        ...turnstileConfig(),
         autoApproveLimitKes: limitKes,
       },
     });

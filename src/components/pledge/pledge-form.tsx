@@ -25,6 +25,7 @@ import {
   type PledgeTier,
   type RedemptionChoice,
 } from "@/server/contracts/pledges";
+import { TURNSTILE_ACTIONS } from "@/server/contracts/turnstile";
 import { SelectField } from "@/components/ui/select-field";
 
 /**
@@ -888,7 +889,11 @@ export function PledgeForm({
                         "The security check could not load. Check your connection and try again.",
                     });
                   }}
-                  options={{ theme: "light", size: "flexible" }}
+                  options={{
+                    action: TURNSTILE_ACTIONS.pledge,
+                    theme: "light",
+                    size: "flexible",
+                  }}
                 />
                 {errors.turnstileToken && (
                   <FieldError id="turnstileToken-error">

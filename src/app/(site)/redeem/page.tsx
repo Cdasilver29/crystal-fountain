@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { RedeemLookup } from "@/components/pledge/redeem-lookup";
+import { turnstileSiteKey } from "@/lib/bot-check";
 import { pageMetadata } from "@/lib/metadata";
 import { paymentDetails } from "@/lib/payment-details";
 
@@ -53,7 +54,10 @@ export default async function RedeemPage() {
 
       <main className="page-gutter py-10 pb-16">
         <div className="container-form">
-          <RedeemLookup details={details} />
+          <RedeemLookup
+            details={details}
+            turnstileSiteKey={turnstileSiteKey()}
+          />
 
           <p className="mt-10 text-center text-sm leading-relaxed text-neutral-600">
             The church treasurer&rsquo;s official receipt is the only valid

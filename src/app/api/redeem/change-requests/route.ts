@@ -10,10 +10,12 @@ import {
   userAgent,
   validationProblem,
 } from "@/lib/api";
+import { requireHuman } from "@/lib/bot-check";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { changeRequestInput } from "@/server/contracts/change-requests";
 import * as changeRequests from "@/server/services/change-requests";
 import { sendChangeRequestAcknowledgement } from "@/server/services/email";
+import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -81,12 +83,10 @@ function acknowledge(result: changeRequests.CreateChangeRequestResult) {
  * the consent withdrawal beside it, because a reference and a phone number in
  * a URL end up in browser history and in proxy logs.
  *
- * No Turnstile, unlike the pledge form. The bot check is there because
- * recording a pledge moves a figure the congregation watches and anybody can
- * reach that form; this needs a reference and the phone number that matches
- * it, which a robot has no way to guess, and it is held by two rate limits
- * counted in the database on top of that. A widget here would cost every
- * pledger a puzzle to protect a row that changes nothing.
+ * Behind Turnstile, with its own action name. The per address limit is a
+ * backstop sized for a church on one Wi-Fi, so it no longer stops a script
+ * that has a list of references and phone numbers, and a request ends in an
+ * email from the church's own sender. The check runs before anything is read.
  *
  * An already open request is not an error and is not returned as one. Somebody
  * who submits twice, or comes back having forgotten, is shown the request they
@@ -109,6 +109,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    await requireHuman({
+      action: TURNSTILE_ACTIONS.changeRequest,
+      token: parsed.data.turnstileToken,
+      ip: clientIp(request),
+    });
+
     const result = await changeRequests.create(db, {
       input: parsed.data,
       campaignSlug: CAMPAIGN_SLUG,

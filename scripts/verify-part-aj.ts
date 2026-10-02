@@ -22,6 +22,14 @@ config({ path: ".env.local" });
  */
 
 const BASE = process.env.VERIFY_BASE_URL ?? "http://localhost:3000";
+
+/**
+ * The /redeem forms are behind Turnstile. The server under test runs with
+ * Cloudflare's always pass test pair, whose answer carries no action or real
+ * hostname and is accepted only off the production deployment, so any token
+ * shaped string gets through. See turnstileTestingAllowed.
+ */
+const BOT_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
 const CAMPAIGN_SLUG = "crystal-fountain";
 const PASSWORD = "correct-horse-battery-staple";
 const PHONES = { typo: "0799900131", quiet: "0799900132" };
@@ -387,7 +395,11 @@ async function main() {
   const withdrawn = await fetch(`${BASE}/api/redeem/display-consent`, {
     method: "DELETE",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ reference: typo.reference, phone: PHONES.typo }),
+    body: JSON.stringify({
+      reference: typo.reference,
+      phone: PHONES.typo,
+      turnstileToken: BOT_TOKEN,
+    }),
   });
   check("the withdrawal is accepted", withdrawn.status === 200, `${withdrawn.status}`);
   const afterWithdraw = await stored();

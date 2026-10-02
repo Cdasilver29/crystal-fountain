@@ -6,9 +6,11 @@ import {
   userAgent,
   validationProblem,
 } from "@/lib/api";
+import { requireHuman } from "@/lib/bot-check";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { lookupPledgeInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
+import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,11 @@ export const dynamic = "force-dynamic";
  * whether the reference does not exist, exists under a different number, or was
  * mistyped, because telling those apart is exactly the fact that requiring both
  * fields is there to protect.
+ *
+ * Behind Turnstile. The per address limit sits at a backstop level so a church
+ * on one Wi-Fi is never refused, which leaves the bot check as what stops a
+ * script from walking references against a list of phone numbers. The check
+ * runs before the lookup, so a refused submission reads nothing.
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -43,6 +50,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    await requireHuman({
+      action: TURNSTILE_ACTIONS.redeemLookup,
+      token: parsed.data.turnstileToken,
+      ip: clientIp(request),
+    });
+
     const pledge = await pledges.lookup(db, {
       input: parsed.data,
       campaignSlug: CAMPAIGN_SLUG,

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { BotCheck, useBotCheck } from "@/components/pledge/bot-check";
 import { Button } from "@/components/ui/button";
+import { TURNSTILE_ACTIONS } from "@/server/contracts/turnstile";
 
 /**
  * Taking your own name off the public list.
@@ -24,11 +26,14 @@ import { Button } from "@/components/ui/button";
 export function WithdrawDisplayConsent({
   reference,
   phone,
+  turnstileSiteKey = null,
   onWithdrawn,
 }: {
   reference: string;
   /** The number already proved against this reference by the lookup. */
   phone: string;
+  /** The Turnstile site key, or null when the check is switched off. */
+  turnstileSiteKey?: string | null;
   /** Lets the panel above stop offering it once it is done. */
   onWithdrawn: () => void;
 }) {
@@ -36,8 +41,11 @@ export function WithdrawDisplayConsent({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const check = useBotCheck(turnstileSiteKey);
 
   async function withdraw() {
+    if (!check.ready()) return;
+
     setBusy(true);
     setError(null);
 
@@ -45,12 +53,18 @@ export function WithdrawDisplayConsent({
       const response = await fetch("/api/redeem/display-consent", {
         method: "DELETE",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reference, phone }),
+        body: JSON.stringify({
+          reference,
+          phone,
+          turnstileToken: check.token ?? undefined,
+        }),
       });
 
       const body = await response.json().catch(() => null);
 
       if (!response.ok) {
+        // Spent. A second press needs a fresh one.
+        check.reset();
         setError(
           body?.title ??
             "We could not do that just now. Please try again in a moment.",
@@ -60,6 +74,7 @@ export function WithdrawDisplayConsent({
       }
 
       if (!body?.found) {
+        check.reset();
         setError(
           "We could not find that pledge. Please look it up again and retry.",
         );
@@ -76,6 +91,7 @@ export function WithdrawDisplayConsent({
       setBusy(false);
       onWithdrawn();
     } catch {
+      check.reset();
       setError("We could not reach the server. Check your connection.");
       setBusy(false);
     }
@@ -129,6 +145,8 @@ export function WithdrawDisplayConsent({
           {error}
         </p>
       )}
+
+      <BotCheck check={check} action={TURNSTILE_ACTIONS.withdrawConsent} />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button
