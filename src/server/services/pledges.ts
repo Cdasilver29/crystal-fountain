@@ -130,6 +130,12 @@ export type HeldAdditionResult = {
   pledgeId: string;
   addedMinor: bigint;
   currency: string;
+  /**
+   * Who to tell, for the route's emails and never for a response: the
+   * pledger's own address on record, which may be empty, and what to greet
+   * them with. The submitter's typed address is the route's to compare.
+   */
+  notify: { recordEmail: string | null; fullName: string; reference: string };
 };
 
 /** How many submissions one phone number may make in the window. */
@@ -317,7 +323,7 @@ async function holdUnownedAddition(
   },
 ): Promise<HeldAdditionResult | null> {
   const [known] = await tx
-    .select({ id: pledgers.id })
+    .select({ id: pledgers.id, email: pledgers.email, fullName: pledgers.fullName })
     .from(pledgers)
     .where(eq(pledgers.phoneE164, args.phone))
     .limit(1);
@@ -375,6 +381,11 @@ async function holdUnownedAddition(
     pledgeId: existing.id,
     addedMinor: args.addedMinor,
     currency: existing.currency,
+    notify: {
+      recordEmail: known.email,
+      fullName: known.fullName,
+      reference: existing.reference,
+    },
   };
 }
 

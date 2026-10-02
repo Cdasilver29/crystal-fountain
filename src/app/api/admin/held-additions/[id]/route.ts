@@ -1,4 +1,6 @@
+import * as Sentry from "@sentry/nextjs";
 import { revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -11,6 +13,9 @@ import {
   validationProblem,
 } from "@/lib/api";
 import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
+import { env } from "@/env";
+import { renderAdditionConfirmed } from "@/server/email/held-addition";
+import { sendRendered } from "@/server/services/email";
 import { decideHeldAdditionInput } from "@/server/contracts/pledges";
 import * as heldAdditions from "@/server/services/held-additions";
 
@@ -22,7 +27,8 @@ const target = z.object({ incrementId: z.string().regex(/^\d{1,18}$/) });
  * POST /api/admin/held-additions/:id
  *
  * Confirms or rejects an addition held because it came from a browser that
- * did not make the pledge. Confirming needs the treasurer to say how they
+ * did not make the pledge. A confirmation is emailed to the pledger at the
+ * address on their record. Confirming needs the treasurer to say how they
  * confirmed it with the pledger, and the contract refuses one without. The
  * decision, the money and the audit rows are one transaction in the service.
  */
@@ -63,6 +69,38 @@ export async function POST(
     });
 
     if (result.revalidatePublic) revalidateTag(CAMPAIGN_TOTALS_TAG);
+
+    // The pledger hears that it is confirmed, at the address on their record.
+    if (result.status === "confirmed" && result.pledger.email) {
+      const to = result.pledger.email;
+      const task = async () => {
+        const outcome = await sendRendered(
+          { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+          {
+            to,
+            message: renderAdditionConfirmed({
+              fullName: result.pledger.fullName,
+              reference: result.reference,
+              addedMinor: result.addedMinor,
+              totalMinor: result.totalMinor,
+              siteUrl: env.NEXT_PUBLIC_SITE_URL,
+            }),
+            tag: "addition_confirmed",
+          },
+        );
+        if (outcome.status === "failed") {
+          Sentry.captureException(outcome.error, {
+            tags: { area: "held_addition_email" },
+            extra: { reference: result.reference },
+          });
+        }
+      };
+      try {
+        after(() => task().catch(() => {}));
+      } catch {
+        void task().catch(() => {});
+      }
+    }
 
     return Response.json({
       incrementId: result.incrementId,

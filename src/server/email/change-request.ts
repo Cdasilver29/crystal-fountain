@@ -323,3 +323,12 @@ You asked us to ${phrase}.
 ${textOutcome}${data.note ? `\n\nThey said: "${data.note}"` : ""}${textStanding}`,
   });
 }
+
+/*
+ * The same layout, for other messages to a pledger at the address on their
+ * record. Every one of them carries the reference, which is why only mail to
+ * the address on record may use it.
+ */
+export { escapeHtml as escapePledgerHtml, firstName as pledgerFirstName, render as renderPledgerEmail };
+export type { Shell as PledgerEmailShell };
+export { PARAGRAPH as PLEDGER_PARAGRAPH };

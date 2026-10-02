@@ -233,3 +233,15 @@ export async function sendAdminNotice(
     ),
   );
 }
+
+/* ---------------------------------------------------------------------------
+ * Additions held for confirmation.
+ * ------------------------------------------------------------------------- */
+
+/** Sends one already rendered message to one address, tagged for Resend. */
+export async function sendRendered(
+  config: EmailConfig,
+  args: { to: string | null | undefined; message: RenderedEmail; tag: string },
+): Promise<SendResult> {
+  return deliver(config, args);
+}

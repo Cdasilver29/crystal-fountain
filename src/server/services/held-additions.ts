@@ -103,6 +103,11 @@ export type DecideHeldResult = {
   pledgeId: string;
   reference: string;
   status: "confirmed" | "rejected";
+  addedMinor: bigint;
+  /** The pledge total after the decision. */
+  totalMinor: bigint;
+  /** The pledger's address on record and name, for the route's email. */
+  pledger: { email: string | null; fullName: string };
   /** Whether a public figure may have moved, so the caller revalidates. */
   revalidatePublic: boolean;
 };
@@ -127,9 +132,10 @@ export async function decide(db: Db, args: DecideHeldArgs): Promise<DecideHeldRe
     const found = await tx.execute(sql`
       select i.id::text as id, i.pledge_id, i.amount_minor::text as amount, i.status,
              p.reference, p.amount_minor::text as current, p.status::text as pledge_status,
-             p.deleted_at
+             p.deleted_at, pr.email, pr.full_name
       from pledge_increments i
       join pledges p on p.id = i.pledge_id
+      join pledgers pr on pr.id = p.pledger_id
       where i.id = ${incrementId}::bigint
       for update of i, p
     `);
@@ -144,6 +150,8 @@ export async function decide(db: Db, args: DecideHeldArgs): Promise<DecideHeldRe
           current: string;
           pledge_status: string;
           deleted_at: string | null;
+          email: string | null;
+          full_name: string;
         }
       | undefined;
 
@@ -227,6 +235,9 @@ export async function decide(db: Db, args: DecideHeldArgs): Promise<DecideHeldRe
       pledgeId: row.pledge_id,
       reference: row.reference,
       status,
+      addedMinor: added,
+      totalMinor: status === "confirmed" ? BigInt(row.current) + added : BigInt(row.current),
+      pledger: { email: row.email, fullName: row.full_name },
       revalidatePublic: status === "confirmed",
     };
   });
