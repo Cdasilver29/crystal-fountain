@@ -3,7 +3,7 @@ import { forbidden, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
 import { PaymentChangeReview } from "@/components/admin/payment-change-review";
-import { pendingChangeRequestCount } from "@/lib/admin-badges";
+import { heldAdditionCount, pendingChangeRequestCount } from "@/lib/admin-badges";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { db } from "@/db";
 import { getCurrentAdmin } from "@/lib/admin-context";
@@ -83,6 +83,7 @@ export default async function AdminSettingsPage() {
             role={admin.role}
             isSuper={admin.isSuper}
             pendingChangeRequests={await pendingChangeRequestCount(admin)}
+            heldAdditions={await heldAdditionCount(admin)}
           />
         </div>
       </header>

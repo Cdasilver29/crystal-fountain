@@ -3,6 +3,7 @@ import type { CurrentAdmin } from "@/lib/admin-context";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { can } from "@/lib/permissions";
 import * as changeRequests from "@/server/services/change-requests";
+import * as heldAdditions from "@/server/services/held-additions";
 
 /**
  * The numbers the nav carries.
@@ -33,4 +34,16 @@ export async function pendingChangeRequestCount(
   if (!can(admin, "changeRequests.view")) return 0;
 
   return changeRequests.countPending(db, { campaignSlug: CAMPAIGN_SLUG });
+}
+
+/**
+ * How many additions are held for the treasurer to confirm with the pledger,
+ * or zero for somebody who may not see the queue. Same reasoning as above.
+ */
+export async function heldAdditionCount(
+  admin: Pick<CurrentAdmin, "role" | "isSuper">,
+): Promise<number> {
+  if (!can(admin, "pledges.view")) return 0;
+
+  return heldAdditions.countHeld(db, { campaignSlug: CAMPAIGN_SLUG });
 }

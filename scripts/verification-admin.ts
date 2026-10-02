@@ -89,6 +89,16 @@ export async function removeVerificationAdmins(db: Db): Promise<void> {
             select id from admin_users
             where email::text like ${VERIFICATION_EMAIL_PATTERN})
   `);
+  // A held addition decided by a verification account names it too. Only
+  // confirmed and rejected rows carry a decider, and neither is counted, so
+  // removing them cannot unbalance a pledge.
+  await db.execute(sql`
+    delete from pledge_increments
+    where status in ('confirmed', 'rejected')
+      and decided_by in (
+            select id from admin_users
+            where email::text like ${VERIFICATION_EMAIL_PATTERN})
+  `);
   await db.execute(sql`
     delete from admin_users
     where email::text like ${VERIFICATION_EMAIL_PATTERN}

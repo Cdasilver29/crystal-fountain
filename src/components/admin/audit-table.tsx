@@ -52,6 +52,9 @@ export const AUDIT_TONES: Record<string, Tone> = {
    * an approved cancellation still shows red on the line that cancelled it.
    */
   "pledge.change_approved": "green",
+  // A held addition the treasurer confirmed with the pledger. The money's own
+  // row is the pledge.edited beside it.
+  "pledge.addition_confirmed": "green",
   "admin.created": "green",
   "admin.reactivated": "green",
   // The second signature that put new payment details live. Green like every
@@ -109,6 +112,8 @@ export const AUDIT_TONES: Record<string, Tone> = {
   // A refusal, which is what red is for. Nothing was destroyed, and the
   // pledger is about to be told no, which is worth seeing at a glance.
   "pledge.change_declined": "red",
+  // A refusal, the same as a declined change request.
+  "pledge.addition_rejected": "red",
   // A refusal, the same as a declined change request.
   "campaign.payment_change_rejected": "red",
   "admin.login_failed": "red",

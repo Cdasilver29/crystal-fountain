@@ -196,6 +196,23 @@ export function summarise(
     case "pledge.change_requested":
       return changePhrase(a);
 
+    case "pledge.addition_confirmed":
+    case "pledge.addition_rejected": {
+      const ref = str(a.reference);
+      const amount = kes(a.addedMinor) ?? "addition";
+      const how =
+        a.method === "in_person"
+          ? " with the pledger in person"
+          : a.method === "phone_on_record"
+            ? " with the pledger on the phone on record"
+            : "";
+      const what =
+        action === "pledge.addition_confirmed"
+          ? `${amount} confirmed${how}`
+          : `${amount} rejected`;
+      return ref ? `${ref}, ${what}` : what;
+    }
+
     case "pledge.addition_held": {
       const ref = str(a.reference);
       const amount = kes(a.addedMinor);

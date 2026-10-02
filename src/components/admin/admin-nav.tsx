@@ -46,6 +46,12 @@ const LINKS: readonly NavLink[] = [
     label: "Change requests",
     needs: "changeRequests.view",
   },
+  /*
+   * Additions from a browser that did not make the pledge, waiting for the
+   * treasurer to confirm them with the pledger. Every role may read the
+   * queue; confirming is the treasurer's.
+   */
+  { href: "/admin/held-additions", label: "Held additions", needs: "pledges.view" },
   // Counts and totals only, nothing to act on and nobody named, so a viewer
   // sees the same page a treasurer does.
   { href: "/admin/analytics", label: "Analytics", needs: "analytics.view" },
@@ -67,6 +73,7 @@ export function AdminNav({
   role,
   isSuper = false,
   pendingChangeRequests = 0,
+  heldAdditions = 0,
 }: {
   name: string;
   role: AdminRole;
@@ -82,6 +89,8 @@ export function AdminNav({
    * sees a stale number believes it.
    */
   pendingChangeRequests?: number;
+  /** How many held additions are waiting, for the same kind of badge. */
+  heldAdditions?: number;
 }) {
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
@@ -113,7 +122,11 @@ export function AdminNav({
           const current =
             pathname === link.href || pathname.startsWith(`${link.href}/`);
           const waiting =
-            link.href === "/admin/change-requests" ? pendingChangeRequests : 0;
+            link.href === "/admin/change-requests"
+              ? pendingChangeRequests
+              : link.href === "/admin/held-additions"
+                ? heldAdditions
+                : 0;
 
           return (
             <Link

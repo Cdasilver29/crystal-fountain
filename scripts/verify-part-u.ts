@@ -83,6 +83,8 @@ async function main() {
     "pledges.approve": [false, true, true, true],
     "pledges.void": [false, true, true, true],
     "pledges.create": [false, true, true, true],
+    // Confirming or rejecting an addition held for the pledger to confirm.
+    "pledges.confirmAddition": [false, true, true, true],
     "pledges.edit": [false, false, true, true],
     "pledges.delete": [false, false, false, true],
     // The treasurer knows which names are funds and which are families, and

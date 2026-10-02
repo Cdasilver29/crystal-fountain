@@ -3,7 +3,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
-import { pendingChangeRequestCount } from "@/lib/admin-badges";
+import { heldAdditionCount, pendingChangeRequestCount } from "@/lib/admin-badges";
 import { PaymentForm } from "@/components/admin/payment-form";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { can } from "@/lib/permissions";
@@ -85,6 +85,7 @@ export default async function NewPaymentPage({
             role={admin.role}
             isSuper={admin.isSuper}
             pendingChangeRequests={await pendingChangeRequestCount(admin)}
+            heldAdditions={await heldAdditionCount(admin)}
           />
 
           <h1 className="mt-6 text-2xl font-semibold tracking-tight text-white">

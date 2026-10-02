@@ -494,3 +494,35 @@ export const setPublicDisplayNameInput = z.object({
 });
 
 export type SetPublicDisplayNameInput = z.infer<typeof setPublicDisplayNameInput>;
+
+/**
+ * How the treasurer confirmed a held addition with the pledger.
+ *
+ * The phone on record is the number on the pledger's record, not one
+ * somebody supplied, because the addition itself may have come from a
+ * stranger who knows the number. The choice goes into the audit row.
+ */
+export const CONFIRMATION_METHODS = {
+  phone_on_record: "With the pledger on the phone on record",
+  in_person: "With the pledger in person",
+} as const;
+
+export type ConfirmationMethod = keyof typeof CONFIRMATION_METHODS;
+
+/** Confirming or rejecting one held addition. Confirming needs a method. */
+export const decideHeldAdditionInput = z
+  .object({
+    decision: z.enum(["confirm", "reject"], "Choose confirm or reject."),
+    method: z
+      .enum(
+        Object.keys(CONFIRMATION_METHODS) as [ConfirmationMethod, ...ConfirmationMethod[]],
+        "Choose how you confirmed it with the pledger.",
+      )
+      .optional(),
+  })
+  .refine((value) => value.decision === "reject" || value.method !== undefined, {
+    path: ["method"],
+    message: "Choose how you confirmed it with the pledger.",
+  });
+
+export type DecideHeldAdditionInput = z.infer<typeof decideHeldAdditionInput>;

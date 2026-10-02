@@ -128,3 +128,15 @@ describe("settings.approvePaymentChange", () => {
     expect(can(admin, "settings.approvePaymentChange")).toBe(true);
   });
 });
+
+describe("pledges.confirmAddition", () => {
+  it("is refused to a viewer", () => {
+    expect(can(viewer, "pledges.confirmAddition")).toBe(false);
+  });
+
+  it("is the treasurer's, and every role above", () => {
+    expect(can(treasurer, "pledges.confirmAddition")).toBe(true);
+    expect(can(admin, "pledges.confirmAddition")).toBe(true);
+    expect(can(superAdmin, "pledges.confirmAddition")).toBe(true);
+  });
+});

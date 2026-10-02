@@ -4,7 +4,7 @@ import { forbidden, redirect } from "next/navigation";
 import { headers } from "next/headers";
 
 import { AdminNav } from "@/components/admin/admin-nav";
-import { pendingChangeRequestCount } from "@/lib/admin-badges";
+import { heldAdditionCount, pendingChangeRequestCount } from "@/lib/admin-badges";
 import { AuditFilters } from "@/components/admin/audit-filters";
 import { AuditTable } from "@/components/admin/audit-table";
 import { db } from "@/db";
@@ -107,6 +107,7 @@ export default async function AdminAuditPage({
             role={admin.role}
             isSuper={admin.isSuper}
             pendingChangeRequests={await pendingChangeRequestCount(admin)}
+            heldAdditions={await heldAdditionCount(admin)}
           />
 
           <p className="mt-6 text-sm text-white/70">

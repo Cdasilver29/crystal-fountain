@@ -5,7 +5,7 @@ import { forbidden, redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { DisplayNameReview } from "@/components/admin/display-name-review";
 import { db } from "@/db";
-import { pendingChangeRequestCount } from "@/lib/admin-badges";
+import { heldAdditionCount, pendingChangeRequestCount } from "@/lib/admin-badges";
 import { getCurrentAdmin } from "@/lib/admin-context";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { can } from "@/lib/permissions";
@@ -55,6 +55,7 @@ export default async function AdminDisplayNamesPage() {
             role={admin.role}
             isSuper={admin.isSuper}
             pendingChangeRequests={await pendingChangeRequestCount(admin)}
+            heldAdditions={await heldAdditionCount(admin)}
           />
 
           <p className="mt-6 text-sm text-white/70">

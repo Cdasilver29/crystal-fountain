@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
-import { pendingChangeRequestCount } from "@/lib/admin-badges";
+import { heldAdditionCount, pendingChangeRequestCount } from "@/lib/admin-badges";
 import { PledgeDelete } from "@/components/admin/pledge-delete";
 import { PledgeEdit } from "@/components/admin/pledge-edit";
 import { PledgerOrganisation } from "@/components/admin/pledger-organisation";
@@ -91,6 +91,7 @@ export default async function AdminPledgeDetailPage({
             role={admin.role}
             isSuper={admin.isSuper}
             pendingChangeRequests={await pendingChangeRequestCount(admin)}
+            heldAdditions={await heldAdditionCount(admin)}
           />
         </div>
       </header>

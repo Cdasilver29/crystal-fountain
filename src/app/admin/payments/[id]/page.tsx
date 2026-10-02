@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AdminNav } from "@/components/admin/admin-nav";
-import { pendingChangeRequestCount } from "@/lib/admin-badges";
+import { heldAdditionCount, pendingChangeRequestCount } from "@/lib/admin-badges";
 import { AllocatePanel } from "@/components/admin/payment-allocate";
 import {
   AllocationsTable,
@@ -98,6 +98,7 @@ export default async function PaymentDetailPage({
             role={admin.role}
             isSuper={admin.isSuper}
             pendingChangeRequests={await pendingChangeRequestCount(admin)}
+            heldAdditions={await heldAdditionCount(admin)}
           />
 
           <Link

@@ -27,6 +27,7 @@ export const ADMIN_ACTIONS = [
   "pledges.edit",
   "pledges.delete",
   "pledges.create",
+  "pledges.confirmAddition",
   "pledgers.setOrganisation",
   "pledgers.setDisplayName",
   "payments.view",
@@ -81,6 +82,14 @@ const RULES: Record<AdminAction, Rule> = {
   "pledges.approve": { minRole: "treasurer" },
   "pledges.void": { minRole: "treasurer" },
   "pledges.create": { minRole: "treasurer" },
+
+  /*
+   * Confirming an addition held because it came from a browser that did not
+   * make the pledge. The treasurer rings the pledger on the number on record
+   * or speaks to them in person, which is the treasurer's ordinary work, and
+   * the money arrives through the same edit a correction does.
+   */
+  "pledges.confirmAddition": { minRole: "treasurer" },
 
   /*
    * Marking a pledger an organisation. The treasurer knows which names are
