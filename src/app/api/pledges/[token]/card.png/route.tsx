@@ -7,7 +7,7 @@ import { ImageResponse } from "next/og";
 import { db } from "@/db";
 import { problem, serviceProblem } from "@/lib/api";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
-import { formatKES, formatPercent } from "@/lib/format";
+import { formatKES, formatPercent, maskReference } from "@/lib/format";
 import { publicTokenInput } from "@/server/contracts/pledges";
 import { getTotals } from "@/server/services/campaign";
 import * as pledges from "@/server/services/pledges";
@@ -19,14 +19,13 @@ export const dynamic = "force-dynamic";
  *
  * The link preview WhatsApp draws when somebody forwards their pledge.
  *
- * It carries the reference and the amount and nothing else about the person.
- * No name, no phone number, no email. That is not a new disclosure: /p/<token>
- * and the QR route beside this one already show both to anybody holding the
- * token, and the token is the thing that is unguessable. What makes this
- * different is that a preview card is rendered by the chat app into a group
- * conversation, so anything on it is seen by everybody in that group and not
- * only by the person who opened the link. Hence the reference and the figure,
- * which the pledger is choosing to share, and nothing that identifies them.
+ * It carries the amount and a masked reference, and nothing else about the
+ * person. No name, no phone number, no email. A preview card is rendered by
+ * the chat app into a group conversation, so anything on it is seen by
+ * everybody in that group and not only by the person who opened the link. The
+ * full reference is half of what /redeem and a change request ask for, so the
+ * card only ever shows its last three digits, for everybody, the pledger
+ * included: an image cannot tell who is looking at it.
  *
  * Built with next/og, which is the Satori runtime Next already compiles in.
  * The layout is flexbox with inline styles because that is the subset Satori
@@ -233,7 +232,7 @@ export async function GET(
                 lineHeight: 1.1,
               }}
             >
-              {pledge.reference}
+              {maskReference(pledge.reference)}
             </div>
 
             <div

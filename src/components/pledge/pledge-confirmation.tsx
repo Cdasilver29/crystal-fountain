@@ -6,7 +6,7 @@ import { CopyButton } from "@/components/pledge/copy-button";
 import { SuccessMark } from "@/components/pledge/success-mark";
 import { ShareButton } from "@/components/pledge/share-button";
 import type { CampaignTotalsDto } from "@/lib/campaign";
-import { formatDate, formatKES } from "@/lib/format";
+import { formatDate, formatKES, maskReference } from "@/lib/format";
 import type { ResolvedPaymentDetails } from "@/lib/payment-details";
 import { redemptionSummary } from "@/lib/redemption";
 import { REDEMPTION_PLANS } from "@/server/contracts/pledges";
@@ -30,6 +30,7 @@ export function PledgeConfirmation({
   siteUrl,
   justCreated = false,
   isAddition = false,
+  isOwner,
   details,
 }: {
   pledge: PublicPledgeView;
@@ -43,6 +44,16 @@ export function PledgeConfirmation({
    * QR code months later is not an addition, it is a visit.
    */
   isAddition?: boolean;
+  /**
+   * Whether this browser made the pledge, from the signed ownership cookie.
+   *
+   * The full reference is half of what /redeem and a change request ask for,
+   * and this link is forwarded into WhatsApp groups by design, so only the
+   * owner sees it whole, with the copy button and the payment steps that
+   * quote it. Everybody else sees it masked, general payment instructions,
+   * and an invitation to make their own pledge instead of adding to this one.
+   */
+  isOwner: boolean;
   /** Where money is sent, read from the campaign row by the page above. */
   details: ResolvedPaymentDetails;
 }) {
@@ -64,12 +75,15 @@ export function PledgeConfirmation({
   /*
    * What goes in the message under the card.
    *
-   * The amount and the reference are the pledger's own and they are choosing to
-   * send them. The name is not here and neither is anything else: this text is
-   * pasted into a group, and the card above it carries the same two facts and
-   * no more. The invitation at the end is the point of sharing at all.
+   * The amount and nothing else. Not the name, and no longer the reference:
+   * this text is pasted into groups, and a reference read there is half of
+   * what it takes to look the pledge up or ask for it to be changed. The
+   * invitation at the end is the point of sharing at all.
    */
-  const shareText = `I have pledged ${formatKES(pledge.amountMinor)} toward the Crystal Fountain Development Project. Reference: ${pledge.reference}. Make yours at ${origin}/pledge`;
+  const shareText = `I have pledged ${formatKES(pledge.amountMinor)} toward the Crystal Fountain Development Project. Make yours at ${origin}/pledge`;
+
+  /** The reference as this viewer may see it. */
+  const shownReference = isOwner ? pledge.reference : maskReference(pledge.reference);
 
   /*
    * The redemption plan, rebuilt from the columns rather than from a stored
@@ -156,19 +170,21 @@ export function PledgeConfirmation({
 
           <section className="rounded-2xl border border-black/5 bg-white p-5 text-center shadow-sm sm:p-7">
             <h2 className="text-sm font-medium tracking-wide text-neutral-500">
-              Your reference number
+              {isOwner ? "Your reference number" : "Pledge reference"}
             </h2>
 
             <p className="tabular mt-2 text-4xl font-semibold tracking-tight text-navy sm:text-5xl">
-              {pledge.reference}
+              {shownReference}
             </p>
 
             <p className="mt-2 text-sm text-neutral-600">
-              Quote this whenever you pay or ask about your pledge.
+              {isOwner
+                ? "Quote this whenever you pay or ask about your pledge."
+                : "Only the browser that made this pledge sees the whole reference."}
             </p>
 
             <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <CopyButton value={pledge.reference} />
+              {isOwner && <CopyButton value={pledge.reference} />}
               <ShareButton
                 url={pledgeUrl}
                 title="This is My Pledge"
@@ -182,7 +198,7 @@ export function PledgeConfirmation({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/api/pledges/${token}/qr.svg`}
-                alt={`QR code linking to this pledge acknowledgement, reference ${pledge.reference}`}
+                alt={`QR code linking to this pledge acknowledgement, reference ${shownReference}`}
                 width={200}
                 height={200}
                 className="mx-auto size-44 sm:size-52"
@@ -204,6 +220,7 @@ export function PledgeConfirmation({
             somebody navigates away from is a reference the treasury will spend
             an evening matching by hand.
           */}
+          {isOwner && (
           <section className="rounded-2xl border border-amber-300/70 bg-amber-50 p-5 shadow-sm sm:p-7">
             <h2 className="font-display text-lg font-semibold text-navy">
               Save your pledge reference
@@ -247,6 +264,7 @@ export function PledgeConfirmation({
               </Bullet>
             </ul>
           </section>
+          )}
 
           <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7">
             <dl className="divide-y divide-neutral-100 text-sm">
@@ -294,7 +312,10 @@ export function PledgeConfirmation({
             <h2 className="font-display mb-4 text-lg font-semibold text-navy">
               How to pay your pledge
             </h2>
-            <PaymentInstructions details={details} reference={pledge.reference} />
+            <PaymentInstructions
+              details={details}
+              reference={isOwner ? pledge.reference : undefined}
+            />
           </section>
 
           {/*
@@ -307,6 +328,7 @@ export function PledgeConfirmation({
             cannot disagree with the panel directly above it when the treasurer
             changes it on the settings screen.
           */}
+          {isOwner && (
           <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7">
             <h2 className="font-display text-lg font-semibold text-navy">
               What to do next
@@ -338,6 +360,7 @@ export function PledgeConfirmation({
               </Step>
             </ol>
           </section>
+          )}
 
           <section className="rounded-2xl border border-campfire/20 bg-campfire/5 p-5 sm:p-7">
             <h2 className="font-semibold text-navy">
@@ -353,12 +376,20 @@ export function PledgeConfirmation({
             */}
             <p className="mt-2 text-sm leading-relaxed text-neutral-700">
               Nothing has been charged and no money has changed hands. Payment
-              instructions are shown above; quote reference{" "}
-              <span className="tabular font-semibold text-navy">
-                {pledge.reference}
-              </span>{" "}
-              when you pay. The church treasurer&rsquo;s official receipt is the
-              only valid receipt for your contribution.
+              instructions are shown above;{" "}
+              {isOwner ? (
+                <>
+                  quote reference{" "}
+                  <span className="tabular font-semibold text-navy">
+                    {pledge.reference}
+                  </span>{" "}
+                  when you pay.
+                </>
+              ) : (
+                "quote the pledge reference when you pay."
+              )}{" "}
+              The church treasurer&rsquo;s official receipt is the only valid
+              receipt for your contribution.
             </p>
           </section>
 
@@ -380,6 +411,7 @@ export function PledgeConfirmation({
             opens this page, so the link gives away nothing that whoever is
             holding it cannot already see.
           */}
+          {isOwner ? (
           <section className="rounded-2xl border border-denim/25 bg-denim/5 p-5 text-center sm:p-6">
             <h2 className="font-semibold text-navy">Want to add more?</h2>
             <p className="mt-1 text-sm leading-relaxed text-neutral-700">
@@ -394,6 +426,21 @@ export function PledgeConfirmation({
               <span aria-hidden>&rarr;</span>
             </Link>
           </section>
+          ) : (
+            <section className="rounded-2xl border border-denim/25 bg-denim/5 p-5 text-center sm:p-6">
+              <h2 className="font-semibold text-navy">Inspired to give?</h2>
+              <p className="mt-1 text-sm leading-relaxed text-neutral-700">
+                Every family&rsquo;s pledge brings the project closer.
+              </p>
+              <Link
+                href="/pledge"
+                className="btn-primary mt-4 inline-flex items-center gap-1.5 bg-denim px-4 py-2.5 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
+              >
+                Make your own pledge
+                <span aria-hidden>&rarr;</span>
+              </Link>
+            </section>
+          )}
 
           <p className="text-center text-sm text-neutral-600">
             Keep this link. It is the only way back to this page.

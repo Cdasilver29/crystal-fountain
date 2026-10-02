@@ -176,3 +176,19 @@ export function formatRelativeTime(value: Date | string, now = new Date()): stri
 
   return formatDate(then);
 }
+
+/**
+ * A pledge reference with all but its last three digits hidden, for example
+ * CF26-•••424.
+ *
+ * The full reference plus a phone number is what /redeem and change requests
+ * ask for, and the reference used to be printed large on every share card and
+ * in every share message, which made it public in practice. Anybody who cannot
+ * show they made the pledge sees this instead. Three digits are enough for a
+ * member to recognise their own pledge and not enough to quote it.
+ */
+export function maskReference(reference: string): string {
+  const dash = reference.indexOf("-");
+  const prefix = dash === -1 ? "" : reference.slice(0, dash + 1);
+  return `${prefix}•••${reference.slice(-3)}`;
+}

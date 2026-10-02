@@ -10,6 +10,7 @@ import {
   findPledgeByToken,
   TOKEN_NOT_FOUND_TITLE,
 } from "@/lib/pledge-by-token";
+import { ownsPledge } from "@/lib/pledge-ownership";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export async function generateMetadata({
       path: `/api/pledges/${found.publicToken}/card.png`,
       width: 1200,
       height: 630,
-      alt: "Crystal Fountain Development Project pledge card, showing the pledge reference and the campaign's progress toward its goal",
+      alt: "Crystal Fountain Development Project pledge card, showing a masked pledge reference and the campaign's progress toward its goal",
     },
   });
 }
@@ -75,6 +76,10 @@ export default async function PublicPledgePage({
 
   if (!found) notFound();
 
+  // Reading the cookie also keeps this page per request: it varies by viewer,
+  // so it must never be rendered once and served to everybody.
+  const isOwner = await ownsPledge(found.pledge.id);
+
   return (
     <PledgeConfirmation
       pledge={found.pledge}
@@ -82,6 +87,7 @@ export default async function PublicPledgePage({
       token={found.publicToken}
       siteUrl={env.NEXT_PUBLIC_SITE_URL}
       details={details}
+      isOwner={isOwner}
     />
   );
 }

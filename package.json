@@ -56,7 +56,9 @@
     "db:verify:payment-changes": "tsx scripts/verify-part-an.ts",
     "db:verify:held-additions": "tsx scripts/verify-part-ao.ts",
     "db:verify:ownership": "tsx scripts/verify-part-ap.ts",
-    "db:verify:held-queue": "tsx scripts/verify-part-aq.ts"
+    "db:verify:held-queue": "tsx scripts/verify-part-aq.ts",
+    "db:verify:owner-view": "tsx scripts/verify-part-ar.ts",
+    "db:verify:double-submit": "tsx scripts/verify-part-as.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",

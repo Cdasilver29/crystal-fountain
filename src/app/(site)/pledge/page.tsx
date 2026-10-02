@@ -11,6 +11,7 @@ import { db } from "@/db";
 import { env } from "@/env";
 import { getCampaignTotals } from "@/lib/campaign";
 import { pageMetadata } from "@/lib/metadata";
+import { ownsPledge } from "@/lib/pledge-ownership";
 import { donateActionSchema } from "@/lib/structured-data";
 import {
   pledgeAmountParam,
@@ -27,6 +28,11 @@ import * as pledges from "@/server/services/pledges";
  *
  * A malformed or unknown token is simply nobody, not an error. Somebody who
  * mangles the link should still get a working form rather than a 404.
+ *
+ * Only for the browser that made the pledge. The link travels with the pledge
+ * page, which is forwarded into groups, and an addition from anybody else is
+ * held rather than added, so greeting them with the reference and the total
+ * would both disclose the pledge and promise something untrue.
  */
 async function existingPledgeFor(
   token: string,
@@ -43,6 +49,7 @@ async function existingPledgeFor(
   // their amount will be added to it would be a lie. See ACCUMULATING_STATUSES.
   if (!pledge) return null;
   if (pledge.status !== "pending" && pledge.status !== "verified") return null;
+  if (!(await ownsPledge(pledge.id))) return null;
 
   return {
     reference: pledge.reference,
@@ -74,9 +81,9 @@ export default async function PledgePage({
    * Deliberately keyed on the token rather than on a phone number. A form that
    * looked a pledge up from a typed phone number would answer "does this person
    * have a pledge, and for how much" to anyone who knew their number, and the
-   * congregation's numbers are not secret. The token is already the public
-   * identifier for this pledge, so this reveals nothing to whoever is holding
-   * the link that /p/<token> would not already show them.
+   * congregation's numbers are not secret. And only for the browser that made
+   * the pledge, since the token travels with a page that is forwarded into
+   * groups. See existingPledgeFor.
    */
   const returning = query.add
     ? await existingPledgeFor(query.add)

@@ -467,6 +467,20 @@ async function createOnce(
   const { input, campaignSlug, channel = "web", request } = args;
 
   return db.transaction(async (tx) => {
+    /*
+     * One submission per phone number at a time.
+     *
+     * Without this, a rapid double press on a first pledge could count twice:
+     * the second submission checked for an existing pledge before the first
+     * had committed, found none, and then, once the pledger row it was
+     * waiting on was released, added to the first submission's pledge as if
+     * it owned it. Held for the transaction only, keyed on the normalised
+     * number, so different people never wait on each other.
+     */
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${input.phone}, 0))`,
+    );
+
     const [campaign] = await tx
       .select({ id: campaigns.id })
       .from(campaigns)
@@ -607,6 +621,31 @@ async function createOnce(
     const installmentFrequency =
       redemption === "one_off" ? null : redemption;
     const installmentAmountMinor = instalmentMinor(total, redemption);
+
+    /*
+     * The same rule as the check before the upsert, asked again where the
+     * pledge is locked. The phone lock makes the first check authoritative;
+     * this is the second lock on the same door, so no ordering of
+     * submissions can ever apply an unowned addition.
+     */
+    if (
+      existing &&
+      args.ownership &&
+      channel === "web" &&
+      !args.ownership.ownedPledgeIds.includes(existing.id)
+    ) {
+      const held = await holdUnownedAddition(tx, {
+        campaignId: campaign.id,
+        phone: input.phone,
+        addedMinor,
+        ownedPledgeIds: args.ownership.ownedPledgeIds,
+        category: input.category ?? null,
+        tier: input.tier ?? null,
+        now,
+        request,
+      });
+      if (held) return held;
+    }
 
     let pledge;
 
@@ -874,6 +913,11 @@ export async function approve(
 
 /** Everything the public confirmation and /p/<token> pages are allowed to see. */
 export type PublicPledgeView = {
+  /**
+   * For the server to match against the ownership cookie. Never rendered and
+   * never handed to a client component.
+   */
+  id: string;
   reference: string;
   amountMinor: bigint;
   currency: string;
@@ -902,6 +946,7 @@ export async function getByPublicToken(
 ): Promise<PublicPledgeView | null> {
   const [row] = await db
     .select({
+      id: pledges.id,
       reference: pledges.reference,
       amountMinor: pledges.amountMinor,
       currency: pledges.currency,
@@ -923,6 +968,7 @@ export async function getByPublicToken(
   if (!row) return null;
 
   return {
+    id: row.id,
     reference: row.reference,
     amountMinor: row.amountMinor,
     currency: row.currency,

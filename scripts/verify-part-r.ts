@@ -47,6 +47,7 @@ function show(rows: Record<string, unknown>[]) {
 
 async function main() {
   const { db } = await import("@/db");
+  const { maskReference } = await import("@/lib/format");
   const { sql } = await import("drizzle-orm");
   const pledges = await import("@/server/services/pledges");
   const { normalizeKenyanPhone } = await import("@/server/contracts/phone");
@@ -107,9 +108,12 @@ async function main() {
     "it still says a pledge is not a payment",
     confirmed.body.includes("This is a pledge, not a payment"),
   );
+  // These requests carry no ownership cookie, so this is the visitor view.
+  // The owner's view, with the reference whole, is db:verify:owner-view.
   check(
-    "the reference is on the page",
-    confirmed.body.includes(first.reference),
+    "the reference is on the page, masked for a visitor",
+    confirmed.body.includes(maskReference(first.reference)) &&
+      !confirmed.body.includes(first.reference),
   );
   check(
     "so is the QR code",
@@ -254,19 +258,21 @@ async function main() {
     mpesaSteps().includes(`Account Number: ${MPESA.account}`),
   );
   check(
-    "and the page renders it that way",
-    confirmed.body.includes(`Account Number: ${first.reference}`),
+    "a visitor's page gives the general instructions, not this reference",
+    confirmed.body.includes(`Account Number: ${MPESA.account}`) &&
+      !confirmed.body.includes(`Account Number: ${first.reference}`),
   );
 
   // 4. The way back.
-  heading("4. the way back to the form");
+  heading("4. the way to the form, for a visitor");
   check(
-    "the increase link carries this pledge's token",
-    confirmed.body.includes(`/pledge?add=${first.publicToken}`),
+    "a visitor is not offered this pledge to increase",
+    !confirmed.body.includes(`/pledge?add=${first.publicToken}`) &&
+      !confirmed.body.includes("Increase my pledge"),
   );
   check(
-    "and it is offered as increasing a pledge",
-    confirmed.body.includes("Increase my pledge"),
+    "but is invited to make their own",
+    confirmed.body.includes("Make your own pledge"),
   );
   check(
     "there is a share button",
@@ -274,21 +280,22 @@ async function main() {
   );
 
   // 5. The greeting on the way back.
-  heading("5. what a returning pledger is told");
+  heading("5. what somebody holding the link but not the cookie is told");
   const returning = await get(`/pledge?add=${first.publicToken}`);
   check("the form is served", returning.status === 200, `${returning.status}`);
+  /*
+   * Nothing about the pledge. The link travels with a page that is forwarded
+   * into groups, and an addition from this browser would be held, so the
+   * greeting is the owner's alone. db:verify:owner-view checks the owner's.
+   */
   check(
-    "it greets them with what they already pledged",
-    returning.body.includes("You have an existing pledge of") &&
-      returning.body.includes("KES 250,000"),
+    "it does not greet them with somebody's pledge",
+    !returning.body.includes("You have an existing pledge of") &&
+      !returning.body.includes("KES 250,000"),
   );
   check(
-    "on the reference they already have",
-    returning.body.includes(first.reference),
-  );
-  check(
-    "and it says what makes the addition happen",
-    returning.body.includes("Enter the same phone number"),
+    "and the reference is nowhere on the page",
+    !returning.body.includes(first.reference),
   );
 
   // 6. The privacy of that greeting.

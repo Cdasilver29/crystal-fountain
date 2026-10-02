@@ -27,6 +27,7 @@ function heading(text: string) {
 
 async function main() {
   const { db } = await import("@/db");
+  const { maskReference } = await import("@/lib/format");
   const { sql } = await import("drizzle-orm");
 
   /*
@@ -257,7 +258,12 @@ async function main() {
     const html = await page.text();
     check(`${label} returns 200`, page.status === 200);
     if (path !== "/pledge") {
-      check(`${label} shows the reference`, html.includes(pledge.reference));
+      // No ownership cookie on this request, so the visitor view: the
+      // reference masked, never whole. The owner's view is db:verify:owner-view.
+      check(
+        `${label} shows the reference masked to a visitor`,
+        html.includes(maskReference(pledge.reference)) && !html.includes(pledge.reference),
+      );
       check(
         `${label} says a pledge is not a payment`,
         /pledge, not a payment/i.test(html),
