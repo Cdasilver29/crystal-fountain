@@ -264,9 +264,14 @@ export type UpdateSettingsArgs = {
   request?: { ip?: string | null; userAgent?: string | null };
 };
 
+/** One applied setting, before and after, as the audit row holds it. */
+export type SettingMove = { field: string; was: unknown; now: unknown };
+
 export type UpdateSettingsResult = {
   /** The settings that were applied. Never a payment field. */
   changed: string[];
+  /** The same, with what each was and became, for the notice to every admin. */
+  moved: SettingMove[];
   /** Whether a public figure moved, so the caller knows to revalidate. */
   affectsTotals: boolean;
   /**
@@ -383,7 +388,7 @@ export async function updateSettings(
         });
 
     if (changed.length === 0) {
-      return { changed, affectsTotals: false, paymentChange };
+      return { changed, moved: [], affectsTotals: false, paymentChange };
     }
 
     await tx
@@ -407,6 +412,11 @@ export async function updateSettings(
     // so either one moves the figure on every public page.
     return {
       changed,
+      moved: changed.map((field) => ({
+        field,
+        was: beforeJson[field],
+        now: afterJson[field],
+      })),
       affectsTotals:
         changed.includes("targetMinor") ||
         changed.includes("openingBalanceMinor"),

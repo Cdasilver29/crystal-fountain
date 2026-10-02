@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
+import { OfficialDetailsNotice } from "@/components/campaign/official-details-notice";
 import { CopyButton } from "@/components/pledge/copy-button";
 import { CONTACT } from "@/content/campaign";
 import type { ResolvedPaymentDetails } from "@/lib/payment-details";
@@ -225,6 +226,9 @@ export function PaymentInstructions({
           )}
         </section>
       </div>
+
+      {/* Outside both panels, so it is read whichever tab is open. */}
+      <OfficialDetailsNotice />
 
       {showContact && (
         <p className="text-sm text-neutral-700">

@@ -17,7 +17,9 @@ import { campaignSettingsInput } from "@/server/contracts/campaign";
  * decide where the congregation's money is actually sent, and a mistyped digit
  * there sends real giving to the wrong account with no deploy and no review to
  * catch it. So that half asks again before saving and shows exactly what is
- * about to change.
+ * about to change, and saving it does not apply it: it goes to a second
+ * administrator for approval, and the site keeps the current details until
+ * then. While one change waits, the payment boxes are locked.
  *
  * Only what moved is sent, so a save that touches nothing writes nothing.
  */
@@ -53,8 +55,11 @@ type PaymentField = (typeof PAYMENT_FIELDS)[number][0];
 export function SettingsForm({
   settings,
   fallbacks,
+  paymentPending = false,
 }: {
   settings: Settings;
+  /** A payment change is already waiting, so another cannot be asked for. */
+  paymentPending?: boolean;
   /** What each payment field falls back to when it is left empty. */
   fallbacks: Record<PaymentField, string>;
 }) {
@@ -76,6 +81,7 @@ export function SettingsForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<string[] | null>(null);
+  const [sentForApproval, setSentForApproval] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   /** Exactly what is about to change, named the way the journal will name it. */
@@ -144,6 +150,7 @@ export function SettingsForm({
       }
 
       setSaved((body?.changed as string[]) ?? []);
+      setSentForApproval(Boolean(body?.paymentChange));
       setBusy(false);
       setConfirming(false);
       router.refresh();
@@ -176,9 +183,14 @@ export function SettingsForm({
           role="status"
           className="rounded-lg border border-campfire/30 bg-campfire/5 px-4 py-3 text-sm text-navy"
         >
-          {saved.length === 0
-            ? "Nothing had changed, so nothing was saved."
-            : `Saved. Changed: ${saved.join(", ")}.`}
+          {[
+            saved.length > 0 ? `Saved. Changed: ${saved.join(", ")}.` : null,
+            sentForApproval
+              ? "The payment details were sent for approval. A different administrator must approve them before the site shows them, and every administrator has been emailed."
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" ") || "Nothing had changed, so nothing was saved."}
         </p>
       )}
 
@@ -290,7 +302,14 @@ export function SettingsForm({
           These appear on every page that tells somebody how to give. A wrong
           digit here sends real money to the wrong account, so read them back
           before saving. Leave a box empty to use the value built into the site.
+          A change here waits for a different administrator to approve it.
         </p>
+        {paymentPending && (
+          <p className="mt-2 text-sm font-medium text-navy">
+            A change is already waiting for approval above. These boxes open
+            again once it is approved, rejected or withdrawn.
+          </p>
+        )}
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {PAYMENT_FIELDS.map(([field, label]) => (
@@ -299,6 +318,7 @@ export function SettingsForm({
               <Input
                 id={field}
                 value={payment[field]}
+                disabled={paymentPending}
                 placeholder={fallbacks[field]}
                 onChange={(e) =>
                   setPayment((p) => ({ ...p, [field]: e.target.value }))
@@ -344,7 +364,7 @@ export function SettingsForm({
               disabled={busy}
               className="btn-primary bg-red-700 px-4 py-2 text-sm font-medium text-white focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none disabled:opacity-60"
             >
-              {busy ? "Saving" : "Yes, these are correct"}
+              {busy ? "Sending" : "Yes, send these for approval"}
             </button>
             <Button
               type="button"
@@ -365,7 +385,7 @@ export function SettingsForm({
             : nothingToDo
               ? "Nothing to save"
               : touchesPayments
-                ? "Review and save"
+                ? "Review and send for approval"
                 : "Save settings"}
         </Button>
       )}

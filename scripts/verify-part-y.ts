@@ -47,7 +47,7 @@ async function main() {
   const { sql } = await import("drizzle-orm");
   const campaign = await import("@/server/services/campaign");
   const { resolvePaymentDetails } = await import("@/lib/payment-details");
-  const { MPESA } = await import("@/content/campaign");
+  const { MPESA, CONTACT } = await import("@/content/campaign");
 
   const failures: string[] = [];
   const check = (label: string, ok: boolean, detail?: string) => {
@@ -267,6 +267,19 @@ async function main() {
       `${again.status} ${String(again.body?.code)}`,
     );
 
+    const reviewPage = await call(cookies.admin, "/admin/settings");
+    check(
+      "an administrator who can approve opens the settings screen and sees it waiting",
+      reviewPage.status === 200 &&
+        reviewPage.text.includes("waiting for approval") &&
+        reviewPage.text.includes(newPaybill),
+      `${reviewPage.status}`,
+    );
+    check(
+      "but is not given the form that edits the settings",
+      !reviewPage.text.includes("Target in shillings"),
+    );
+
     const bySelf = await decidePayment(cookies.super, changeId, "approve");
     check(
       "the super administrator cannot approve their own change",
@@ -300,6 +313,18 @@ async function main() {
 
     const redeem = await get("/redeem");
     check("the redeem page uses it too", redeem.body.includes(newPaybill));
+
+    const notice = "These are the only official payment details";
+    const faq = await get("/faq");
+    check(
+      "the warning against paying a personal number sits beside the details",
+      afterHome.body.includes(notice) && redeem.body.includes(notice) && faq.body.includes(notice),
+    );
+    check(
+      "and gives the office phone from the content file",
+      afterHome.body.includes(`call the development office on`) &&
+        afterHome.body.includes(CONTACT.phoneDisplay),
+    );
     check(
       "and the new bank account number",
       redeem.body.includes("0000000000001"),

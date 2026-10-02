@@ -88,17 +88,29 @@ function headline(notice: PaymentChangeNotice): { subject: string; lead: string 
 
 export function renderPaymentChangeNotice(
   notice: PaymentChangeNotice,
-  args: { siteUrl: string },
+  args: {
+    siteUrl: string;
+    /**
+     * What an empty field shows on the site. An empty box is not blank to a
+     * member: it falls back to the value built into the site, and a reviewer
+     * has to compare what members would actually see.
+     */
+    builtIn: Record<PaymentDetailField, string>;
+  },
 ): RenderedEmail {
   const { subject, lead } = headline(notice);
   const settingsUrl = `${args.siteUrl.replace(/\/$/, "")}/admin/settings`;
   const warning =
     "Check every changed value against what the church actually agreed. If you did not expect this change, do not approve it, and tell the development office and the other administrators at once.";
 
+  /** The value members see, marked when it is the built in fallback. */
+  const effective = (value: string | null | undefined, field: PaymentDetailField) =>
+    value && value.trim() !== "" ? value : `${args.builtIn[field]} (built into the site)`;
+
   const rows = PAYMENT_DETAIL_FIELDS.map((field) => {
-    const was = notice.current[field] ?? "";
-    const now = notice.proposed[field] ?? "";
-    return { field, was, now, moved: was !== now };
+    const was = effective(notice.current[field], field);
+    const now = effective(notice.proposed[field], field);
+    return { field, was, now, moved: (notice.current[field] ?? "") !== (notice.proposed[field] ?? "") };
   });
 
   const cell = `padding:8px 10px;border:1px solid ${BORDER};font-family:${FONT};font-size:14px;line-height:20px;color:${INK};vertical-align:top;`;
@@ -108,8 +120,8 @@ export function renderPaymentChangeNotice(
       const bg = moved ? `background:${MOVED_BG};` : "";
       return `<tr>
 <td style="${cell}${bg}">${escapeHtml(LABELS[field])}${moved ? " <strong>(changed)</strong>" : ""}</td>
-<td style="${cell}${bg}">${was ? escapeHtml(was) : "<em>not set</em>"}</td>
-<td style="${cell}${bg}">${now ? escapeHtml(now) : "<em>not set</em>"}</td>
+<td style="${cell}${bg}">${escapeHtml(was)}</td>
+<td style="${cell}${bg}">${escapeHtml(now)}</td>
 </tr>`;
     })
     .join("\n");
@@ -145,7 +157,7 @@ ${tableRows}
     "",
     ...rows.map(
       ({ field, was, now, moved }) =>
-        `${LABELS[field]}${moved ? " (changed)" : ""}\n  Current: ${was || "not set"}\n  ${notice.event === "approved" ? "Now live" : "Proposed"}: ${now || "not set"}`,
+        `${LABELS[field]}${moved ? " (changed)" : ""}\n  Current: ${was}\n  ${notice.event === "approved" ? "Now live" : "Proposed"}: ${now}`,
     ),
     "",
     warning,

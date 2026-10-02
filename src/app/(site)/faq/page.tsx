@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { OfficialDetailsNotice } from "@/components/campaign/official-details-notice";
 import { FaqTabs } from "@/components/content/faq-tabs";
 import { SectionBackground } from "@/components/media/section-background";
 import { PledgeCta } from "@/components/site/pledge-cta";
@@ -66,6 +67,8 @@ export default async function FaqPage() {
               bankAccount: details.bankAccount,
             })}
           />
+          {/* Two of the answers above quote the paybill and the account. */}
+          <OfficialDetailsNotice className="mt-8 rounded-2xl border border-campfire/30 bg-campfire/5 px-4 py-3 text-sm leading-relaxed text-navy" />
         </div>
       </section>
 

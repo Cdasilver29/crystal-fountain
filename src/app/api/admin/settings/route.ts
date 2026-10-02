@@ -1,7 +1,11 @@
 import { revalidateTag } from "next/cache";
 
 import { db } from "@/db";
-import { notifyPaymentChanges, refuseWithoutNotices } from "@/lib/admin-notices";
+import {
+  notifyPaymentChanges,
+  notifySettingsChanged,
+  refuseWithoutNotices,
+} from "@/lib/admin-notices";
 import { requirePermission } from "@/lib/admin-guard";
 import {
   clientIp,
@@ -33,7 +37,8 @@ export const dynamic = "force-dynamic";
  * Payment details are the exception: a save that moves any of them is recorded
  * as a pending change for a different administrator to approve, and the site
  * keeps showing the current details until then. Every active administrator is
- * emailed about it at once.
+ * emailed about it at once, and about any other setting that changed, since
+ * those are live the moment this returns.
  */
 export async function PATCH(request: Request) {
   const gate = await requirePermission(request, "settings.edit", {
@@ -55,11 +60,14 @@ export async function PATCH(request: Request) {
     return validationProblem(parsed.error);
   }
 
-  const touchesPayment = PAYMENT_DETAIL_FIELDS.some(
-    (field) => parsed.data[field] !== undefined,
-  );
+  // Everything but opening or closing the form has to be announced to happen.
+  const mustAnnounce =
+    PAYMENT_DETAIL_FIELDS.some((field) => parsed.data[field] !== undefined) ||
+    parsed.data.targetKes !== undefined ||
+    parsed.data.openingBalanceKes !== undefined ||
+    parsed.data.autoApproveLimitKes !== undefined;
 
-  if (touchesPayment) {
+  if (mustAnnounce) {
     const refusal = refuseWithoutNotices();
     if (refusal) return refusal;
   }
@@ -88,6 +96,8 @@ export async function PATCH(request: Request) {
     if (result.paymentChange) {
       notifyPaymentChanges([result.paymentChange]);
     }
+
+    notifySettingsChanged({ moved: result.moved, changedByName: gate.admin.name });
 
     return Response.json({
       changed: result.changed,

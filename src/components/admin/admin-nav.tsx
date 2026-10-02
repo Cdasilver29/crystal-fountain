@@ -23,8 +23,11 @@ import { can, type AdminAction } from "@/lib/permissions";
 type NavLink = {
   href: string;
   label: string;
-  /** The permission that opens this screen, from the one rights table. */
-  needs: AdminAction;
+  /**
+   * The permission that opens this screen, from the one rights table. A list
+   * means any one of them will do.
+   */
+  needs: AdminAction | readonly AdminAction[];
 };
 
 const LINKS: readonly NavLink[] = [
@@ -50,10 +53,13 @@ const LINKS: readonly NavLink[] = [
   // treasurer did, and a record its subjects can read is a weaker one.
   { href: "/admin/audit", label: "Audit log", needs: "audit.view" },
   { href: "/admin/users", label: "Users", needs: "users.manage" },
-  // The super administrator only. Changing the target moves what the
-  // congregation is measured against, and changing the paybill moves where
-  // their money goes.
-  { href: "/admin/settings", label: "Settings", needs: "settings.edit" },
+  // The super administrator edits. An administrator who can give the second
+  // signature on a payment detail change opens it to review one.
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    needs: ["settings.edit", "settings.approvePaymentChange"],
+  },
 ];
 
 export function AdminNav({
@@ -80,7 +86,11 @@ export function AdminNav({
   const pathname = usePathname();
   const [busy, setBusy] = useState(false);
 
-  const visible = LINKS.filter((link) => can({ role, isSuper }, link.needs));
+  const visible = LINKS.filter((link) =>
+    (typeof link.needs === "string" ? [link.needs] : link.needs).some((action) =>
+      can({ role, isSuper }, action),
+    ),
+  );
 
   async function signOut() {
     setBusy(true);

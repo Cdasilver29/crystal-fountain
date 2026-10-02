@@ -397,20 +397,42 @@ async function main() {
 
     // 5. The email.
     heading("5. the notice every administrator receives");
+    const { builtInPaymentDetails } = await import("@/lib/payment-details");
+    const builtIn = builtInPaymentDetails();
     const message = renderPaymentChangeNotice(asked.paymentChange!, {
       siteUrl: "https://pledge.example.test",
+      builtIn,
     });
+    const liveBefore = before.mpesaPaybill || `${builtIn.mpesaPaybill} (built into the site)`;
     check(
-      "shows the old and new paybill in full",
-      message.text.includes(`Current: ${before.mpesaPaybill ?? "not set"}`) &&
+      "shows the old and new paybill in full, as members would see them",
+      message.text.includes(`Current: ${liveBefore}`) &&
         message.text.includes("Proposed: 424242"),
+      liveBefore,
     );
+    check("and never calls a field that falls back to the site's value not set", !message.text.includes("not set"));
     check(
       "escapes what it prints",
       message.html.includes("&lt;b&gt;0001&lt;/b&gt;") && !message.html.includes("<b>0001</b>"),
     );
     check("and has no em dash", !message.html.includes("—") && !message.text.includes("—"));
     console.log(`subject: ${message.subject}`);
+
+    const { renderSettingsChangedNotice } = await import("@/server/email/settings-change");
+    const settingsMessage = renderSettingsChangedNotice({
+      moved: asked.moved,
+      changedByName: "Payment <super>",
+      siteUrl: "https://pledge.example.test",
+    });
+    check(
+      "the settings notice names what moved, before and after",
+      settingsMessage.text.includes("Target:") && settingsMessage.text.includes("KES 777,000,000"),
+      settingsMessage.text.split("\n").find((l) => l.startsWith("- ")) ?? "",
+    );
+    check(
+      "and escapes the name it prints",
+      settingsMessage.html.includes("Payment &lt;super&gt;"),
+    );
   } finally {
     heading("6. cleanup");
     await cleanup();

@@ -4,7 +4,10 @@ import { after } from "next/server";
 import { db } from "@/db";
 import { env } from "@/env";
 import { problem } from "@/lib/api";
+import { builtInPaymentDetails } from "@/lib/payment-details";
 import { renderPaymentChangeNotice } from "@/server/email/payment-change";
+import { renderSettingsChangedNotice } from "@/server/email/settings-change";
+import type { SettingMove } from "@/server/services/campaign";
 import { isEmailConfigured, sendAdminNotice } from "@/server/services/email";
 import {
   noticeRecipients,
@@ -12,7 +15,7 @@ import {
 } from "@/server/services/payment-changes";
 
 /**
- * Emailing every administrator about payment detail changes.
+ * Emailing every administrator about payment detail and settings changes.
  *
  * The only place that knows where the email configuration comes from, so the
  * service stays a plain function and the routes stay thin.
@@ -23,13 +26,17 @@ function emailConfig() {
 }
 
 /**
- * Refuses a payment detail change when the administrators cannot be told.
+ * Refuses a change the administrators cannot be told about.
  *
- * The emails are how a substitution gets noticed, so a change that cannot be
- * announced is not allowed to happen: in production, with no email key, the
- * request and the approval are both refused. Outside production a laptop with
- * no Resend account can still exercise the flow. Returns a response to send
- * back, or null to carry on.
+ * The emails are how a substitution or a quietly moved figure gets noticed, so
+ * a change that cannot be announced is not allowed to happen: in production,
+ * with no email key, a payment detail request, its approval, and a change to
+ * the target, the opening balance or the auto approve limit are all refused.
+ * Closing or opening the pledge form is not, because closing it is what
+ * somebody reaches for in an emergency, and an email outage must not stop it.
+ *
+ * Outside production a laptop with no Resend account can still exercise the
+ * flow. Returns a response to send back, or null to carry on.
  */
 export function refuseWithoutNotices(): Response | null {
   if (isEmailConfigured(emailConfig())) return null;
@@ -37,8 +44,8 @@ export function refuseWithoutNotices(): Response | null {
 
   return problem(
     503,
-    "payment_change_notices_unavailable",
-    "Email is not configured, so the administrators cannot be told about this change. Payment details cannot be changed until it is.",
+    "admin_notices_unavailable",
+    "Email is not configured, so the administrators cannot be told about this change. It cannot be made until email is working.",
   );
 }
 
@@ -52,7 +59,7 @@ export function refuseWithoutNotices(): Response | null {
 export function notifyPaymentChanges(notices: PaymentChangeNotice[]): void {
   if (notices.length === 0) return;
 
-  const task = async () => {
+  schedule(async () => {
     const to = await noticeRecipients(db);
 
     for (const notice of notices) {
@@ -60,6 +67,7 @@ export function notifyPaymentChanges(notices: PaymentChangeNotice[]): void {
         to,
         message: renderPaymentChangeNotice(notice, {
           siteUrl: env.NEXT_PUBLIC_SITE_URL,
+          builtIn: builtInPaymentDetails(),
         }),
         tag: `payment_change_${notice.event}`,
       });
@@ -72,8 +80,43 @@ export function notifyPaymentChanges(notices: PaymentChangeNotice[]): void {
         });
       }
     }
-  };
+  });
+}
 
+/**
+ * Tells every active administrator that settings changed and are already live.
+ * Same delivery as the payment notices, so the same reasons apply.
+ */
+export function notifySettingsChanged(args: {
+  moved: SettingMove[];
+  changedByName: string;
+}): void {
+  if (args.moved.length === 0) return;
+
+  schedule(async () => {
+    const to = await noticeRecipients(db);
+    const results = await sendAdminNotice(emailConfig(), {
+      to,
+      message: renderSettingsChangedNotice({
+        moved: args.moved,
+        changedByName: args.changedByName,
+        siteUrl: env.NEXT_PUBLIC_SITE_URL,
+      }),
+      tag: "settings_changed",
+    });
+
+    const failed = results.filter((r) => r.status === "failed").length;
+    if (failed > 0) {
+      Sentry.captureMessage("settings change notice not delivered", {
+        tags: { area: "settings_change_notice" },
+        extra: { fields: args.moved.map((m) => m.field), failed, of: to.length },
+      });
+    }
+  });
+}
+
+/** After the response where there is a request context, detached otherwise. */
+function schedule(task: () => Promise<void>): void {
   try {
     after(() => task().catch((error) => Sentry.captureException(error)));
   } catch {

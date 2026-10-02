@@ -1,6 +1,7 @@
 import { BANK, MPESA } from "@/content/campaign";
 import { db } from "@/db";
 import { CAMPAIGN_SLUG } from "@/lib/campaign";
+import type { PaymentDetailField } from "@/server/contracts/campaign";
 import { getSettings, type PaymentDetails } from "@/server/services/campaign";
 
 /**
@@ -51,4 +52,25 @@ export async function paymentDetails(): Promise<ResolvedPaymentDetails> {
     // how to give. The repo values are correct until somebody changes them.
     return resolvePaymentDetails(null);
   }
+}
+
+/**
+ * What each payment field shows when the campaign row leaves it empty, keyed
+ * the way the settings and the payment change table key them.
+ *
+ * A reviewer comparing a change has to see what members actually see, and for
+ * an empty field that is the value built into the site, not "not set".
+ */
+export function builtInPaymentDetails(): Record<PaymentDetailField, string> {
+  const fallback = resolvePaymentDetails(null);
+  return {
+    mpesaPaybill: fallback.paybill,
+    mpesaAccountName: fallback.accountName,
+    bankName: fallback.bankName,
+    bankBranch: fallback.bankBranch,
+    bankAccountName: fallback.bankAccountName,
+    bankAccount: fallback.bankAccount,
+    bankSwift: fallback.bankSwift,
+    bankBranchCode: fallback.bankBranchCode,
+  };
 }
