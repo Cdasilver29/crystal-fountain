@@ -68,21 +68,29 @@ order by c.relname, t.tgname;
 -- facts reduced to a verdict, so the sweep that runs every suite can tell a
 -- pass from a failure without somebody reading the tables by eye.
 with balances as (
+  -- Applied increments only, the same rule the deferred triggers hold since
+  -- migration 0018. A held, confirmed or rejected addition is recorded but is
+  -- not part of the pledge: a confirmed one's money arrives as its own admin
+  -- increment, so counting both would report a correct pledge as broken.
   select count(*)::int as broken
   from pledges p
   join (
     select pledge_id, sum(amount_minor) as increment_sum
     from pledge_increments
+    where status = 'applied'
     group by pledge_id
   ) i on i.pledge_id = p.id
   where p.amount_minor <> i.increment_sum
 ),
 orphans as (
-  -- A pledge with no increments at all is the other way the ledger can be
-  -- wrong, and the join above cannot see it.
+  -- A pledge with no applied increment at all is the other way the ledger can
+  -- be wrong, and the join above cannot see it.
   select count(*)::int as broken
   from pledges p
-  where not exists (select 1 from pledge_increments i where i.pledge_id = p.id)
+  where not exists (
+    select 1 from pledge_increments i
+    where i.pledge_id = p.id and i.status = 'applied'
+  )
 ),
 sequence_state as (
   -- The sequence must never re-issue a reference that already exists. It sits
