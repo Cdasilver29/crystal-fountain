@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { CONTACT } from "@/content/campaign";
+
 import {
   renderAdditionConfirmed,
   renderAdditionHeldNotice,
-  renderAdditionReceipt,
 } from "@/server/email/held-addition";
 
 const base = {
@@ -23,6 +24,12 @@ describe("the held addition notice, to the address on record", () => {
 
   it("says nothing changes until the development office confirms it", () => {
     expect(message.text).toContain("Your pledge stays as it is until then");
+  });
+
+  it("says who to contact if it was not them, with the office phone from the content file", () => {
+    expect(message.text).toContain(
+      `If this was not you, contact the development office on ${CONTACT.phoneDisplay}.`,
+    );
   });
 
   it("greets by first name only", () => {
@@ -46,30 +53,13 @@ describe("the confirmation, to the address on record", () => {
   });
 });
 
-describe("the receipt, to a typed address that is not on record", () => {
-  const message = renderAdditionReceipt({ addedMinor: 30_000_000n });
-
-  it("says the addition was received", () => {
-    expect(message.text).toContain("KES 300,000");
-  });
-
-  it("reveals nothing about any pledge: no reference, name or total", () => {
-    for (const text of [message.text, message.html]) {
-      expect(text).not.toMatch(/CF26-/);
-      expect(text).not.toContain("Ruth");
-      expect(text).not.toContain("500,000");
-    }
-  });
-});
-
 describe("every message", () => {
   it("has no em dash", () => {
     for (const m of [
       renderAdditionHeldNotice(base),
       renderAdditionConfirmed({ ...base, totalMinor: 50_000_000n }),
-      renderAdditionReceipt({ addedMinor: 1n }),
     ]) {
-      expect(m.html + m.text).not.toContain("—");
+      expect(m.html + m.text).not.toContain("\u2014");
     }
   });
 });

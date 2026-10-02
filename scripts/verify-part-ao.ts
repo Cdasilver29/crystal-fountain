@@ -21,6 +21,8 @@ config({ path: ".env.local" });
 const CAMPAIGN_SLUG = "crystal-fountain";
 const PHONE = "0799900401";
 const NEWCOMER = "0799900402";
+const NOTICED = "0799900403";
+const RECORD_EMAIL = "noticed.pledger@example.test";
 
 function heading(text: string) {
   console.log(`\n== ${text} ==`);
@@ -57,9 +59,10 @@ async function main() {
 
   const phone = normalizeKenyanPhone(PHONE)!;
   const newcomer = normalizeKenyanPhone(NEWCOMER)!;
+  const noticed = normalizeKenyanPhone(NOTICED)!;
 
   const cleanup = async () => {
-    for (const p of [phone, newcomer]) {
+    for (const p of [phone, newcomer, noticed]) {
       await db.execute(sql`
         delete from pledges
         where pledger_id in (select id from pledgers where phone_e164 = ${p})
@@ -258,6 +261,65 @@ async function main() {
     check("with a tone", "pledge.addition_held" in AUDIT_TONES);
     const line = summarise("pledge.addition_held", null, { reference: first.reference, addedMinor: "900000000" });
     check("and a detail line", line === `${first.reference}, KES 9,000,000 held for confirmation`, line);
+
+    // 8b. Who is emailed about a held addition.
+    heading("8b. the notice goes only to the address on record, at most three a day");
+    const { renderAdditionHeldNotice } = await import("@/server/email/held-addition");
+    const owner = await pledges.create(db, {
+      input: { ...base, fullName: "Grace Wanjiku Kamau", phone: noticed, email: RECORD_EMAIL, amountKes: 100_000 },
+      campaignSlug: CAMPAIGN_SLUG,
+    });
+    const addAs = async (fullName: string, email: string) => {
+      const r = await pledges.create(db, {
+        input: { ...base, fullName, phone: noticed, email, amountKes: 5_000 },
+        campaignSlug: CAMPAIGN_SLUG,
+        ownership: { ownedPledgeIds: [] },
+      });
+      if (!("held" in r)) throw new Error("expected held");
+      return r;
+    };
+
+    const stranger = await addAs("Mallory visit http://evil.example", "stranger@example.test");
+    check(
+      "a different typed address is sent nothing; the notice goes to the record",
+      stranger.notice?.to === RECORD_EMAIL,
+      stranger.notice?.to ?? "no notice",
+    );
+
+    const matching = await addAs("Grace", "  NOTICED.Pledger@Example.TEST ");
+    check(
+      "a typed address matching the record, ignoring case and spaces, gets exactly one notice",
+      matching.notice?.to === RECORD_EMAIL,
+      matching.notice?.to ?? "no notice",
+    );
+
+    const message = renderAdditionHeldNotice({
+      fullName: stranger.notice!.fullName,
+      reference: stranger.notice!.reference,
+      addedMinor: stranger.addedMinor,
+      siteUrl: "https://pledge.example.test",
+    });
+    check(
+      "the notice carries nothing the submitter typed",
+      !/Mallory|evil.example|stranger@/.test(message.text + message.html) &&
+        message.text.includes("Dear Grace,") &&
+        message.text.includes(owner.reference),
+    );
+
+    const third = await addAs("Somebody", "someone@example.test");
+    check("the third notice in a day is sent", third.notice !== null);
+
+    const fourth = await addAs("Somebody", "someone@example.test");
+    const fourthRow = await db.execute(sql`
+      select count(*)::int as held from pledge_increments
+      where pledge_id = ${owner.pledgeId}::uuid and status = 'held'
+    `);
+    check("the fourth inside 24 hours is skipped", fourth.notice === null);
+    check(
+      "while the addition itself is still recorded and held",
+      (fourthRow.rows[0] as { held: number }).held === 4,
+      `${(fourthRow.rows[0] as { held: number }).held} held`,
+    );
 
     // 9. The verification query, after everything above.
     heading("9. verification query: every pledge balances against its applied increments");

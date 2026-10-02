@@ -1,4 +1,4 @@
-import { CAMPAIGN, CONTACT } from "@/content/campaign";
+import { CONTACT } from "@/content/campaign";
 import { formatKES } from "@/lib/format";
 import {
   escapePledgerHtml as escapeHtml,
@@ -16,10 +16,14 @@ import type { RenderedEmail } from "@/server/email/pledge-confirmation";
  * their pledge, and one when the treasurer confirms it. Both carry the
  * reference, through the shared pledger layout.
  *
- * The third goes to the address typed on the form when it is not the one on
- * record. Whoever typed it may know nothing more than the pledger's phone
- * number, so it says the addition was received and nothing about any pledge:
- * no reference, no total, no name.
+ * Nothing goes to an address typed on the form. Whoever typed it may know
+ * nothing more than the pledger's phone number, and mailing whatever address
+ * a stranger enters would let anybody make the church's domain email anyone.
+ * The on screen acknowledgement is their receipt.
+ *
+ * Every field here comes from the record, never from what the submitter
+ * typed: the name is the pledger's own, and the amount is the held
+ * increment as stored.
  *
  * Pure, like the other templates.
  */
@@ -37,7 +41,7 @@ export function renderAdditionHeldNotice(email: AdditionNoticeEmail): RenderedEm
   const lines = [
     `Dear ${firstName(email.fullName)},`,
     `We have received an addition of ${amount} to your pledge. Before it is added, the development office will confirm it with you on the phone number on your record. Your pledge stays as it is until then.`,
-    `If you did not make this addition, tell the development office when they call, or call ${CONTACT.leaderName} on ${CONTACT.phoneDisplay}.`,
+    `If this was not you, contact the development office on ${CONTACT.phoneDisplay}.`,
   ];
   return renderPledgerEmail({
     subject: "We received an addition to your pledge",
@@ -69,33 +73,4 @@ export function renderAdditionConfirmed(email: AdditionConfirmedEmail): Rendered
     reference: email.reference,
     siteUrl: email.siteUrl,
   });
-}
-
-/**
- * To an address typed on the form that is not the one on record.
- *
- * Received, and nothing more. Deliberately no reference, no total, no name
- * and no greeting by name, since the person reading may not be the pledger.
- */
-export function renderAdditionReceipt(args: { addedMinor: bigint }): RenderedEmail {
-  const lines = [
-    `Thank you. We have received an addition of ${formatKES(args.addedMinor)}.`,
-    "The development office will confirm it with the pledger before it is added.",
-    "A pledge is a promise to give, not a payment. The treasurer's receipt is the only receipt.",
-    `If you did not make this addition, you can ignore this email, or call ${CONTACT.leaderName} on ${CONTACT.phoneDisplay}.`,
-  ];
-  const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Your addition is received</title></head>
-<body style="margin:0;padding:24px 12px;background-color:#f4f4f5;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e4e4e7;border-radius:8px;">
-<tr><td style="padding:28px 24px;">
-<p style="${PARAGRAPH}font-weight:600;">${escapeHtml(CAMPAIGN.name)}</p>
-${lines.map((l) => `<p style="${PARAGRAPH}">${escapeHtml(l)}</p>`).join("\n")}
-</td></tr></table>
-</body></html>`;
-  return {
-    subject: "Your addition is received",
-    html,
-    text: [CAMPAIGN.name, "", ...lines].join("\n\n"),
-  };
 }

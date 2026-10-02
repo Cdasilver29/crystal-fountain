@@ -433,7 +433,7 @@ async function main() {
       "escapes what it prints",
       message.html.includes("&lt;b&gt;0001&lt;/b&gt;") && !message.html.includes("<b>0001</b>"),
     );
-    check("and has no em dash", !message.html.includes("—") && !message.text.includes("—"));
+    check("and has no em dash", !message.html.includes("\u2014") && !message.text.includes("\u2014"));
     console.log(`subject: ${message.subject}`);
 
     const { renderSettingsChangedNotice } = await import("@/server/email/settings-change");

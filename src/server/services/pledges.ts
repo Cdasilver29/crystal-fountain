@@ -131,12 +131,21 @@ export type HeldAdditionResult = {
   addedMinor: bigint;
   currency: string;
   /**
-   * Who to tell, for the route's emails and never for a response: the
-   * pledger's own address on record, which may be empty, and what to greet
-   * them with. The submitter's typed address is the route's to compare.
+   * The notice to send the pledger, for the route and never for a response,
+   * or null when there is nobody to tell or the cap is reached.
+   *
+   * Every field comes from the record: the address, the name and the
+   * reference are the pledger's own, never what the submitter typed. Nothing
+   * is ever sent to a typed address.
    */
-  notify: { recordEmail: string | null; fullName: string; reference: string };
+  notice: { to: string; fullName: string; reference: string } | null;
 };
+
+/** How many held addition notices one address may receive in the window. */
+export const HELD_NOTICE_LIMIT = 3;
+
+/** The window that limit is counted over. A day. */
+export const HELD_NOTICE_WINDOW_SECONDS = 24 * 60 * 60;
 
 /** How many submissions one phone number may make in the window. */
 export const PLEDGE_RATE_LIMIT = 5;
@@ -348,6 +357,36 @@ async function holdUnownedAddition(
 
   await enforcePhoneLimit(tx, known.id);
 
+  /*
+   * Whether to email the pledger, capped per address.
+   *
+   * Counted off the held additions themselves, the same way the change
+   * request limits count their own rows: every held addition is one notice
+   * to the address on record, so the additions made in the window on pledges
+   * whose record carries this address are the notices it has been sent. No
+   * separate table to fall out of step, and it holds across instances. Over
+   * the cap the addition is still recorded and held; only the email is
+   * skipped. Counted before this one is written, so the fourth is the first
+   * skipped.
+   */
+  const recipient = known.email?.trim().toLowerCase() || null;
+  let notice: HeldAdditionResult["notice"] = null;
+
+  if (recipient) {
+    const sent = await tx.execute(sql`
+      select count(*)::int as notices
+      from pledge_increments i
+      join pledges p on p.id = i.pledge_id
+      join pledgers pr on pr.id = p.pledger_id
+      where i.status <> 'applied'
+        and i.created_at > now() - make_interval(secs => ${HELD_NOTICE_WINDOW_SECONDS})
+        and lower(trim(pr.email)) = ${recipient}
+    `);
+    if ((sent.rows[0] as { notices: number }).notices < HELD_NOTICE_LIMIT) {
+      notice = { to: recipient, fullName: known.fullName, reference: existing.reference };
+    }
+  }
+
   const [increment] = await tx
     .insert(pledgeIncrements)
     .values({
@@ -381,11 +420,7 @@ async function holdUnownedAddition(
     pledgeId: existing.id,
     addedMinor: args.addedMinor,
     currency: existing.currency,
-    notify: {
-      recordEmail: known.email,
-      fullName: known.fullName,
-      reference: existing.reference,
-    },
+    notice,
   };
 }
 

@@ -21,10 +21,7 @@ import { resolvePaymentDetails } from "@/lib/payment-details";
 import { env } from "@/env";
 import { createPledgeInput, type CreatePledgeInput } from "@/server/contracts/pledges";
 import * as campaign from "@/server/services/campaign";
-import {
-  renderAdditionHeldNotice,
-  renderAdditionReceipt,
-} from "@/server/email/held-addition";
+import { renderAdditionHeldNotice } from "@/server/email/held-addition";
 import { sendPledgeConfirmation, sendRendered } from "@/server/services/email";
 import * as pledges from "@/server/services/pledges";
 import { turnstileBypassAllowed } from "@/server/services/turnstile";
@@ -111,54 +108,38 @@ function sendConfirmation(args: {
 }
 
 /**
- * Tells people about a held addition, after the response.
+ * Tells the pledger about a held addition, after the response.
  *
- * The pledger's address on record gets the details, so a pledger learns at
- * once if somebody else is adding to their pledge. The address typed on the
- * form, when it is a different one, gets a receipt saying only that the
- * addition was received, because whoever typed it may be a stranger. Neither
- * can fail the submission, which is already committed.
+ * Only ever the address on the pledger's record, and only when the service
+ * decided a notice is due: it is capped per address. Nothing goes to the
+ * address typed on the form, whoever typed it; the on screen acknowledgement
+ * is their receipt. Nothing here can fail the submission, which is committed.
  */
-function sendHeldNotices(args: {
-  typedEmail: string | null | undefined;
-  result: pledges.HeldAdditionResult;
-}) {
-  const config = { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL };
-  const { notify, addedMinor } = args.result;
-  const record = notify.recordEmail?.trim().toLowerCase() || null;
-  const typed = args.typedEmail?.trim().toLowerCase() || null;
+function sendHeldNotice(result: pledges.HeldAdditionResult) {
+  const notice = result.notice;
+  if (!notice) return;
 
   const task = async () => {
-    const outcomes = await Promise.all([
-      record
-        ? sendRendered(config, {
-            to: record,
-            message: renderAdditionHeldNotice({
-              fullName: notify.fullName,
-              reference: notify.reference,
-              addedMinor,
-              siteUrl: env.NEXT_PUBLIC_SITE_URL,
-            }),
-            tag: "addition_held",
-          })
-        : null,
-      typed && typed !== record
-        ? sendRendered(config, {
-            to: typed,
-            message: renderAdditionReceipt({ addedMinor }),
-            tag: "addition_receipt",
-          })
-        : null,
-    ]);
+    const outcome = await sendRendered(
+      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      {
+        to: notice.to,
+        message: renderAdditionHeldNotice({
+          fullName: notice.fullName,
+          reference: notice.reference,
+          addedMinor: result.addedMinor,
+          siteUrl: env.NEXT_PUBLIC_SITE_URL,
+        }),
+        tag: "addition_held",
+      },
+    );
 
-    for (const outcome of outcomes) {
-      if (outcome?.status === "failed") {
-        // The reference only, never an address.
-        Sentry.captureException(outcome.error, {
-          tags: { area: "held_addition_email" },
-          extra: { reference: notify.reference },
-        });
-      }
+    if (outcome.status === "failed") {
+      // The reference only, never an address.
+      Sentry.captureException(outcome.error, {
+        tags: { area: "held_addition_email" },
+        extra: { reference: notice.reference },
+      });
     }
   };
 
@@ -186,7 +167,7 @@ function sendHeldNotices(args: {
  * for the pledge. Any other addition is held: 202, and a body that says it was
  * received and nothing about the pledge it was for, because the sender may
  * know no more than somebody's phone number. The pledger's address on record
- * is told about it instead; see sendHeldNotices and src/lib/owner-cookie.ts.
+ * is told about it instead; see sendHeldNotice and src/lib/owner-cookie.ts.
  *
  * This is the only place that knows where the Turnstile keys and the approval
  * limit come from. The service takes them as data, so the policy is testable
@@ -257,7 +238,7 @@ export async function POST(request: Request) {
     });
 
     if ("held" in result) {
-      sendHeldNotices({ typedEmail: parsed.data.email, result });
+      sendHeldNotice(result);
       return Response.json(
         {
           status: "held",
