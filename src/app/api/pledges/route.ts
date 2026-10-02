@@ -22,7 +22,12 @@ import { env } from "@/env";
 import { createPledgeInput, type CreatePledgeInput } from "@/server/contracts/pledges";
 import * as campaign from "@/server/services/campaign";
 import { renderAdditionHeldNotice } from "@/server/email/held-addition";
-import { sendPledgeConfirmation, sendRendered } from "@/server/services/email";
+import {
+  isEmailConfigured,
+  sendPledgeConfirmation,
+  sendRendered,
+} from "@/server/services/email";
+import { reserveEmail } from "@/server/services/email-limits";
 import * as pledges from "@/server/services/pledges";
 import { turnstileConfig } from "@/lib/bot-check";
 
@@ -40,7 +45,12 @@ export const dynamic = "force-dynamic";
  *
  * Nothing in here can fail a pledge. The pledge is already committed and
  * already on their screen by the time this runs, so every path swallows its
- * error and reports it to Sentry instead. after() itself is called inside a try
+ * error and reports it to Sentry instead.
+ *
+ * At most three a day to one address, counted in email_sends with the held
+ * addition notices. The address is whatever was typed, so without the cap the
+ * form would let anybody have the church email anyone over and over. Over the
+ * cap the pledge is recorded as normal and only this email is skipped. after() itself is called inside a try
  * for the same reason: it needs a request context, and a future runtime that
  * cannot give it one must not turn a recorded pledge into a 500.
  */
@@ -54,8 +64,19 @@ function sendConfirmation(args: {
   if (!args.input.email) return;
 
   const task = async () => {
+    const config = { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL };
+    // Not configured is not a send, and should not use up the allowance.
+    if (!isEmailConfigured(config)) return;
+
+    const allowed = await reserveEmail(db, {
+      to: args.input.email!,
+      kind: "pledge_confirmation",
+      key: env.BETTER_AUTH_SECRET,
+    });
+    if (!allowed) return;
+
     const outcome = await sendPledgeConfirmation(
-      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      config,
       {
         to: args.input.email,
         pledge: {
@@ -111,7 +132,8 @@ function sendConfirmation(args: {
  * Tells the pledger about a held addition, after the response.
  *
  * Only ever the address on the pledger's record, and only when the service
- * decided a notice is due: it is capped per address. Nothing goes to the
+ * decided a notice is due: it took one from the address's allowance in
+ * email_sends, three a day, inside the transaction that held the addition. Nothing goes to the
  * address typed on the form, whoever typed it; the on screen acknowledgement
  * is their receipt. Nothing here can fail the submission, which is committed.
  */
@@ -226,6 +248,8 @@ export async function POST(request: Request) {
       channel: "web",
       ownership: { ownedPledgeIds },
       request: { ip: clientIp(request), userAgent: userAgent(request) },
+      // What addresses are counted under for the per recipient email limit.
+      emailKey: env.BETTER_AUTH_SECRET,
       security: {
         token: parsed.data.turnstileToken,
         ...turnstileConfig(),

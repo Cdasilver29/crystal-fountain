@@ -1,12 +1,11 @@
 import { CONTACT } from "@/content/campaign";
 import { formatKES } from "@/lib/format";
 import {
-  escapePledgerHtml as escapeHtml,
   PLEDGER_PARAGRAPH as PARAGRAPH,
-  pledgerFirstName as firstName,
   renderPledgerEmail,
 } from "@/server/email/change-request";
 import type { RenderedEmail } from "@/server/email/pledge-confirmation";
+import { escapeHtml, greeting } from "@/server/email/safe";
 
 /**
  * The emails an addition held for confirmation produces.
@@ -39,7 +38,7 @@ export type AdditionNoticeEmail = {
 export function renderAdditionHeldNotice(email: AdditionNoticeEmail): RenderedEmail {
   const amount = formatKES(email.addedMinor);
   const lines = [
-    `Dear ${firstName(email.fullName)},`,
+    `${greeting(email.fullName)},`,
     `We have received an addition of ${amount} to your pledge. Before it is added, the development office will confirm it with you on the phone number on your record. Your pledge stays as it is until then.`,
     `If this was not you, contact the development office on ${CONTACT.phoneDisplay}.`,
   ];
@@ -61,7 +60,7 @@ export type AdditionConfirmedEmail = AdditionNoticeEmail & {
 /** To the address on record: the treasurer confirmed it, here is the total. */
 export function renderAdditionConfirmed(email: AdditionConfirmedEmail): RenderedEmail {
   const lines = [
-    `Dear ${firstName(email.fullName)},`,
+    `${greeting(email.fullName)},`,
     `Thank you. Your addition of ${formatKES(email.addedMinor)} is confirmed, and your pledge now stands at ${formatKES(email.totalMinor)}.`,
     "A pledge is a promise to give, not a payment. The treasurer's receipt is the only receipt.",
   ];

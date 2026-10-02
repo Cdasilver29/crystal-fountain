@@ -149,20 +149,22 @@ describe("what a person typed", () => {
    * The name and the note are typed into forms anybody can reach, and they are
    * interpolated into markup.
    */
-  it("escapes a name carrying markup", () => {
-    const message = renderChangeRequestAcknowledgement({
-      fullName: "Tabitha Wairimu",
-      reference: "CF26-000124",
-      change: {
-        ...cancellation,
-        kind: "correct_name",
-        requestedName: "<script>alert(1)</script>",
-      },
-      siteUrl: SITE,
-    });
+  it("does not repeat a requested name at all, markup or a link", () => {
+    for (const requestedName of [
+      "<script>alert(1)</script>",
+      "Verify your M-Pesa at bit.ly/xyz",
+    ]) {
+      const message = renderChangeRequestAcknowledgement({
+        fullName: "Tabitha Wairimu",
+        reference: "CF26-000124",
+        change: { ...cancellation, kind: "correct_name", requestedName },
+        siteUrl: SITE,
+      });
 
-    expect(message.html).not.toContain("<script>");
-    expect(message.html).toContain("&lt;script&gt;");
+      expect(message.html).not.toContain("script");
+      expect(message.html + message.text).not.toContain("bit.ly");
+      expect(message.text).toContain("correct your name.");
+    }
   });
 
   it("escapes a decision note carrying markup", () => {
@@ -184,13 +186,9 @@ describe("what a person typed", () => {
     const message = renderChangeRequestDecision({
       fullName: "Tabitha Wairimu",
       reference: "CF26-000124",
-      change: {
-        ...cancellation,
-        kind: "correct_name",
-        requestedName: "Smith & Sons",
-      },
-      decision: "approved",
-      note: null,
+      change: reduction,
+      decision: "declined",
+      note: "Please ring Smith & Sons first.",
       amountMinor: 50000000n,
       siteUrl: SITE,
     });
@@ -208,7 +206,7 @@ describe("what a person typed", () => {
       siteUrl: SITE,
     });
 
-    expect(message.html).toContain("Dear friend");
+    expect(message.html).toContain("Dear member,");
     expect(message.html).not.toContain("Dear ,");
   });
 });
@@ -263,8 +261,10 @@ describe("every kind says something", () => {
       }).html;
 
     expect(of(plan)).toContain("monthly");
-    expect(of(name)).toContain("Jane Otieno");
-    expect(of(payment)).toContain("QGH7X8K9LM");
+    // Free text the requester typed is never repeated; fixed values are.
+    expect(of(name)).toContain("correct your name");
+    expect(of(name)).not.toContain("Jane Otieno");
+    expect(of(payment)).not.toContain("QGH7X8K9LM");
     expect(of(payment)).toContain("KES 50,000");
   });
 });

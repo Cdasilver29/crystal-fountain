@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import type { Db, DbHandle } from "@/db";
+import type { Db, DbHandle, Tx } from "@/db";
 import {
   auditLog,
   campaigns,
@@ -27,6 +27,7 @@ import {
   closureFor,
 } from "@/server/services/change-request-closure";
 import { kesToMinor } from "@/server/money";
+import { reserveEmail } from "@/server/services/email-limits";
 import {
   assertHuman,
   isTurnstileConfigured,
@@ -113,6 +114,12 @@ export type CreatePledgeArgs = {
   channel?: PledgeChannel;
   request?: RequestContext;
   security?: PledgeSecurityArgs;
+  /**
+   * The key recipient addresses are hashed under for the per recipient email
+   * limit. Without it no held addition notice is ever offered, rather than
+   * one offered uncounted.
+   */
+  emailKey?: string;
 };
 
 /**
@@ -148,12 +155,6 @@ export type HeldAdditionResult = {
    */
   notice: { to: string; fullName: string; reference: string } | null;
 };
-
-/** How many held addition notices one address may receive in the window. */
-export const HELD_NOTICE_LIMIT = 3;
-
-/** The window that limit is counted over. A day. */
-export const HELD_NOTICE_WINDOW_SECONDS = 24 * 60 * 60;
 
 /** How many submissions one phone number may make in the window. */
 export const PLEDGE_RATE_LIMIT = 5;
@@ -327,7 +328,7 @@ async function enforcePhoneLimit(
  * not change until a treasurer confirms it with the pledger.
  */
 async function holdUnownedAddition(
-  tx: Pick<Db, "execute" | "insert" | "select">,
+  tx: Tx,
   args: {
     campaignId: string;
     phone: string;
@@ -337,6 +338,7 @@ async function holdUnownedAddition(
     tier: string | null;
     now: Date;
     request?: RequestContext;
+    emailKey?: string;
   },
 ): Promise<HeldAdditionResult | null> {
   const [known] = await tx
@@ -368,31 +370,24 @@ async function holdUnownedAddition(
   /*
    * Whether to email the pledger, capped per address.
    *
-   * Counted off the held additions themselves, the same way the change
-   * request limits count their own rows: every held addition is one notice
-   * to the address on record, so the additions made in the window on pledges
-   * whose record carries this address are the notices it has been sent. No
-   * separate table to fall out of step, and it holds across instances. Over
-   * the cap the addition is still recorded and held; only the email is
-   * skipped. Counted before this one is written, so the fourth is the first
+   * The same per recipient limit every pledger email counts against, three
+   * a day, taken inside this transaction so an addition that rolls back
+   * gives its notice back. Over the cap the addition is still recorded and
+   * held; only the email is skipped, so the fourth in a day is the first
    * skipped.
    */
   const recipient = known.email?.trim().toLowerCase() || null;
   let notice: HeldAdditionResult["notice"] = null;
 
-  if (recipient) {
-    const sent = await tx.execute(sql`
-      select count(*)::int as notices
-      from pledge_increments i
-      join pledges p on p.id = i.pledge_id
-      join pledgers pr on pr.id = p.pledger_id
-      where i.status <> 'applied'
-        and i.created_at > now() - make_interval(secs => ${HELD_NOTICE_WINDOW_SECONDS})
-        and lower(trim(pr.email)) = ${recipient}
-    `);
-    if ((sent.rows[0] as { notices: number }).notices < HELD_NOTICE_LIMIT) {
-      notice = { to: recipient, fullName: known.fullName, reference: existing.reference };
-    }
+  if (
+    recipient &&
+    (await reserveEmail(tx, {
+      to: recipient,
+      kind: "addition_held",
+      key: args.emailKey,
+    }))
+  ) {
+    notice = { to: recipient, fullName: known.fullName, reference: existing.reference };
   }
 
   const [increment] = await tx
@@ -572,6 +567,7 @@ async function createOnce(
         tier: input.tier ?? null,
         now,
         request,
+        emailKey: args.emailKey,
       });
       if (held) return held;
     }
@@ -685,6 +681,7 @@ async function createOnce(
         tier: input.tier ?? null,
         now,
         request,
+        emailKey: args.emailKey,
       });
       if (held) return held;
     }

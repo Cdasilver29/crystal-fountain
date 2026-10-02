@@ -23,6 +23,11 @@ const PHONE = "0799900401";
 const NEWCOMER = "0799900402";
 const NOTICED = "0799900403";
 const RECORD_EMAIL = "noticed.pledger@example.test";
+/**
+ * The key held addition notices are counted under in email_sends. Any key
+ * will do for the suite; the cleanup removes what it counted.
+ */
+const EMAIL_KEY = "verify-part-ao-email-limit-key-0000000000";
 
 function heading(text: string) {
   console.log(`\n== ${text} ==`);
@@ -61,7 +66,11 @@ async function main() {
   const newcomer = normalizeKenyanPhone(NEWCOMER)!;
   const noticed = normalizeKenyanPhone(NOTICED)!;
 
+  const { recipientHash } = await import("@/server/services/email-limits");
   const cleanup = async () => {
+    await db.execute(sql`
+      delete from email_sends where recipient_hash = ${recipientHash(RECORD_EMAIL, EMAIL_KEY)}
+    `);
     for (const p of [phone, newcomer, noticed]) {
       await db.execute(sql`
         delete from pledges
@@ -118,10 +127,25 @@ async function main() {
     );
 
     // 2. Nothing that already exists changed.
-    heading("2. every existing increment is applied and every pledge balances");
+    heading("2. every increment not applied came through the held flow, and every pledge balances");
+    /*
+     * Live held additions exist now, copied onto the branch from production
+     * (the first was confirmed on 2 October 2026), so "every increment is
+     * applied" no longer holds and was never the point. The point is that
+     * migration 0018 left every earlier row applied: any row that is not
+     * applied must be one the held flow wrote, which always audits it.
+     */
     const ledger = await db.execute(sql`
       select count(*)::int as increments,
              count(*) filter (where status = 'applied')::int as applied,
+             count(*) filter (
+               where status <> 'applied'
+                 and not exists (
+                   select 1 from audit_log a
+                   where a.action = 'pledge.addition_held'
+                     and a.after ->> 'incrementId' = pledge_increments.id::text
+                 )
+             )::int as unexplained,
              (select count(*)::int from pledges p
                where p.amount_minor <> coalesce((select sum(i.amount_minor)
                  from pledge_increments i
@@ -129,8 +153,17 @@ async function main() {
       from pledge_increments
     `);
     show(ledger.rows as Record<string, unknown>[]);
-    const l = ledger.rows[0] as { increments: number; applied: number; unbalanced: number };
-    check("every increment on the branch is applied", l.increments === l.applied);
+    const l = ledger.rows[0] as {
+      increments: number;
+      applied: number;
+      unexplained: number;
+      unbalanced: number;
+    };
+    check(
+      "every increment not applied was written by the held flow",
+      l.unexplained === 0,
+      `${l.increments - l.applied} not applied, ${l.unexplained} unexplained`,
+    );
     check("no pledge disagrees with its applied increments", l.unbalanced === 0);
 
     // 3. A held addition.
@@ -274,6 +307,7 @@ async function main() {
         input: { ...base, fullName, phone: noticed, email, amountKes: 5_000 },
         campaignSlug: CAMPAIGN_SLUG,
         ownership: { ownedPledgeIds: [] },
+        emailKey: EMAIL_KEY,
       });
       if (!("held" in r)) throw new Error("expected held");
       return r;

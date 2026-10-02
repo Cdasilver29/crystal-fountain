@@ -1,6 +1,7 @@
 import { CAMPAIGN } from "@/content/campaign";
 import { formatKES } from "@/lib/format";
 import type { RenderedEmail } from "@/server/email/pledge-confirmation";
+import { escapeHtml } from "@/server/email/safe";
 import type { SettingMove } from "@/server/services/campaign";
 
 /**
@@ -22,15 +23,6 @@ const LABELS: Record<string, string> = {
   autoApproveLimitMinor: "Auto approve limit",
   isPublic: "Pledge form",
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 /** A stored value in words: shillings for money, open or closed for the form. */
 function shown(field: string, value: unknown): string {

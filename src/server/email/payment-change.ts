@@ -4,6 +4,7 @@ import {
   type PaymentDetailField,
 } from "@/server/contracts/campaign";
 import type { RenderedEmail } from "@/server/email/pledge-confirmation";
+import { escapeHtml } from "@/server/email/safe";
 import type { PaymentChangeNotice } from "@/server/services/payment-changes";
 
 /**
@@ -37,15 +38,6 @@ const LABELS: Record<PaymentDetailField, string> = {
   bankSwift: "Swift code",
   bankBranchCode: "Branch code",
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 const nairobi = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Africa/Nairobi",
@@ -139,7 +131,7 @@ export function renderPaymentChangeNotice(
 <tr>
 <th align="left" style="${cell}">Field</th>
 <th align="left" style="${cell}">Current</th>
-<th align="left" style="${cell}">${notice.event === "approved" ? "Now live" : "Proposed"}</th>
+<th align="left" style="${cell}">${escapeHtml(notice.event === "approved" ? "Now live" : "Proposed")}</th>
 </tr>
 ${tableRows}
 </table>

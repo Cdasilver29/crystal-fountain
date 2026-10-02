@@ -4,6 +4,7 @@ import type { ChangeRequestKind } from "@/server/contracts/change-requests";
 import { REDEMPTION_PLANS, type RedemptionChoice } from "@/server/contracts/pledges";
 
 import type { RenderedEmail } from "@/server/email/pledge-confirmation";
+import { escapeHtml, greeting } from "@/server/email/safe";
 
 /**
  * The three messages a change request produces, from one shell.
@@ -35,28 +36,6 @@ const FONT =
 const PARAGRAPH = `margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};`;
 const SMALL = `margin:0;font-family:${FONT};font-size:14px;line-height:21px;color:${MUTED};`;
 
-/**
- * Escapes text going into the message.
- *
- * The name and the reason are fields a person typed, into a form anybody can
- * reach. They are interpolated into markup, so they are escaped, and the
- * ampersand goes first so the escapes cannot escape each other.
- */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-/** The first word of the name, falling back rather than producing "Dear ,". */
-function firstName(fullName: string): string {
-  const first = fullName.trim().split(/\s+/)[0];
-  return first && first.length > 0 ? first : "friend";
-}
-
 /** What was asked for, in one phrase, for the body of any of the three. */
 export type RequestedChange = {
   kind: ChangeRequestKind;
@@ -77,6 +56,11 @@ export type RequestedChange = {
  * pledge to KES 300,000" rather than the queue's "reduce to KES 300,000". The
  * same facts, addressed to the person who asked rather than the person
  * deciding.
+ *
+ * Nothing the requester typed as free text is repeated: not the name they
+ * asked for and not the payment code. Whoever raised the request may not be
+ * the pledger, and anything typed could be a link in the church's own email.
+ * Amounts and plans are chosen from fixed values, so they are safe to quote.
  */
 function asked(change: RequestedChange): string {
   switch (change.kind) {
@@ -93,23 +77,12 @@ function asked(change: RequestedChange): string {
     }
 
     case "correct_name":
-      return change.requestedName
-        ? `correct your name to ${change.requestedName}`
-        : "correct your name";
+      return "correct your name";
 
-    case "payment_missing": {
-      const ref = change.paymentReference;
-      const amount = change.paymentAmountMinor
-        ? formatKES(change.paymentAmountMinor)
-        : null;
-      if (ref && amount) {
-        return `look into ${amount} you paid as ${ref} that is not showing against your pledge`;
-      }
-      if (ref) {
-        return `look into a payment, ${ref}, that is not showing against your pledge`;
-      }
-      return "look into a payment that is not showing against your pledge";
-    }
+    case "payment_missing":
+      return change.paymentAmountMinor
+        ? `look into a payment of ${formatKES(change.paymentAmountMinor)} that is not showing against your pledge`
+        : "look into a payment that is not showing against your pledge";
 
     case "cancel_pledge":
       return "cancel your pledge";
@@ -137,6 +110,7 @@ function render(shell: Shell): RenderedEmail {
   const site = shell.siteUrl.replace(/\/$/, "");
   const redeemUrl = `${site}/redeem`;
   const reference = escapeHtml(shell.reference);
+  const redeem = escapeHtml(redeemUrl);
 
   const html = `<!doctype html>
 <html lang="en">
@@ -155,15 +129,15 @@ function render(shell: Shell): RenderedEmail {
 
 <tr>
 <td align="center" style="background-color:${NAVY};padding:28px 24px;border-radius:8px 8px 0 0;">
-<p style="margin:0;font-family:${FONT};font-size:19px;font-weight:600;line-height:26px;color:#ffffff;">${CAMPAIGN.name}</p>
-<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;line-height:18px;color:#c7d2e4;">${CONTACT.churchName}</p>
+<p style="margin:0;font-family:${FONT};font-size:19px;font-weight:600;line-height:26px;color:#ffffff;">${escapeHtml(CAMPAIGN.name)}</p>
+<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;line-height:18px;color:#c7d2e4;">${escapeHtml(CONTACT.churchName)}</p>
 </td>
 </tr>
 
 <tr>
 <td style="background-color:#ffffff;padding:28px 24px;border-left:1px solid ${BORDER};border-right:1px solid ${BORDER};">
 ${shell.body}
-<p style="${PARAGRAPH}margin-bottom:0;">Your reference is <strong>${reference}</strong>. You can look your pledge up at any time at <a href="${redeemUrl}" style="color:#1b4f9c;">${redeemUrl}</a>.</p>
+<p style="${PARAGRAPH}margin-bottom:0;">Your reference is <strong>${reference}</strong>. You can look your pledge up at any time at <a href="${redeem}" style="color:#1b4f9c;">${redeem}</a>.</p>
 </td>
 </tr>
 
@@ -212,7 +186,7 @@ export type ChangeRequestAcknowledgementEmail = {
 export function renderChangeRequestAcknowledgement(
   data: ChangeRequestAcknowledgementEmail,
 ): RenderedEmail {
-  const name = escapeHtml(firstName(data.fullName));
+  const dear = escapeHtml(greeting(data.fullName));
   const phrase = asked(data.change);
 
   return render({
@@ -221,11 +195,11 @@ export function renderChangeRequestAcknowledgement(
     reference: data.reference,
     siteUrl: data.siteUrl,
     body: `
-<p style="${PARAGRAPH}">Dear ${name},</p>
+<p style="${PARAGRAPH}">${dear},</p>
 <p style="${PARAGRAPH}">You have asked us to ${escapeHtml(phrase)}.</p>
 <p style="${PARAGRAPH}"><strong>Nothing has changed yet.</strong> Your pledge stands exactly as it was until the treasurer has looked at this, and we will write to you again when they have.</p>
 <p style="${PARAGRAPH}">You can have one request open at a time, so there is nothing more for you to send.</p>`,
-    text: `Dear ${firstName(data.fullName)},
+    text: `${greeting(data.fullName)},
 
 You have asked us to ${phrase}.
 
@@ -267,7 +241,7 @@ export type ChangeRequestDecisionEmail = {
 export function renderChangeRequestDecision(
   data: ChangeRequestDecisionEmail,
 ): RenderedEmail {
-  const name = escapeHtml(firstName(data.fullName));
+  const dear = escapeHtml(greeting(data.fullName));
   const phrase = asked(data.change);
   const approved = data.decision === "approved";
 
@@ -285,7 +259,7 @@ export function renderChangeRequestDecision(
    */
   const standing =
     approved && data.change.kind !== "cancel_pledge"
-      ? `<p style="${PARAGRAPH}">Your pledge now stands at <strong>${formatKES(data.amountMinor)}</strong>.</p>`
+      ? `<p style="${PARAGRAPH}">Your pledge now stands at <strong>${escapeHtml(formatKES(data.amountMinor))}</strong>.</p>`
       : approved && data.change.kind === "cancel_pledge"
         ? `<p style="${PARAGRAPH}">Your pledge has been closed. Thank you for having made it, and for telling us.</p>`
         : "";
@@ -311,12 +285,12 @@ export function renderChangeRequestDecision(
     reference: data.reference,
     siteUrl: data.siteUrl,
     body: `
-<p style="${PARAGRAPH}">Dear ${name},</p>
+<p style="${PARAGRAPH}">${dear},</p>
 <p style="${PARAGRAPH}">You asked us to ${escapeHtml(phrase)}.</p>
 ${outcome}
 ${noteBlock}
 ${standing}`,
-    text: `Dear ${firstName(data.fullName)},
+    text: `${greeting(data.fullName)},
 
 You asked us to ${phrase}.
 
@@ -329,6 +303,6 @@ ${textOutcome}${data.note ? `\n\nThey said: "${data.note}"` : ""}${textStanding}
  * record. Every one of them carries the reference, which is why only mail to
  * the address on record may use it.
  */
-export { escapeHtml as escapePledgerHtml, firstName as pledgerFirstName, render as renderPledgerEmail };
+export { render as renderPledgerEmail };
 export type { Shell as PledgerEmailShell };
 export { PARAGRAPH as PLEDGER_PARAGRAPH };

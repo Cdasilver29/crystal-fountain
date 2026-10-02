@@ -1011,6 +1011,34 @@ export const pledgeSubmissions = pgTable(
 );
 
 /*
+ * One row per email sent to a pledger's address, for the per recipient limit.
+ *
+ * The confirmation goes to whatever address is typed on the public form, from
+ * the church's own sender, so without a cap anybody could have the church
+ * email anyone as often as they liked. The held addition notice is capped the
+ * same way and counts here too: one mechanism for every email limit.
+ *
+ * The address itself is not kept. recipient_hash is an HMAC of the address,
+ * trimmed and lower cased, so a row says "this address was written to" to
+ * somebody holding the key and nothing to anybody reading the table. Rows are
+ * pruned after 48 hours by the daily job; the window they serve is 24.
+ */
+export const emailSends = pgTable(
+  "email_sends",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    recipientHash: text("recipient_hash").notNull(),
+    /** Which limit this counts against: pledge_confirmation or addition_held. */
+    kind: text("kind").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("email_sends_recipient_kind_at_idx").on(t.recipientHash, t.kind, t.at),
+    index("email_sends_at_idx").on(t.at),
+  ],
+);
+
+/*
  * A change to where members' money is sent, waiting for a second person.
  *
  * The paybill and bank details are shown to every member at once, so whoever

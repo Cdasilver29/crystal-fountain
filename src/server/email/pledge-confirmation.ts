@@ -6,6 +6,7 @@ import {
   REDEMPTION_PLANS,
   type PledgeFrequency,
 } from "@/server/contracts/pledges";
+import { escapeHtml, greeting } from "@/server/email/safe";
 
 /**
  * The pledge confirmation email, as a subject line and a string of HTML.
@@ -55,7 +56,11 @@ export type EmailPaymentDetails = {
 };
 
 export type PledgeConfirmationEmail = {
-  /** As typed into the form. Only the first word is used, and it is escaped. */
+  /**
+   * As typed into the form. Only a reduced first name is used, which cannot
+   * carry a web address; see greetingName. Nothing else typed on the form
+   * goes into the message.
+   */
   fullName: string;
   reference: string;
   /** The 22 character public token, for the /p/<token> link. */
@@ -82,32 +87,14 @@ export type RenderedEmail = {
 };
 
 /**
- * Escapes text going into the message.
+ * The line that tells somebody who did not pledge what to do.
  *
- * The name is the only field here a person typed, and it is typed into a public
- * form by anybody who cares to. It is interpolated into markup, so it is
- * escaped, and the ampersand is replaced first so the escapes cannot escape
- * each other.
+ * The confirmation goes to whatever address was typed on the form, so the
+ * person reading it may never have heard of the campaign. They are told they
+ * can ignore it, and where to ring.
  */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-/**
- * The first word of the name, the same way the recent pledges feed takes it.
- *
- * Falls back to a plain greeting rather than an empty one, because a name that
- * somehow arrives as whitespace should not produce "Dear ,".
- */
-function firstName(fullName: string): string {
-  const first = fullName.trim().split(/\s+/)[0];
-  return first && first.length > 0 ? first : "friend";
-}
+export const NOT_YOU_LINE =
+  "If you did not make this pledge, you can ignore this email, or contact the development office.";
 
 /** The instalment sentence, or null when there is no plan to describe. */
 function planLine(
@@ -125,8 +112,11 @@ function planLine(
 export function renderPledgeConfirmationEmail(
   data: PledgeConfirmationEmail,
 ): RenderedEmail {
-  const name = escapeHtml(firstName(data.fullName));
+  const dear = escapeHtml(greeting(data.fullName));
   const reference = escapeHtml(data.reference);
+  const campaign = escapeHtml(CAMPAIGN.name);
+  const church = escapeHtml(CONTACT.churchName);
+  const office = escapeHtml(CONTACT.phoneDisplay);
   const site = data.siteUrl.replace(/\/$/, "");
   const pledgeUrl = `${site}/p/${encodeURIComponent(data.publicToken)}`;
   const redeemUrl = `${site}/redeem`;
@@ -170,8 +160,8 @@ export function renderPledgeConfirmationEmail(
 <!-- Header bar -->
 <tr>
 <td align="center" style="background-color:${NAVY};padding:28px 24px;border-radius:8px 8px 0 0;">
-<p style="margin:0;font-family:${FONT};font-size:19px;font-weight:600;line-height:26px;color:#ffffff;">${CAMPAIGN.name}</p>
-<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;line-height:18px;color:#c7d2e4;">${CONTACT.churchName}</p>
+<p style="margin:0;font-family:${FONT};font-size:19px;font-weight:600;line-height:26px;color:#ffffff;">${campaign}</p>
+<p style="margin:6px 0 0;font-family:${FONT};font-size:13px;line-height:18px;color:#c7d2e4;">${church}</p>
 </td>
 </tr>
 
@@ -179,13 +169,13 @@ export function renderPledgeConfirmationEmail(
 <tr>
 <td style="background-color:#ffffff;padding:32px 28px;border-left:1px solid ${BORDER};border-right:1px solid ${BORDER};">
 
-<p style="${paragraph}">Dear ${name},</p>
+<p style="${paragraph}">${dear},</p>
 
-<p style="${paragraph}">Thank you for your pledge of <strong style="color:${NAVY};">${thanked}</strong> toward the ${CAMPAIGN.name}.</p>
+<p style="${paragraph}">Thank you for your pledge of <strong style="color:${NAVY};">${escapeHtml(thanked)}</strong> toward the ${campaign}.</p>
 
 ${
   data.isAddition
-    ? `<p style="${paragraph}">Your pledge has been updated to a total of <strong style="color:${NAVY};">${total}</strong>.</p>`
+    ? `<p style="${paragraph}">Your pledge has been updated to a total of <strong style="color:${NAVY};">${escapeHtml(total)}</strong>.</p>`
     : ""
 }
 
@@ -230,13 +220,13 @@ ${plan ? `<p style="${paragraph}">${escapeHtml(plan)}</p>` : ""}
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;border-collapse:collapse;">
 <tr>
 <td style="background-color:${CAMPFIRE};border-radius:6px;">
-<a href="${pledgeUrl}" style="display:inline-block;padding:13px 26px;font-family:${FONT};font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">View my pledge</a>
+<a href="${escapeHtml(pledgeUrl)}" style="display:inline-block;padding:13px 26px;font-family:${FONT};font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">View my pledge</a>
 </td>
 </tr>
 </table>
 
 <p style="margin:0 0 4px;font-family:${FONT};font-size:16px;line-height:24px;color:${INK};">Check your balance:</p>
-<p style="margin:0;font-family:${FONT};font-size:16px;line-height:24px;"><a href="${redeemUrl}" style="color:${NAVY};text-decoration:underline;">${escapeHtml(redeemUrl)}</a></p>
+<p style="margin:0;font-family:${FONT};font-size:16px;line-height:24px;"><a href="${escapeHtml(redeemUrl)}" style="color:${NAVY};text-decoration:underline;">${escapeHtml(redeemUrl)}</a></p>
 
 </td>
 </tr>
@@ -244,9 +234,10 @@ ${plan ? `<p style="${paragraph}">${escapeHtml(plan)}</p>` : ""}
 <!-- Footer bar -->
 <tr>
 <td align="center" style="background-color:${GREY_BG};padding:24px;border:1px solid ${BORDER};border-top:none;border-radius:0 0 8px 8px;">
-<p style="margin:0 0 4px;font-family:${FONT};font-size:13px;line-height:19px;font-weight:600;color:${NAVY};">${CAMPAIGN.name}</p>
-<p style="margin:0 0 4px;font-family:${FONT};font-size:13px;line-height:19px;color:${MUTED};">${CONTACT.churchName}, ${CONTACT.address}</p>
-<p style="margin:0;font-family:${FONT};font-size:13px;line-height:19px;"><a href="mailto:${CONTACT.developmentEmail}" style="color:${MUTED};text-decoration:underline;">${CONTACT.developmentEmail}</a></p>
+<p style="margin:0 0 12px;font-family:${FONT};font-size:13px;line-height:19px;color:${INK};">${escapeHtml(NOT_YOU_LINE)} Development office: <a href="${escapeHtml(CONTACT.phoneHref)}" style="color:${INK};text-decoration:underline;">${office}</a></p>
+<p style="margin:0 0 4px;font-family:${FONT};font-size:13px;line-height:19px;font-weight:600;color:${NAVY};">${campaign}</p>
+<p style="margin:0 0 4px;font-family:${FONT};font-size:13px;line-height:19px;color:${MUTED};">${church}, ${escapeHtml(CONTACT.address)}</p>
+<p style="margin:0;font-family:${FONT};font-size:13px;line-height:19px;"><a href="mailto:${escapeHtml(CONTACT.developmentEmail)}" style="color:${MUTED};text-decoration:underline;">${escapeHtml(CONTACT.developmentEmail)}</a></p>
 </td>
 </tr>
 
@@ -266,7 +257,7 @@ ${plan ? `<p style="${paragraph}">${escapeHtml(plan)}</p>` : ""}
     CAMPAIGN.name,
     CONTACT.churchName,
     "",
-    `Dear ${firstName(data.fullName)},`,
+    `${greeting(data.fullName)},`,
     "",
     `Thank you for your pledge of ${thanked} toward the ${CAMPAIGN.name}.`,
     ...(data.isAddition
@@ -295,6 +286,9 @@ ${plan ? `<p style="${paragraph}">${escapeHtml(plan)}</p>` : ""}
     "",
     `View your pledge anytime: ${pledgeUrl}`,
     `Check your balance: ${redeemUrl}`,
+    "",
+    NOT_YOU_LINE,
+    `Development office: ${CONTACT.phoneDisplay}`,
     "",
     CAMPAIGN.name,
     `${CONTACT.churchName}, ${CONTACT.address}`,
