@@ -187,6 +187,7 @@ async function main() {
   );
 
   const names = feed.map((entry) => entry.displayName);
+  const ours = names.filter((n) => /^(Grace|Peter|Mary)\b/.test(n));
   check("the three consenting pledgers are in the feed",
     names.includes("Grace W.") &&
       names.includes("Peter O.") &&
@@ -197,9 +198,16 @@ async function main() {
     // Mary is stored as "Mary Njeri Kamau", so this also proves the initial
     // comes from the last word rather than from the middle name.
     "a given name and one initial, never the full name",
-    names.every((n) => /^\p{Lu}[^\s]*( & \p{Lu}[^\s]*)?( \p{Lu}\.)?$/u.test(n)) &&
+    /*
+     * Only the people this suite seeded. The live feed also carries
+     * organisations and hand set public names, which are published whole by
+     * design since the display name work, so the whole feed is the wrong
+     * population to hold to this rule.
+     */
+    ours.length >= 3 &&
+      ours.every((n) => /^\p{Lu}[^\s]*( & \p{Lu}[^\s]*)?( \p{Lu}\.)?$/u.test(n)) &&
       !names.some((n) => /Wanjiru|Njeri|Kamau|Otieno/.test(n)),
-    names.join(", "),
+    ours.join(", "),
   );
   check(
     "the pledger who declined is absent entirely",

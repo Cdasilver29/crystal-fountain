@@ -202,7 +202,12 @@ async function main() {
   heading("4. the home page section");
   const home = await (await fetch(`${BASE}/`)).text();
   const start = home.indexOf("What could your family give?");
-  const section = home.slice(start, home.indexOf("</section>", start));
+  // From the section's own opening tag rather than the heading text, since the
+  // photograph layout puts one level card above the heading inside it.
+  const section = home.slice(
+    home.lastIndexOf("<section", start),
+    home.indexOf("</section>", start),
+  );
   const collapseAt = section.indexOf('id="all-levels"');
 
   check("the question heading renders", start !== -1);
