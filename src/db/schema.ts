@@ -372,12 +372,58 @@ export const pledgeIncrements = pgTable(
      * alone is not enough of a record.
      */
     reason: text("reason"),
+    /*
+     * Whether this increment counts toward the pledge.
+     *
+     * applied: it does, and it is in the pledge amount. Every increment
+     * before this column existed is applied, and so is anything written by
+     * code that does not know about it, which is why it is the default.
+     *
+     * held: an addition from somebody who could not show they made the
+     * pledge. Recorded so the treasurer can see it, and not counted, so it
+     * moves neither the pledge nor the public total.
+     *
+     * confirmed: a held addition the treasurer checked with the pledger. The
+     * money arrives as a separate admin increment written by the edit
+     * service, so a confirmed row itself still does not count. Corrections
+     * are new rows, not edits.
+     *
+     * rejected: a held addition the treasurer turned down.
+     *
+     * The deferred invariant triggers sum applied increments only.
+     */
+    status: text("status").notNull().default("applied"),
+    decidedBy: uuid("decided_by").references(() => adminUsers.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => [
     index("pledge_increments_pledge_idx").on(t.pledgeId, t.createdAt),
+    /** The treasurer's queue, and the count on the nav badge. */
+    index("pledge_increments_held_idx")
+      .on(t.createdAt)
+      .where(sql`status = 'held'`),
+    check(
+      "pledge_increments_status_check",
+      sql`${t.status} in ('applied','held','confirmed','rejected')`,
+    ),
+    /*
+     * Only a public submission is ever held, and it can only add. An
+     * administrator's correction or a negative amount has no business in the
+     * queue.
+     */
+    check(
+      "pledge_increments_held_is_public_check",
+      sql`${t.status} = 'applied' or (${t.channel} = 'web' and ${t.amountMinor} > 0)`,
+    ),
+    /* A decided addition says who decided it and when; nothing else does. */
+    check(
+      "pledge_increments_decided_check",
+      sql`(${t.status} in ('confirmed','rejected')) = (${t.decidedAt} is not null)
+          and (${t.status} not in ('confirmed','rejected') or ${t.decidedBy} is not null)`,
+    ),
     // Zero is not a correction, it is a no-op with an audit row attached.
     check("pledge_increments_amount_minor_check", sql`${t.amountMinor} <> 0`),
     /*

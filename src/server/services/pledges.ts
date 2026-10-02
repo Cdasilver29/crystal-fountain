@@ -107,6 +107,31 @@ export type CreatePledgeArgs = {
   security?: PledgeSecurityArgs;
 };
 
+/**
+ * What the submitting browser has proved about which pledges it made.
+ *
+ * The pledge ids from a valid ownership cookie, read and checked by the route
+ * handler, which is the only place that sees cookies. An empty list is the
+ * ordinary case: a browser that made nothing, or an installation with no
+ * OWNER_COOKIE_SECRET, where no cookie is ever accepted.
+ */
+export type PledgeOwnership = { ownedPledgeIds: readonly string[] };
+
+/**
+ * An addition recorded but not applied.
+ *
+ * Deliberately says nothing about the pledge it was for. Whoever submitted it
+ * may know nothing more than somebody's phone number, so no reference, no
+ * token, no total and no status leave the service. pledgeId is for the route's
+ * own use and never goes into a response.
+ */
+export type HeldAdditionResult = {
+  held: true;
+  pledgeId: string;
+  addedMinor: bigint;
+  currency: string;
+};
+
 /** How many submissions one phone number may make in the window. */
 export const PLEDGE_RATE_LIMIT = 5;
 
@@ -198,8 +223,25 @@ function isOneLivePledgeViolation(error: unknown): boolean {
  */
 export async function create(
   db: Db,
+  args: CreatePledgeArgs & { ownership: PledgeOwnership },
+): Promise<CreatePledgeResult | HeldAdditionResult>;
+export async function create(
+  db: Db,
   args: CreatePledgeArgs,
-): Promise<CreatePledgeResult> {
+): Promise<CreatePledgeResult>;
+/*
+ * Two signatures, because there are two kinds of caller.
+ *
+ * The public form passes ownership, and an addition from a browser that did
+ * not make the pledge comes back held. The treasurer's path and the
+ * verification scripts pass none and are trusted, which is what they always
+ * were: neither is reachable by the public. A public route must pass
+ * ownership, even an empty one, and the route test holds that.
+ */
+export async function create(
+  db: Db,
+  args: CreatePledgeArgs & { ownership?: PledgeOwnership },
+): Promise<CreatePledgeResult | HeldAdditionResult> {
   // Only the public form. A treasurer entering pledges from a paper card at an
   // event is one person at one desk and is not what this limit is for.
   if ((args.channel ?? "web") === "web") {
@@ -217,6 +259,123 @@ export async function create(
     if (!isOneLivePledgeViolation(error)) throw error;
     return createOnce(db, args, trusted);
   }
+}
+
+/**
+ * Five submissions an hour from one phone number.
+ *
+ * Counted off pledge_increments, because an increment is exactly one
+ * submission and there is no separate attempts table to keep in step with
+ * reality. Every increment counts whatever its status, so held additions
+ * cannot be used to get round it. Counting from the database rather than
+ * memory means the limit holds across every serverless instance and survives
+ * a redeploy, which an in process counter would not.
+ */
+async function enforcePhoneLimit(
+  tx: Pick<Db, "execute">,
+  pledgerId: string,
+): Promise<void> {
+  const recent = await tx.execute(sql`
+    select count(*)::int as submissions
+    from pledge_increments i
+    join pledges p on p.id = i.pledge_id
+    where p.pledger_id = ${pledgerId}::uuid
+      and p.deleted_at is null
+      and i.created_at > now() - make_interval(secs => ${PLEDGE_RATE_WINDOW_SECONDS})
+  `);
+
+  const submissions = (recent.rows[0] as { submissions: number }).submissions;
+
+  if (submissions >= PLEDGE_RATE_LIMIT) {
+    throw tooManyRequests(
+      "pledge_rate_limited",
+      `That number has recorded ${PLEDGE_RATE_LIMIT} pledges in the last hour. Please wait a little while, or call the treasurer.`,
+    );
+  }
+}
+
+/**
+ * Records an addition as held, or returns null when it is not one.
+ *
+ * Null for a phone number with no live pledge, which is a new pledge and goes
+ * the ordinary way, and for a pledge this browser proved it made, which
+ * applies at once. Anything else is held: the increment is written with status
+ * held, nothing on the pledge or the pledger moves, and the public total does
+ * not change until a treasurer confirms it with the pledger.
+ */
+async function holdUnownedAddition(
+  tx: Pick<Db, "execute" | "insert" | "select">,
+  args: {
+    campaignId: string;
+    phone: string;
+    addedMinor: bigint;
+    ownedPledgeIds: readonly string[];
+    category: string | null;
+    tier: string | null;
+    now: Date;
+    request?: RequestContext;
+  },
+): Promise<HeldAdditionResult | null> {
+  const [known] = await tx
+    .select({ id: pledgers.id })
+    .from(pledgers)
+    .where(eq(pledgers.phoneE164, args.phone))
+    .limit(1);
+
+  if (!known) return null;
+
+  const [existing] = await tx
+    .select({ id: pledges.id, reference: pledges.reference, currency: pledges.currency })
+    .from(pledges)
+    .where(
+      and(
+        eq(pledges.campaignId, args.campaignId),
+        eq(pledges.pledgerId, known.id),
+        inArray(pledges.status, [...ACCUMULATING_STATUSES]),
+        isNull(pledges.deletedAt),
+      ),
+    )
+    .for("update")
+    .limit(1);
+
+  if (!existing || args.ownedPledgeIds.includes(existing.id)) return null;
+
+  await enforcePhoneLimit(tx, known.id);
+
+  const [increment] = await tx
+    .insert(pledgeIncrements)
+    .values({
+      pledgeId: existing.id,
+      amountMinor: args.addedMinor,
+      channel: "web",
+      category: args.category,
+      tier: args.tier,
+      status: "held",
+      createdAt: args.now,
+    })
+    .returning({ id: pledgeIncrements.id });
+
+  await tx.insert(auditLog).values({
+    actorType: "public",
+    action: "pledge.addition_held",
+    entity: "pledge",
+    entityId: existing.id,
+    after: {
+      reference: existing.reference,
+      incrementId: increment.id.toString(),
+      addedMinor: args.addedMinor.toString(),
+      currency: existing.currency,
+    },
+    ip: args.request?.ip ?? null,
+    userAgent: args.request?.userAgent ?? null,
+  });
+
+  return {
+    held: true,
+    pledgeId: existing.id,
+    addedMinor: args.addedMinor,
+    currency: existing.currency,
+  };
 }
 
 /**
@@ -302,9 +461,9 @@ async function checkSecurity(
 
 async function createOnce(
   db: Db,
-  args: CreatePledgeArgs,
+  args: CreatePledgeArgs & { ownership?: PledgeOwnership },
   trusted: boolean,
-): Promise<CreatePledgeResult> {
+): Promise<CreatePledgeResult | HeldAdditionResult> {
   const { input, campaignSlug, channel = "web", request } = args;
 
   return db.transaction(async (tx) => {
@@ -339,6 +498,28 @@ async function createOnce(
       consentedAt: now,
     };
 
+    /*
+     * An addition from a browser that cannot show it made the pledge.
+     *
+     * Before the pledger upsert, on purpose: whoever sent this may know only
+     * somebody's phone number, and the upsert would let them overwrite that
+     * person's name, email address and consents. A held addition touches
+     * nothing but its own increment row.
+     */
+    if (args.ownership && channel === "web") {
+      const held = await holdUnownedAddition(tx, {
+        campaignId: campaign.id,
+        phone: input.phone,
+        addedMinor,
+        ownedPledgeIds: args.ownership.ownedPledgeIds,
+        category: input.category ?? null,
+        tier: input.tier ?? null,
+        now,
+        request,
+      });
+      if (held) return held;
+    }
+
     const [pledger] = await tx
       .insert(pledgers)
       .values({ phoneE164: input.phone, ...consentFields })
@@ -348,35 +529,9 @@ async function createOnce(
       })
       .returning({ id: pledgers.id });
 
-    /*
-     * Five submissions an hour from one phone number.
-     *
-     * Counted off pledge_increments, because an increment is exactly one
-     * submission and there is no separate attempts table to keep in step with
-     * reality. Counting from the database rather than memory means the limit
-     * holds across every serverless instance and survives a redeploy, which an
-     * in process counter would not.
-     *
-     * Inside the transaction and after the pledger is upserted, so two
-     * submissions racing each other cannot both read a count of four.
-     */
-    const recent = await tx.execute(sql`
-      select count(*)::int as submissions
-      from pledge_increments i
-      join pledges p on p.id = i.pledge_id
-      where p.pledger_id = ${pledger.id}::uuid
-        and p.deleted_at is null
-        and i.created_at > now() - make_interval(secs => ${PLEDGE_RATE_WINDOW_SECONDS})
-    `);
-
-    const submissions = (recent.rows[0] as { submissions: number }).submissions;
-
-    if (submissions >= PLEDGE_RATE_LIMIT) {
-      throw tooManyRequests(
-        "pledge_rate_limited",
-        `That number has recorded ${PLEDGE_RATE_LIMIT} pledges in the last hour. Please wait a little while, or call the treasurer.`,
-      );
-    }
+    // Inside the transaction and after the pledger is upserted, so two
+    // submissions racing each other cannot both read a count of four.
+    await enforcePhoneLimit(tx, pledger.id);
 
     /*
      * Locked for update, so a second submission from the same person waits here
@@ -1727,6 +1882,8 @@ export type AdminPledgeIncrement = {
   category: string | null;
   tier: string | null;
   reason: string | null;
+  /** applied counts toward the amount; held, confirmed and rejected do not. */
+  status: "applied" | "held" | "confirmed" | "rejected";
   createdAt: Date;
 };
 
@@ -1848,6 +2005,7 @@ export async function getForAdmin(
            category,
            tier,
            reason,
+           status,
            created_at
     from pledge_increments
     where pledge_id = ${args.pledgeId}::uuid
@@ -1905,6 +2063,7 @@ export async function getForAdmin(
         category: string | null;
         tier: string | null;
         reason: string | null;
+        status: AdminPledgeIncrement["status"];
         created_at: string;
       }[]
     ).map((i) => ({
@@ -1914,6 +2073,7 @@ export async function getForAdmin(
       category: i.category,
       tier: i.tier,
       reason: i.reason,
+      status: i.status,
       createdAt: new Date(i.created_at),
     })),
     payments: (

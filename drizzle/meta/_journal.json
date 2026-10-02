@@ -127,6 +127,13 @@
       "when": 1790887203058,
       "tag": "0017_security_payment_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790924278285,
+      "tag": "0018_held_additions",
+      "breakpoints": true
     }
   ]
 }

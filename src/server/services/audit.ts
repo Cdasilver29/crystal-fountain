@@ -196,6 +196,13 @@ export function summarise(
     case "pledge.change_requested":
       return changePhrase(a);
 
+    case "pledge.addition_held": {
+      const ref = str(a.reference);
+      const amount = kes(a.addedMinor);
+      const what = amount ? `${amount} held for confirmation` : "addition held for confirmation";
+      return ref ? `${ref}, ${what}` : what;
+    }
+
     case "pledge.change_approved":
       return `${changePhrase(a)} approved`;
 

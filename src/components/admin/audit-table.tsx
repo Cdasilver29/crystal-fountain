@@ -141,6 +141,12 @@ export const AUDIT_TONES: Record<string, Tone> = {
    * the pledge is the one carrying the colour.
    */
   "pledge.change_closed": "grey",
+  /*
+   * Somebody added to a pledge from a browser that did not make it. Grey,
+   * like a member's change request: nothing moved, and the treasurer's
+   * decision is a separate row carrying its own colour.
+   */
+  "pledge.addition_held": "grey",
   // Nobody decided this. Seven days passed and the details stayed as they were.
   "campaign.payment_change_expired": "grey",
   "admin.login": "grey",

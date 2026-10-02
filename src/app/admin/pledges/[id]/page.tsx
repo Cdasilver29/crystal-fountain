@@ -19,6 +19,13 @@ import * as pledges from "@/server/services/pledges";
 
 export const dynamic = "force-dynamic";
 
+/** Why an increment is listed but not counted. */
+const INCREMENT_STATUS = {
+  held: "Held for confirmation, not counted",
+  confirmed: "Confirmed, counted as the correction that followed it",
+  rejected: "Rejected, not counted",
+} as const;
+
 export const metadata: Metadata = {
   title: "Pledge",
   robots: { index: false, follow: false },
@@ -243,8 +250,9 @@ export default async function AdminPledgeDetailPage({
           <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="font-semibold text-navy">What it is made of</h2>
             <p className="mt-1 text-sm text-neutral-600">
-              Every submission and every correction. These sum to the pledged
-              amount, and the database refuses any commit where they do not.
+              Every submission and every correction. The counted ones sum to the
+              pledged amount, and the database refuses any commit where they do
+              not. An addition held for confirmation is listed but not counted.
             </p>
 
             <ul className="mt-4 divide-y divide-neutral-100 text-sm">
@@ -263,12 +271,19 @@ export default async function AdminPledgeDetailPage({
                         {increment.reason}
                       </span>
                     )}
+                    {increment.status !== "applied" && (
+                      <span className="block text-xs font-medium text-navy">
+                        {INCREMENT_STATUS[increment.status]}
+                      </span>
+                    )}
                   </div>
                   <span
                     className={
-                      increment.amountMinor < 0n
-                        ? "tabular shrink-0 font-semibold text-red-700"
-                        : "tabular shrink-0 font-semibold text-navy"
+                      increment.status !== "applied"
+                        ? "tabular shrink-0 text-neutral-400 line-through"
+                        : increment.amountMinor < 0n
+                          ? "tabular shrink-0 font-semibold text-red-700"
+                          : "tabular shrink-0 font-semibold text-navy"
                     }
                   >
                     {increment.amountMinor < 0n ? "-" : "+"}
