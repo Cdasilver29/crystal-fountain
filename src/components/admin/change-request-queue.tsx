@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { ConfirmationMethodPicker } from "@/components/admin/confirmation-method-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { formatDate, formatKES, formatRelativeTime } from "@/lib/format";
@@ -11,8 +12,10 @@ import { cn } from "@/lib/utils";
 import {
   CHANGE_REQUEST_LABELS,
   MIN_DECISION_NOTE_LENGTH,
+  needsConfirmation,
   type ChangeRequestKind,
 } from "@/server/contracts/change-requests";
+import type { ConfirmationMethod } from "@/server/contracts/pledges";
 
 /**
  * The queue of what pledgers have asked to have changed.
@@ -39,7 +42,12 @@ export type ChangeRequestDto = {
   status: string;
   reference: string;
   pledgerName: string;
+  /** What the requester typed. They may not be the pledger. */
   contactPhone: string;
+  /** The number on the pledger's record: the one to ring. */
+  phoneOnRecord: string;
+  /** Compared on the whole numbers, so masking never hides a difference. */
+  phonesDiffer: boolean;
   reason: string;
   createdAt: string;
   currentAmountMinor: string;
@@ -212,6 +220,8 @@ export function ChangeRequestQueue({
    * state alone, so the treasurer keeps the better of the two links.
    */
   const [recorded, setRecorded] = useState<Record<string, string>>({});
+  /** How each reduction or cancellation was confirmed, keyed by request. */
+  const [methods, setMethods] = useState<Record<string, ConfirmationMethod>>({});
 
   async function decide(
     row: ChangeRequestDto,
@@ -228,7 +238,7 @@ export function ChangeRequestQueue({
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
             decision === "approve"
-              ? { decision }
+              ? { decision, method: methods[row.id] }
               : { decision, note: note.trim() },
           ),
         },
@@ -241,6 +251,7 @@ export function ChangeRequestQueue({
           ...current,
           [row.id]:
             body?.errors?.note ??
+            body?.errors?.method ??
             body?.title ??
             `We could not answer ${row.reference}.`,
         }));
@@ -292,6 +303,8 @@ export function ChangeRequestQueue({
         const isCancellation = row.kind === "cancel_pledge";
         const mayApprove = canDecide && (!isCancellation || canDecideCancellation);
         const noteTooShort = note.trim().length < MIN_DECISION_NOTE_LENGTH;
+        const confirming = needsConfirmation(row.kind);
+        const method = methods[row.id] ?? null;
 
         return (
           <li
@@ -310,8 +323,7 @@ export function ChangeRequestQueue({
                     className="tabular rounded underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-campfire focus-visible:outline-none"
                   >
                     {row.reference}
-                  </Link>{" "}
-                  &middot; <span className="tabular">{row.contactPhone}</span>
+                  </Link>
                 </p>
               </div>
 
@@ -322,6 +334,39 @@ export function ChangeRequestQueue({
                 <StatusBadge status={row.status} />
               </div>
             </div>
+
+            {/*
+              The phone on record first and loudest. The contact number was
+              typed by whoever raised the request, who may not be the
+              pledger, so it is never the one to ring to confirm anything.
+            */}
+            <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="inline text-neutral-600">Phone on record: </dt>
+                <dd className="tabular inline font-semibold text-navy">
+                  {row.phoneOnRecord}
+                </dd>
+              </div>
+              <div>
+                <dt className="inline text-neutral-600">
+                  Contact phone given with the request:{" "}
+                </dt>
+                <dd className="tabular inline text-neutral-800">
+                  {row.contactPhone}
+                </dd>
+              </div>
+            </dl>
+
+            {row.phonesDiffer && (
+              <p
+                role="note"
+                className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              >
+                These two numbers are different. Whoever asked may not be the
+                pledger. Ring the phone on record, not the contact phone,
+                before deciding.
+              </p>
+            )}
 
             <div className="mt-4 rounded-xl bg-neutral-50 px-4 py-3">
               <Asked row={row} />
@@ -342,7 +387,7 @@ export function ChangeRequestQueue({
             {!row.canEmail && (
               <p className="mt-2 text-sm text-neutral-600">
                 No email address on file, so they will not be told
-                automatically. Ring them on the number above.
+                automatically. Ring them on the phone on record.
               </p>
             )}
 
@@ -441,37 +486,60 @@ export function ChangeRequestQueue({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    {mayApprove ? (
+                  <>
+                    {/*
+                      A reduction or a cancellation takes money off the public
+                      total, so it waits until the treasurer has confirmed it
+                      with the pledger and said how. The service refuses it
+                      otherwise; disabling the button only says so sooner.
+                    */}
+                    {mayApprove && confirming && (
+                      <div className="mb-4">
+                        <p className="text-sm leading-relaxed text-neutral-700">
+                          Before approving, confirm this with the pledger on the
+                          phone on record or in person.
+                        </p>
+                        <ConfirmationMethodPicker
+                          name={`method-${row.id}`}
+                          value={method}
+                          onChange={(chosen) =>
+                            setMethods((current) => ({ ...current, [row.id]: chosen }))
+                          }
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {mayApprove ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busy || (confirming && method === null)}
+                          onClick={() => decide(row, "approve")}
+                          className="bg-campfire text-white hover:bg-campfire/90"
+                        >
+                          {busy ? "Approving..." : "Approve"}
+                        </Button>
+                      ) : (
+                        <span className="text-sm text-neutral-600">
+                          Only an administrator can approve a cancellation,
+                          because it takes the pledge off the public total.
+                        </span>
+                      )}
+
                       <Button
                         type="button"
                         size="sm"
+                        variant="outline"
                         disabled={busy}
-                        onClick={() => decide(row, "approve")}
-                        className="bg-campfire text-white hover:bg-campfire/90"
+                        onClick={() => {
+                          setDecliningId(row.id);
+                          setNote("");
+                        }}
                       >
-                        {busy ? "Approving..." : "Approve"}
+                        Decline
                       </Button>
-                    ) : (
-                      <span className="text-sm text-neutral-600">
-                        Only an administrator can approve a cancellation,
-                        because it takes the pledge off the public total.
-                      </span>
-                    )}
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => {
-                        setDecliningId(row.id);
-                        setNote("");
-                      }}
-                    >
-                      Decline
-                    </Button>
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}

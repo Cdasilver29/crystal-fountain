@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { kenyanPhone } from "./phone";
+import { cleanName } from "./names";
 
 /**
  * The version of the privacy notice a pledger consents to. Bump this string
@@ -195,7 +196,7 @@ export const turnstileToken = z.preprocess(
  * No national ID field. v1 does not collect one, and no endpoint accepts one.
  */
 export const createPledgeInput = z.object({
-  fullName: z.string().trim().min(2, "Enter your full name."),
+  fullName: z.string().transform(cleanName).pipe(z.string().min(2, "Enter your full name.")),
 
   phone: kenyanPhone,
 
@@ -417,7 +418,7 @@ export type EditPledgeInput = z.infer<typeof editPledgeInput>;
  * they believe it.
  */
 export const adminCreatePledgeInput = z.object({
-  fullName: z.string().trim().min(2, "Enter their full name."),
+  fullName: z.string().transform(cleanName).pipe(z.string().min(2, "Enter their full name.")),
   phone: kenyanPhone,
   email: z.preprocess(
     emptyToUndefined,
@@ -492,9 +493,13 @@ export type SetOrganisationInput = z.infer<typeof setOrganisationInput>;
 export const setPublicDisplayNameInput = z.object({
   publicDisplayName: z
     .string("Enter the name to show, or reset it to automatic.")
-    .trim()
-    .min(1, "Enter the name to show, or reset it to automatic.")
-    .max(80, "Keep the name to 80 characters or fewer.")
+    .transform(cleanName)
+    .pipe(
+      z
+        .string()
+        .min(1, "Enter the name to show, or reset it to automatic.")
+        .max(80, "Keep the name to 80 characters or fewer."),
+    )
     .nullable(),
 });
 

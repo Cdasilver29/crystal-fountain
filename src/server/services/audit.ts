@@ -116,6 +116,16 @@ function paymentChangePhrase(
 }
 
 /**
+ * How something was confirmed with the pledger, as the end of a sentence, or
+ * nothing when the row does not say.
+ */
+function confirmedHow(method: unknown): string {
+  if (method === "in_person") return " with the pledger in person";
+  if (method === "phone_on_record") return " with the pledger on the phone on record";
+  return "";
+}
+
+/**
  * What a change request asked for, in one phrase.
  *
  * Shared by all four of its actions, so the thing being asked for is described
@@ -200,12 +210,7 @@ export function summarise(
     case "pledge.addition_rejected": {
       const ref = str(a.reference);
       const amount = kes(a.addedMinor) ?? "addition";
-      const how =
-        a.method === "in_person"
-          ? " with the pledger in person"
-          : a.method === "phone_on_record"
-            ? " with the pledger on the phone on record"
-            : "";
+      const how = confirmedHow(a.method);
       const what =
         action === "pledge.addition_confirmed"
           ? `${amount} confirmed${how}`
@@ -220,8 +225,12 @@ export function summarise(
       return ref ? `${ref}, ${what}` : what;
     }
 
-    case "pledge.change_approved":
-      return `${changePhrase(a)} approved`;
+    case "pledge.change_approved": {
+      const how = confirmedHow(a.method);
+      return how
+        ? `${changePhrase(a)} approved, confirmed${how}`
+        : `${changePhrase(a)} approved`;
+    }
 
     case "pledge.change_declined":
       return `${changePhrase(a)} declined`;

@@ -251,8 +251,40 @@ async function main() {
 
   heading("2. approving through the route");
 
+  const unconfirmed = await decide("treasurer", reduction.id, {
+    decision: "approve",
+  });
+  check(
+    "a reduction with no confirmation method is refused",
+    unconfirmed.status === 422 &&
+      unconfirmed.body?.code === "confirmation_method_required",
+    `${unconfirmed.status} ${unconfirmed.body?.code}`,
+  );
+  const notMoved = await db.execute(sql`
+    select p.amount_minor::text as amount_minor, r.status
+    from pledges p join pledge_change_requests r on r.pledge_id = p.id
+    where r.id = ${reduction.id}::uuid
+  `);
+  check(
+    "and nothing moved: the pledge and the request are as they were",
+    (notMoved.rows[0] as { amount_minor: string; status: string }).amount_minor === "50000000" &&
+      (notMoved.rows[0] as { status: string }).status === "pending",
+    JSON.stringify(notMoved.rows[0]),
+  );
+
+  const madeUp = await decide("treasurer", reduction.id, {
+    decision: "approve",
+    method: "carrier_pigeon",
+  });
+  check(
+    "a method that is not one of the two is a validation error",
+    madeUp.status === 422 && Boolean(madeUp.body?.errors?.method),
+    `${madeUp.status} ${JSON.stringify(madeUp.body?.errors)}`,
+  );
+
   const approved = await decide("treasurer", reduction.id, {
     decision: "approve",
+    method: "phone_on_record",
   });
   show([
     {
@@ -272,6 +304,29 @@ async function main() {
   check(
     "the pledge actually moved",
     (reduced.rows[0] as { amount_minor: string }).amount_minor === "30000000",
+  );
+
+  const audited = await db.execute(sql`
+    select after->>'method' as method from audit_log
+    where action = 'pledge.change_approved'
+      and after->>'requestId' = ${reduction.id}
+  `);
+  check(
+    "the audit row says how it was confirmed",
+    (audited.rows[0] as { method: string } | undefined)?.method === "phone_on_record",
+    JSON.stringify(audited.rows),
+  );
+
+  const { summarise } = await import("@/server/services/audit");
+  const line = summarise("pledge.change_approved", null, {
+    kind: "reduce_amount",
+    amountMinor: "30000000",
+    method: "phone_on_record",
+  });
+  check(
+    "and the audit screen reads it out",
+    line.endsWith("approved, confirmed with the pledger on the phone on record"),
+    line,
   );
 
   const twice = await decide("treasurer", reduction.id, {
@@ -323,10 +378,21 @@ async function main() {
     (stillThere.rows[0] as { status: string }).status === "verified",
   );
 
-  const adminApproves = await decide("admin", cancellation.id, {
+  const adminUnconfirmed = await decide("admin", cancellation.id, {
     decision: "approve",
   });
-  check("an administrator may", adminApproves.status === 200);
+  check(
+    "an administrator is refused too without a confirmation method",
+    adminUnconfirmed.status === 422 &&
+      adminUnconfirmed.body?.code === "confirmation_method_required",
+    `${adminUnconfirmed.status} ${adminUnconfirmed.body?.code}`,
+  );
+
+  const adminApproves = await decide("admin", cancellation.id, {
+    decision: "approve",
+    method: "in_person",
+  });
+  check("an administrator may, having confirmed in person", adminApproves.status === 200);
 
   const cancelled = await db.execute(sql`
     select p.status, r.status as request_status

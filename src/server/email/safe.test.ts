@@ -14,18 +14,18 @@ describe("greetingName", () => {
   it("keeps an ordinary first name", () => {
     expect(greetingName("Grace Wanjiku Kamau")).toBe("Grace");
     expect(greetingName("  Mary-Anne O'Brien ")).toBe("Mary-Anne");
-    expect(greetingName("N’gang’a Otieno")).toBe("N’gang’a");
+    expect(greetingName("N\u2019gang\u2019a Otieno")).toBe("N\u2019gang\u2019a");
   });
 
   it("keeps letters in any script, right to left included", () => {
-    expect(greetingName("فاطمة علي")).toBe(
-      "فاطمة",
+    expect(greetingName("\u0641\u0627\u0637\u0645\u0629 \u0639\u0644\u064A")).toBe(
+      "\u0641\u0627\u0637\u0645\u0629",
     );
-    expect(greetingName("አበበ በቀለ")).toBe("አበበ");
+    expect(greetingName("\u12A0\u1260\u1260 \u1260\u1240\u1208")).toBe("\u12A0\u1260\u1260");
   });
 
   it("composes to NFC, so a decomposed accent stays one letter", () => {
-    expect(greetingName("Renée")).toBe("Renée");
+    expect(greetingName("Rene\u0301e")).toBe("Ren\u00E9e");
   });
 
   it("cannot carry a web address, wherever it sits in the name", () => {
@@ -35,12 +35,12 @@ describe("greetingName", () => {
       "https://evil.example/login",
       "www.evil.example",
       "mpesa-verify.co.ke Jane",
-      "Jane​.com",
+      "Jane\u200B.com",
       "evil.example",
     ]) {
       const got = greetingName(name) ?? "";
       expect(got, name).not.toMatch(LINKISH);
-      expect(got, name).toMatch(/^[\p{L}\p{M}'’-]*$/u);
+      expect(got, name).toMatch(/^[\p{L}\p{M}'\u2019-]*$/u);
     }
   });
 

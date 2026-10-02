@@ -1,12 +1,15 @@
 import { z } from "zod";
 
+import { cleanName } from "./names";
 import { kenyanPhone } from "./phone";
 import {
   MAX_PLEDGE_KES,
   MIN_PLEDGE_KES,
+  CONFIRMATION_METHODS,
   REDEMPTION_CHOICES,
   pledgeReference,
   turnstileToken,
+  type ConfirmationMethod,
 } from "./pledges";
 import { MAX_PAYMENT_KES, MIN_PAYMENT_KES } from "./payments";
 
@@ -184,9 +187,13 @@ export const changeRequestInput = z.discriminatedUnion("kind", [
     ...base,
     requestedName: z
       .string()
-      .trim()
-      .min(2, "Enter the name as it should read.")
-      .max(120, "That name is too long."),
+      .transform(cleanName)
+      .pipe(
+        z
+          .string()
+          .min(2, "Enter the name as it should read.")
+          .max(120, "That name is too long."),
+      ),
   }),
 
   z.object({
@@ -273,9 +280,36 @@ export const MIN_DECISION_NOTE_LENGTH = 10;
  * it go. Approving does not, because what was approved is already on the
  * record in full, and the change it produced is in the journal beside it.
  */
+/**
+ * The kinds whose approval needs a confirmation with the real pledger.
+ *
+ * A request carries a contact phone typed by whoever raised it, who may not be
+ * the pledger. Lowering a pledge or cancelling it takes money off the public
+ * total on the strength of that request, so the treasurer has to have spoken
+ * to the pledger, on the phone on record or in person, and say which.
+ */
+export const CONFIRMATION_REQUIRED_KINDS = [
+  "reduce_amount",
+  "cancel_pledge",
+] as const satisfies readonly ChangeRequestKind[];
+
+export function needsConfirmation(kind: ChangeRequestKind): boolean {
+  return (CONFIRMATION_REQUIRED_KINDS as readonly ChangeRequestKind[]).includes(kind);
+}
+
 export const decideChangeRequestInput = z.discriminatedUnion("decision", [
   z.object({
     decision: z.literal("approve"),
+    /*
+     * Required for a reduction or a cancellation, which only the service can
+     * tell apart, so optional here and enforced there.
+     */
+    method: z
+      .enum(
+        Object.keys(CONFIRMATION_METHODS) as [ConfirmationMethod, ...ConfirmationMethod[]],
+        "Choose how you confirmed it with the pledger.",
+      )
+      .optional(),
     note: z
       .string()
       .trim()

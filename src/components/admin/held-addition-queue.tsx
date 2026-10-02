@@ -4,12 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+import { ConfirmationMethodPicker } from "@/components/admin/confirmation-method-picker";
 import { Button } from "@/components/ui/button";
 import { formatKES } from "@/lib/format";
-import {
-  CONFIRMATION_METHODS,
-  type ConfirmationMethod,
-} from "@/server/contracts/pledges";
+import type { ConfirmationMethod } from "@/server/contracts/pledges";
 
 /**
  * Additions waiting for the treasurer to confirm with the pledger.
@@ -139,26 +137,11 @@ function HeldCard({ row, canDecide }: { row: HeldRow; canDecide: boolean }) {
 
       {canDecide && (
         <>
-          <fieldset className="mt-4">
-            <legend className="text-sm font-medium text-navy">
-              How did you confirm it?
-            </legend>
-            <div className="mt-2 space-y-2">
-              {(Object.keys(CONFIRMATION_METHODS) as ConfirmationMethod[]).map((key) => (
-                <label key={key} className="flex items-start gap-3 text-sm text-neutral-800">
-                  <input
-                    type="radio"
-                    name={`method-${row.incrementId}`}
-                    value={key}
-                    checked={method === key}
-                    onChange={() => setMethod(key)}
-                    className="mt-0.5 size-4"
-                  />
-                  {CONFIRMATION_METHODS[key]}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <ConfirmationMethodPicker
+            name={`method-${row.incrementId}`}
+            value={method}
+            onChange={setMethod}
+          />
 
           {error && (
             <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

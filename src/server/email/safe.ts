@@ -44,11 +44,11 @@ export const GREETING_NAME_MAX = 30;
 export function greetingName(fullName: string | null | undefined): string | null {
   const reduced = (fullName ?? "")
     .normalize("NFC")
-    .replace(/[^\p{L}\p{M} '’-]/gu, " ")
+    .replace(/[^\p{L}\p{M} '\u2019-]/gu, " ")
     .trim()
     .split(/\s+/)[0]
     // A name does not start or end with a hyphen or an apostrophe.
-    ?.replace(/^['’-]+|['’-]+$/gu, "");
+    ?.replace(/^['\u2019-]+|['\u2019-]+$/gu, "");
 
   if (!reduced) return null;
 

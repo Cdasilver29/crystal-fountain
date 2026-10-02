@@ -12,6 +12,7 @@ import {
   type ChangeRequestKind,
   type ChangeRequestStatus,
   type DecideChangeRequestInput,
+  needsConfirmation,
   reduceAmountRefusal,
 } from "@/server/contracts/change-requests";
 import type {
@@ -548,8 +549,22 @@ export type AdminChangeRequestRow = ChangeRequestRow & {
   /** The pledge as it stands now, so a decision can be read against it. */
   reference: string;
   pledgerName: string;
-  /** Masked unless the caller is allowed the whole number. Never null. */
+  /**
+   * The number the requester typed, masked unless the caller is allowed the
+   * whole number. Never null. Whoever raised the request may not be the
+   * pledger, so this is not the number to ring.
+   */
   contactPhone: string;
+  /**
+   * The number on the pledger's record, masked the same way. The one to ring
+   * before deciding anything.
+   */
+  phoneOnRecord: string;
+  /**
+   * Whether the two differ, compared on the whole numbers before either is
+   * masked, so masking can never hide a difference.
+   */
+  phonesDiffer: boolean;
   currentAmountMinor: bigint;
   currentStatus: PledgeStatus;
   currentIntent: PledgeIntent;
@@ -569,6 +584,7 @@ export type AdminChangeRequestRow = ChangeRequestRow & {
 
 type RawAdminRow = RawRequestRow & {
   contact_phone_e164: string;
+  record_phone_e164: string;
   reference: string;
   pledger_name: string;
   current_amount_minor: string;
@@ -629,6 +645,7 @@ export async function listForAdmin(
   const result = await db.execute(sql`
     select ${REQUEST_COLUMNS},
            r.contact_phone_e164,
+           g.phone_e164 as record_phone_e164,
            p.reference,
            g.full_name as pledger_name,
            g.email::text as pledger_email,
@@ -659,6 +676,10 @@ export async function listForAdmin(
     contactPhone: args.revealPhone
       ? row.contact_phone_e164
       : maskPhone(row.contact_phone_e164),
+    phoneOnRecord: args.revealPhone
+      ? row.record_phone_e164
+      : maskPhone(row.record_phone_e164),
+    phonesDiffer: row.contact_phone_e164 !== row.record_phone_e164,
     currentAmountMinor: BigInt(row.current_amount_minor),
     currentStatus: row.current_status as PledgeStatus,
     currentIntent: row.current_intent as PledgeIntent,
@@ -917,6 +938,22 @@ export async function approve(
       );
     }
 
+    /*
+     * A reduction or a cancellation takes money off the public total on the
+     * strength of a request that anybody holding the reference and the phone
+     * number could have raised. It is approved only once the treasurer has
+     * confirmed it with the pledger, and says how.
+     */
+    const method =
+      args.input.decision === "approve" ? (args.input.method ?? null) : null;
+
+    if (needsConfirmation(pending.kind) && method === null) {
+      throw rejected(
+        "confirmation_method_required",
+        "Confirm this with the pledger on the phone on record or in person, and choose which, before approving it.",
+      );
+    }
+
     await settle(tx, requestId, "approved", adminId, note);
 
     const before: Record<string, unknown> = {};
@@ -1085,6 +1122,8 @@ export async function approve(
         status: "approved",
         reference: pledge.reference,
         note,
+        // How it was confirmed with the pledger, for the kinds that need it.
+        ...(method ? { method } : {}),
         ...after,
       },
       ip: request?.ip ?? null,

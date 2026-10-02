@@ -101,6 +101,8 @@ export default async function AdminChangeRequestsPage({
     reference: row.reference,
     pledgerName: row.pledgerName,
     contactPhone: row.contactPhone,
+    phoneOnRecord: row.phoneOnRecord,
+    phonesDiffer: row.phonesDiffer,
     reason: row.reason,
     createdAt: row.createdAt.toISOString(),
     // Minor units cross to the client as strings. They are still exact.

@@ -198,7 +198,12 @@ async function main() {
     return result.request;
   };
 
-  const approval = decideChangeRequestInput.parse({ decision: "approve" });
+  // A reduction and a cancellation need a confirmation method since Session
+  // 2C; the others ignore it.
+  const approval = decideChangeRequestInput.parse({
+    decision: "approve",
+    method: "phone_on_record",
+  });
 
   /* -----------------------------------------------------------------------
    * 1. Approving a reduction.
