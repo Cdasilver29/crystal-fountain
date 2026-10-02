@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertHuman,
   checkClaims,
+  SITE_HOSTNAMES,
   siteHostnames,
   TURNSTILE_ACTIONS,
   turnstileTestingAllowed,
@@ -10,6 +11,8 @@ import {
 } from "./turnstile";
 
 const HOST = "pledge.newlifesdanairobi.org";
+/** What NEXT_PUBLIC_SITE_URL is set to on the live deployment. */
+const LIVE_ORIGIN = "https://development.newlifesdanairobi.org";
 
 const config = (over: Partial<TurnstileConfig> = {}): TurnstileConfig => ({
   keys: { siteKey: "site", secretKey: "secret" },
@@ -106,14 +109,19 @@ describe("checkClaims", () => {
 });
 
 describe("siteHostnames and turnstileTestingAllowed", () => {
-  it("reads the hostname from the public origin", () => {
-    expect(siteHostnames(`https://${HOST}`)).toEqual([HOST]);
-    expect(siteHostnames(`https://${HOST.toUpperCase()}/x`)).toEqual([HOST]);
+  it("accepts exactly the two addresses the site is served from", () => {
+    expect([...siteHostnames(LIVE_ORIGIN)].sort()).toEqual(
+      ["crystal-fountain.vercel.app", "development.newlifesdanairobi.org"],
+    );
   });
 
-  it("allows nothing for an unreadable origin", () => {
-    expect(siteHostnames("not a url")).toEqual([]);
-    expect(siteHostnames(undefined)).toEqual([]);
+  it("adds the configured origin if it is ever somewhere else", () => {
+    expect(siteHostnames(`https://${HOST.toUpperCase()}/x`)).toContain(HOST);
+  });
+
+  it("keeps the known addresses when the origin is unreadable", () => {
+    expect([...siteHostnames("not a url")].sort()).toEqual([...SITE_HOSTNAMES].sort());
+    expect([...siteHostnames(undefined)].sort()).toEqual([...SITE_HOSTNAMES].sort());
   });
 
   it("refuses testing on the production deployment only", () => {
@@ -121,6 +129,28 @@ describe("siteHostnames and turnstileTestingAllowed", () => {
     expect(turnstileTestingAllowed("preview")).toBe(true);
     expect(turnstileTestingAllowed(undefined)).toBe(true);
   });
+});
+
+describe("every form on both addresses", () => {
+  const live = config({ allowedHostnames: siteHostnames(LIVE_ORIGIN) });
+
+  for (const hostname of SITE_HOSTNAMES) {
+    for (const action of Object.values(TURNSTILE_ACTIONS)) {
+      it(`${action} passes on ${hostname}`, async () => {
+        answer({ success: true, action, hostname });
+        await expect(
+          assertHuman({ config: live, action, token: "t" }),
+        ).resolves.toBeUndefined();
+      });
+
+      it(`${action} refuses a lookalike of ${hostname}`, async () => {
+        answer({ success: true, action, hostname: `${hostname}.example.com` });
+        await expect(
+          assertHuman({ config: live, action, token: "t" }),
+        ).rejects.toMatchObject({ code: "turnstile_failed" });
+      });
+    }
+  }
 });
 
 describe("assertHuman", () => {

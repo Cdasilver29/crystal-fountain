@@ -283,13 +283,28 @@ async function main() {
         );
       }
 
+      // The older address members still arrive on from shared links.
+      const vercel = await call(form.method, form.path, {
+        ...form.body,
+        turnstileToken: token(form.action, "crystal-fountain.vercel.app"),
+      });
+      check(
+        "this form's own token on crystal-fountain.vercel.app goes through",
+        form.ok(vercel),
+        `${vercel.status} ${vercel.body?.code ?? ""}`,
+      );
+
+      // The same form again on the church address. It has done its work once,
+      // so the answer is the repeat one: the request already pending, consent
+      // already off, an addition held. What matters is that it was not
+      // refused by the bot check.
       const good = await call(form.method, form.path, {
         ...form.body,
         turnstileToken: token(form.action),
       });
       check(
         `this form's own token on ${site} goes through`,
-        form.ok(good),
+        good.status >= 200 && good.status < 300,
         `${good.status} ${good.body?.code ?? ""}`,
       );
     }
@@ -298,10 +313,10 @@ async function main() {
     const after = await counts();
     console.table([{ before: JSON.stringify(before), after: JSON.stringify(after) }]);
     // The withdrawal counts against the lookup's per address limit, so each
-    // good token leaves one row: the lookup's and the withdrawal's.
+    // good token on either form leaves one row, two forms on two addresses.
     check(
-      "two lookup rows, one from each good token, none from a refused one",
-      after.lookups - before.lookups === 2,
+      "four lookup rows, one from each good token, none from a refused one",
+      after.lookups - before.lookups === 4,
     );
     check("one change request recorded", after.requests - before.requests === 1);
     check("consent withdrawn once", before.listed === true && after.listed === false);
