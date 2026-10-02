@@ -158,6 +158,8 @@ export const AUDIT_TONES: Record<string, Tone> = {
   "admin.logout": "grey",
   "admin.totp_enrolled": "grey",
   "admin.password_changed": "grey",
+  // The daily job clearing old rate limit rows. Housekeeping, nobody decided it.
+  "system.retention_pruned": "grey",
   "guard.test": "grey",
 };
 

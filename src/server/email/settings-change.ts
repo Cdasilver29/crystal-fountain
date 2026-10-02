@@ -36,14 +36,20 @@ function shown(field: string, value: unknown): string {
   return String(value);
 }
 
+/**
+ * One setting change as a line, the same words wherever it is reported: here
+ * and in the daily digest.
+ */
+export function describeSettingMove(field: string, was: unknown, now: unknown): string {
+  return `${LABELS[field] ?? field}: ${shown(field, was)} to ${shown(field, now)}`;
+}
+
 export function renderSettingsChangedNotice(args: {
   moved: SettingMove[];
   changedByName: string;
   siteUrl: string;
 }): RenderedEmail {
-  const lines = args.moved.map(
-    (m) => `${LABELS[m.field] ?? m.field}: ${shown(m.field, m.was)} to ${shown(m.field, m.now)}`,
-  );
+  const lines = args.moved.map((m) => describeSettingMove(m.field, m.was, m.now));
   const lead = `${args.changedByName} changed the campaign settings. The change is already live on the site.`;
   const warning =
     "If you did not expect this, tell the development office and the other administrators at once.";

@@ -377,6 +377,24 @@ export function summarise(
       return [email && `email: ${email}`, role].filter(Boolean).join(", ");
     }
 
+    case "system.retention_pruned": {
+      // Counts only. The rows held addresses, and none of them is repeated.
+      const parts = (
+        [
+          ["pledgeLookups", "lookups"],
+          ["pledgeSubmissions", "pledge submissions"],
+          ["publicListRequests", "list requests"],
+          ["adminLoginAttempts", "sign in attempts"],
+          ["authRateLimits", "sign in limits"],
+          ["emailSends", "email counts"],
+          ["expiredPaymentChanges", "expired payment changes"],
+        ] as const
+      )
+        .filter(([key]) => typeof a[key] === "number" && (a[key] as number) > 0)
+        .map(([key, label]) => `${a[key]} ${label}`);
+      return parts.length > 0 ? `removed ${parts.join(", ")}` : "nothing to remove";
+    }
+
     default:
       break;
   }
