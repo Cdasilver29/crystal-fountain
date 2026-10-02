@@ -204,6 +204,12 @@ export function PledgeForm({
   const [displayConsent, setDisplayConsent] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
+  /*
+   * What a held addition added, in minor units, once the server says so.
+   * Nothing else comes back for one: no reference, no total, no link to a
+   * pledge, because the server cannot tell whether this person made it.
+   */
+  const [heldMinor, setHeldMinor] = useState<string | null>(null);
   // The Turnstile token, and the widget itself so a spent one can be replaced.
   // A token is single use: once the server has redeemed it, a retry with the
   // same one is refused, so every failed submission asks for a fresh one.
@@ -375,6 +381,13 @@ export function PledgeForm({
         return;
       }
 
+      // Recorded, and waiting for the development office. Nothing to link to.
+      if (body?.status === "held") {
+        setHeldMinor(String(body.addedMinor ?? "0"));
+        setSubmitting(false);
+        return;
+      }
+
       // A flag, not the amount. The confirmation reads the total back from the
       // database, so nothing personal travels in the query string.
       router.push(
@@ -389,6 +402,33 @@ export function PledgeForm({
   }
 
   const normalizedPhone = normalizeKenyanPhone(phone);
+
+  if (heldMinor !== null) {
+    return (
+      <div className="container-form">
+        <div
+          role="status"
+          className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-7"
+        >
+          <h2 className="font-display text-xl font-semibold text-navy">
+            Your addition is received
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-neutral-700">
+            We have recorded your addition of{" "}
+            <span className="tabular font-semibold text-navy">
+              {formatKES(heldMinor)}
+            </span>
+            . The development office will confirm it with you before it is
+            added. Nothing changes until then.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-neutral-700">
+            A pledge is a promise to give, not a payment. The treasurer&rsquo;s
+            receipt is the only receipt.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-form">

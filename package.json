@@ -54,7 +54,8 @@
     "db:verify:name-bulk": "tsx scripts/verify-part-al.ts",
     "db:verify:commitment": "tsx scripts/verify-part-am.ts",
     "db:verify:payment-changes": "tsx scripts/verify-part-an.ts",
-    "db:verify:held-additions": "tsx scripts/verify-part-ao.ts"
+    "db:verify:held-additions": "tsx scripts/verify-part-ao.ts",
+    "db:verify:ownership": "tsx scripts/verify-part-ap.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",

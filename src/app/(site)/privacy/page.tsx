@@ -64,6 +64,12 @@ export default function PrivacyPage() {
               identity and to match your contributions to your pledge, which is
               why it is the one contact detail we ask for.
             </p>
+            <p className="mt-3">
+              When you record a pledge, your browser keeps a small cookie so
+              that it can add to that pledge later. It holds no personal
+              details, it is not a login, and an addition from any other
+              browser waits for the development office to confirm it with you.
+            </p>
           </Section>
 
           <Section title="How long we keep it">

@@ -11,6 +11,12 @@ import {
   validationProblem,
 } from "@/lib/api";
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
+import {
+  decodeOwnerCookie,
+  OWNER_COOKIE_NAME,
+  ownerSetCookie,
+  readCookie,
+} from "@/lib/owner-cookie";
 import { resolvePaymentDetails } from "@/lib/payment-details";
 import { env } from "@/env";
 import { createPledgeInput, type CreatePledgeInput } from "@/server/contracts/pledges";
@@ -113,6 +119,12 @@ function sendConfirmation(args: {
  * to decide between telling somebody their pledge is recorded and telling them
  * it has been updated.
  *
+ * An addition applies only when this browser carries a valid ownership cookie
+ * for the pledge. Any other addition is held: 202, and a body that says it was
+ * received and nothing about the pledge it was for, because the sender may
+ * know no more than somebody's phone number. No confirmation email is sent for
+ * a held addition, for the same reason. See src/lib/owner-cookie.ts.
+ *
  * This is the only place that knows where the Turnstile keys and the approval
  * limit come from. The service takes them as data, so the policy is testable
  * without an environment and stays portable if the API is split out later.
@@ -156,11 +168,19 @@ export async function POST(request: Request) {
     return validationProblem(parsed.error);
   }
 
+  // Whatever this browser can prove it made. Without OWNER_COOKIE_SECRET this
+  // is always empty, so every addition is held.
+  const ownedPledgeIds = decodeOwnerCookie(
+    readCookie(request.headers.get("cookie"), OWNER_COOKIE_NAME),
+    env.OWNER_COOKIE_SECRET,
+  );
+
   try {
     const result = await pledges.create(db, {
       input: parsed.data,
       campaignSlug: CAMPAIGN_SLUG,
       channel: "web",
+      ownership: { ownedPledgeIds },
       request: { ip: clientIp(request), userAgent: userAgent(request) },
       security: {
         token: parsed.data.turnstileToken,
@@ -172,6 +192,17 @@ export async function POST(request: Request) {
         autoApproveLimitKes: limitKes,
       },
     });
+
+    if ("held" in result) {
+      return Response.json(
+        {
+          status: "held",
+          addedMinor: result.addedMinor.toString(),
+          currency: result.currency,
+        },
+        { status: 202 },
+      );
+    }
 
     /*
      * An auto approved pledge counts toward the public total the moment it is
@@ -196,6 +227,12 @@ export async function POST(request: Request) {
      */
     sendConfirmation({ input: parsed.data, result, settings });
 
+    // This browser made this pledge, or added to it with proof it had.
+    const setCookie = ownerSetCookie(
+      [...ownedPledgeIds, result.pledgeId],
+      env.OWNER_COOKIE_SECRET,
+    );
+
     return Response.json(
       {
         reference: result.reference,
@@ -209,7 +246,10 @@ export async function POST(request: Request) {
         currency: result.currency,
         status: result.status,
       },
-      { status: result.isAddition ? 200 : 201 },
+      {
+        status: result.isAddition ? 200 : 201,
+        headers: setCookie ? { "set-cookie": setCookie } : undefined,
+      },
     );
   } catch (error) {
     return serviceProblem(error);

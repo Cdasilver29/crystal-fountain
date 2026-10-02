@@ -49,6 +49,21 @@ const serverSchema = z.object({
    */
   CRON_SECRET: z.string().min(32, "must be at least 32 characters.").optional(),
   /*
+   * Signs the cookie that says "this browser made this pledge".
+   *
+   * Its own secret, not the auth one: rotating it should forget every
+   * browser's ownership without signing anybody out of the portal, and the
+   * other way round. Optional, and absence is safe: with no secret the cookie
+   * is never set and never accepted, so every addition to an existing pledge
+   * is held for the treasurer rather than applied. A blank value counts as
+   * absent, as a variable declared on Vercel but left empty would be.
+   */
+  OWNER_COOKIE_SECRET: z
+    .string()
+    .optional()
+    .transform((value) => (value?.trim() ? value.trim() : undefined))
+    .pipe(z.string().min(32, "must be at least 32 characters.").optional()),
+  /*
    * Cloudflare Turnstile, the bot check standing in front of the pledge form.
    *
    * Both are optional and both are read together. Set, they gate every pledge:
@@ -190,6 +205,7 @@ function getServerEnv(): ServerEnv {
       BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
       CRON_SECRET: process.env.CRON_SECRET,
+      OWNER_COOKIE_SECRET: process.env.OWNER_COOKIE_SECRET,
       TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
       TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
