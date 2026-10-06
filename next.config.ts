@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { cspHeaders } from "./src/lib/csp";
+
 const nextConfig: NextConfig = {
   experimental: {
     // Lets a page call forbidden() from next/navigation and have the response
@@ -89,6 +91,23 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
+
+          /*
+           * No other window keeps a handle on ours. A page we open, or one
+           * that opened us, cannot read or navigate this window, which stops
+           * a lookalike opened from a pledge link steering the tab behind it.
+           * same-origin rather than same-origin-allow-popups because Google
+           * sign in is a full page redirect to Google and back, not a popup,
+           * and nothing else on the site opens a window it needs to talk to.
+           */
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+
+          // Report-only. What it allows and why is in src/lib/csp.ts.
+          ...cspHeaders({
+            vercelEnv: process.env.VERCEL_ENV,
+            nodeEnv: process.env.NODE_ENV,
+            sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+          }),
         ],
       },
 
