@@ -5,6 +5,7 @@ import { getCurrentAdmin } from "@/lib/admin-context";
 import { clientIp, serviceProblem, userAgent } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import * as audit from "@/server/services/admin-audit";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ export const dynamic = "force-dynamic";
  * that should fail: the caller wants to be signed out, and they are.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   try {
     const admin = await getCurrentAdmin();
 

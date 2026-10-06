@@ -20,6 +20,7 @@ import { isServiceError } from "@/server/errors";
 import * as adminAudit from "@/server/services/admin-audit";
 import * as changeRequests from "@/server/services/change-requests";
 import { sendChangeRequestDecision } from "@/server/services/email";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const { id } = await params;
   const parsedTarget = target.safeParse({ requestId: id });
 

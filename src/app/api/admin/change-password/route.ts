@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { changeOwnPasswordInput } from "@/server/contracts/admin-users";
 import * as adminUsers from "@/server/services/admin-users";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,9 @@ export const dynamic = "force-dynamic";
  * setting your own password is not an action against anybody else.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const admin = await getCurrentAdmin();
 
   if (!admin) {

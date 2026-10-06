@@ -18,6 +18,7 @@ import { renderAdditionConfirmed } from "@/server/email/held-addition";
 import { sendRendered } from "@/server/services/email";
 import { decideHeldAdditionInput } from "@/server/contracts/pledges";
 import * as heldAdditions from "@/server/services/held-additions";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const { id } = await params;
   const parsedTarget = target.safeParse({ incrementId: id });
 

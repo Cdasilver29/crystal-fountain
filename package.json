@@ -63,7 +63,8 @@
     "db:verify:bot-check": "tsx scripts/verify-part-at.ts",
     "db:verify:email-limits": "tsx scripts/verify-part-au.ts",
     "db:verify:digest-retention": "tsx scripts/verify-part-av.ts",
-    "db:verify:admin-guards": "tsx scripts/verify-part-aw.ts"
+    "db:verify:admin-guards": "tsx scripts/verify-part-aw.ts",
+    "db:verify:origins": "tsx scripts/verify-part-ax.ts"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "1.6.1",

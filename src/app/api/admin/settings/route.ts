@@ -21,6 +21,7 @@ import {
 } from "@/server/contracts/campaign";
 import * as campaign from "@/server/services/campaign";
 import * as paymentChanges from "@/server/services/payment-changes";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,9 @@ export const dynamic = "force-dynamic";
  * those are live the moment this returns.
  */
 export async function PATCH(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const gate = await requirePermission(request, "settings.edit", {
     entity: "campaign",
   });

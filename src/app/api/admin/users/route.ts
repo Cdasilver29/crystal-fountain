@@ -16,6 +16,7 @@ import {
   generateTemporaryPassword,
 } from "@/server/contracts/admin-users";
 import * as adminUsers from "@/server/services/admin-users";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,9 @@ export async function GET(request: Request) {
  * one is recovered.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const gate = await requirePermission(request, "users.manage", {
     entity: "admin_users",
   });

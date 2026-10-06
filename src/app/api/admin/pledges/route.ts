@@ -12,6 +12,7 @@ import {
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { adminCreatePledgeInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,9 @@ export const dynamic = "force-dynamic";
  * person typing at a keyboard is the check those two exist to approximate.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const gate = await requirePermission(request, "pledges.create", {
     entity: "pledge",
   });

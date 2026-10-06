@@ -7,6 +7,7 @@ import {
   isSetupAvailable,
   type AuthProvisioner,
 } from "@/server/services/admin-setup";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ export const dynamic = "force-dynamic";
  * the service re-checks inside its transaction.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   // A database that cannot be reached answers with the same plain coded 500
   // as every other route, not an empty one.
   let available: boolean;

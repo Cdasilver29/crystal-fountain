@@ -15,6 +15,7 @@ import {
   removePledgeInput,
 } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const { id } = await params;
   const target = approvePledgeInput.safeParse({ pledgeId: id });
 

@@ -9,6 +9,7 @@ import {
   generateTemporaryPassword,
 } from "@/server/contracts/admin-users";
 import * as adminUsers from "@/server/services/admin-users";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const { id } = await params;
   const target = adminUserPathParams.safeParse({ adminUserId: id });
 

@@ -7,6 +7,7 @@ import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { adminPledgeActionInput } from "@/server/contracts/admin";
 import { approvePledgeInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   // Roles are enforced here, on the server, not by hiding a button. A viewer
   // can read the pledge list and nothing more.
   const { id: targetId } = await params;

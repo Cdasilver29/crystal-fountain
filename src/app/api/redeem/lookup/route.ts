@@ -11,6 +11,7 @@ import { CAMPAIGN_SLUG } from "@/lib/campaign";
 import { lookupPledgeInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,9 @@ export const dynamic = "force-dynamic";
  * runs before the lookup, so a refused submission reads nothing.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   let body: unknown;
 
   try {

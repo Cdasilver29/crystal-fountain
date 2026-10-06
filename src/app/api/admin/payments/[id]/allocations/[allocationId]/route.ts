@@ -6,6 +6,7 @@ import { clientIp, problem, serviceProblem, userAgent } from "@/lib/api";
 import { CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { allocationPathParams } from "@/server/contracts/payments";
 import * as payments from "@/server/services/payments";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string; allocationId: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const { id, allocationId } = await params;
   const target = allocationPathParams.safeParse({
     paymentId: id,

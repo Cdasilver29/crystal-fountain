@@ -12,6 +12,7 @@ import {
 import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { recordPaymentInput } from "@/server/contracts/payments";
 import * as payments from "@/server/services/payments";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,9 @@ export const dynamic = "force-dynamic";
  * think the entry had not worked.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   const gate = await requirePermission(request, "payments.record", {
     entity: "payment",
   });

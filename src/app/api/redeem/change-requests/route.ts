@@ -16,6 +16,7 @@ import { changeRequestInput } from "@/server/contracts/change-requests";
 import * as changeRequests from "@/server/services/change-requests";
 import { sendChangeRequestAcknowledgement } from "@/server/services/email";
 import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,9 @@ function acknowledge(result: changeRequests.CreateChangeRequestResult) {
  * first one went.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   let body: unknown;
 
   try {

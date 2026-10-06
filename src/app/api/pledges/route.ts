@@ -30,6 +30,7 @@ import {
 import { emailLimitKey, reserveEmail } from "@/server/services/email-limits";
 import * as pledges from "@/server/services/pledges";
 import { turnstileConfig } from "@/lib/bot-check";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -196,6 +197,9 @@ function sendHeldNotice(result: pledges.HeldAdditionResult) {
  * without an environment and stays portable if the API is split out later.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   /*
    * The settings, read per request rather than from the environment alone.
    *

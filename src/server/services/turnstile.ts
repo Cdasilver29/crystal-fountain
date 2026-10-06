@@ -178,35 +178,11 @@ export function turnstileTestingAllowed(vercelEnv: string | undefined): boolean 
   return vercelEnv !== "production";
 }
 
-/**
- * Every address the site is served from.
- *
- * The church subdomain is the public origin, but members still arrive on the
- * Vercel address from links shared before it existed, and the forms there
- * must work too. Exact names only: a lookalike such as
- * crystal-fountain.vercel.app.example.com is a different host and is refused.
+/*
+ * The site's hostnames live in src/server/site-hosts.ts, shared with the origin
+ * check so the two can never disagree. Re-exported for the existing callers.
  */
-export const SITE_HOSTNAMES = [
-  "development.newlifesdanairobi.org",
-  "crystal-fountain.vercel.app",
-] as const;
-
-/**
- * The hostnames a token may have been solved on: the site's own.
- *
- * The addresses above, plus the configured public origin in case it ever
- * moves before this list does. A token solved on any other page, somebody
- * else's copy of the form with our site key lifted into it, is refused.
- */
-export function siteHostnames(siteUrl: string | undefined): string[] {
-  const hosts = new Set<string>(SITE_HOSTNAMES);
-  try {
-    hosts.add(new URL(siteUrl ?? "").hostname.toLowerCase());
-  } catch {
-    // An unreadable origin adds nothing; the known addresses still stand.
-  }
-  return [...hosts];
-}
+export { SITE_HOSTNAMES, siteHostnames } from "@/server/site-hosts";
 
 /** Why a token Cloudflare accepted was still refused. For the log only. */
 export type ClaimProblem =

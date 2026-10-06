@@ -14,6 +14,7 @@ import {
 import { can } from "@/lib/permissions";
 import { decidePaymentChangeInput } from "@/server/contracts/campaign";
 import * as paymentChanges from "@/server/services/payment-changes";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   /*
    * Who is asking, before what they asked. The role is settled by the gate
    * below once the decision is known, but a caller with no session is turned

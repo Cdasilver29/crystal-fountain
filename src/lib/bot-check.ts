@@ -1,7 +1,7 @@
 import { env } from "@/env";
+import { allowedSiteHostnames } from "@/lib/site-hosts";
 import {
   assertHuman,
-  siteHostnames,
   turnstileBypassAllowed,
   turnstileTestingAllowed,
   type TurnstileAction,
@@ -23,7 +23,7 @@ export function turnstileConfig(): TurnstileConfig {
     },
     bypassAllowed: turnstileBypassAllowed(process.env.NODE_ENV),
     testingAllowed: turnstileTestingAllowed(process.env.VERCEL_ENV),
-    allowedHostnames: siteHostnames(env.NEXT_PUBLIC_SITE_URL),
+    allowedHostnames: allowedSiteHostnames(),
     siteverifyUrl: env.TURNSTILE_SITEVERIFY_URL,
   };
 }

@@ -8,6 +8,7 @@ import { adminLoginInput } from "@/server/contracts/auth";
 import * as audit from "@/server/services/admin-audit";
 import * as twoFactor from "@/server/services/admin-two-factor";
 import * as attempts from "@/server/services/login-attempts";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,9 @@ export const dynamic = "force-dynamic";
  * cases, which never reach a session, are recorded from this route.
  */
 export async function POST(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   let body: unknown;
 
   try {

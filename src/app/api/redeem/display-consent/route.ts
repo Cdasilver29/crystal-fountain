@@ -13,6 +13,7 @@ import { CAMPAIGN_SLUG, CAMPAIGN_TOTALS_TAG } from "@/lib/campaign";
 import { withdrawDisplayConsentInput } from "@/server/contracts/pledges";
 import * as pledges from "@/server/services/pledges";
 import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
+import { refuseCrossSite } from "@/lib/site-hosts";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,9 @@ export const dynamic = "force-dynamic";
  * above it cannot be spent here as well.
  */
 export async function DELETE(request: Request) {
+  const crossSite = refuseCrossSite(request);
+  if (crossSite) return crossSite;
+
   let body: unknown;
 
   try {
