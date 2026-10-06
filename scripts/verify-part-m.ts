@@ -651,10 +651,9 @@ async function main() {
 
   check("a viewer gets 200", apiRes.status === 200);
   check(
-    "cached privately for five minutes, never in a shared proxy",
-    (apiRes.headers.get("cache-control") ?? "").includes("private") &&
-      (apiRes.headers.get("cache-control") ?? "").includes("max-age=300") &&
-      !(apiRes.headers.get("cache-control") ?? "").includes("s-maxage"),
+    // Every admin response is no-store since security Session 3 (3.3).
+    "not cached anywhere, like every admin response",
+    /no-store/.test(apiRes.headers.get("cache-control") ?? ""),
     apiRes.headers.get("cache-control") ?? "none",
   );
   check("amounts cross as minor unit strings", typeof api.fulfilment.allocatedMinor === "string");
