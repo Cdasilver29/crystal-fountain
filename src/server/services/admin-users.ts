@@ -453,11 +453,27 @@ export async function update(db: Db, args: UpdateArgs): Promise<void> {
 
   if (fullName === before.fullName && role === before.role) return;
 
+  /*
+   * A role change ends every session the person has, as a reset or a
+   * deactivation does. The role is read from the row on each request, so a
+   * demotion already bites at once; ending the sessions as well means a
+   * session opened under the old role is not still sitting in some browser,
+   * and the person signs in again knowing their access has changed. A name
+   * correction alone signs nobody out.
+   */
+  const endSessions = changingRole && before.authUserId !== null;
+
   await db.transaction(async (tx) => {
     await tx
       .update(adminUsers)
       .set({ fullName, role })
       .where(eq(adminUsers.id, adminUserId));
+
+    if (endSessions) {
+      await tx
+        .delete(authSessions)
+        .where(eq(authSessions.userId, before.authUserId!));
+    }
 
     await tx.insert(auditLog).values({
       actorType: "admin",
@@ -466,7 +482,12 @@ export async function update(db: Db, args: UpdateArgs): Promise<void> {
       entity: "admin_users",
       entityId: adminUserId,
       before: { fullName: before.fullName, role: before.role },
-      after: { fullName, role, email: before.email },
+      after: {
+        fullName,
+        role,
+        email: before.email,
+        ...(endSessions ? { sessionsEnded: true } : {}),
+      },
       ip: request?.ip ?? null,
       userAgent: request?.userAgent ?? null,
     });

@@ -6,9 +6,6 @@ import * as analytics from "@/server/services/analytics";
 
 export const dynamic = "force-dynamic";
 
-/** Five minutes, matching the public timeseries endpoint. */
-const MAX_AGE_SECONDS = 300;
-
 /**
  * GET /api/admin/analytics
  *
@@ -23,11 +20,9 @@ const MAX_AGE_SECONDS = 300;
  * Read only, so there is no audit row. CLAUDE.md requires one for every admin
  * write, and this writes nothing.
  *
- * Cached private and not public, unlike the timeseries endpoint. Five minutes
- * is what the brief asks for, but the response is only correct for somebody
- * holding an admin session, so it must sit in that person's own browser cache
- * and never in a shared proxy where the next caller would be handed it without
- * a session at all.
+ * Not cached anywhere, like every admin response. The brief once asked for five
+ * minutes, private, but a browser cache on a shared office machine is still a
+ * copy of a collections report sitting on disk after somebody signs out.
  *
  * No aggregate here identifies a person, but the ageing buckets are a
  * collections report and the church has no reason to publish one.
@@ -85,7 +80,7 @@ export async function GET(request: Request) {
       },
       {
         headers: {
-          "cache-control": `private, max-age=${MAX_AGE_SECONDS}`,
+          "cache-control": "no-store",
         },
       },
     );

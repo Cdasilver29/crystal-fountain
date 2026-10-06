@@ -19,7 +19,16 @@ export const dynamic = "force-dynamic";
  * the service re-checks inside its transaction.
  */
 export async function POST(request: Request) {
-  if (!(await isSetupAvailable(db))) {
+  // A database that cannot be reached answers with the same plain coded 500
+  // as every other route, not an empty one.
+  let available: boolean;
+  try {
+    available = await isSetupAvailable(db);
+  } catch (error) {
+    return serviceProblem(error);
+  }
+
+  if (!available) {
     // Same answer the page gives, so probing this endpoint tells an attacker
     // nothing the page would not.
     return problem(404, "not_found", "This page does not exist.");

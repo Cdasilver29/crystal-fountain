@@ -377,6 +377,18 @@ export function summarise(
       return [email && `email: ${email}`, role].filter(Boolean).join(", ");
     }
 
+    case "admin.updated": {
+      const parts = [str(a.email)];
+      if (str(b.role) && str(a.role) && b.role !== a.role) {
+        parts.push(`role ${str(b.role)} → ${str(a.role)}`);
+      }
+      if (str(b.fullName) && str(a.fullName) && b.fullName !== a.fullName) {
+        parts.push("name corrected");
+      }
+      if (a.sessionsEnded === true) parts.push("signed out everywhere");
+      return parts.filter(Boolean).join(", ");
+    }
+
     case "system.retention_pruned": {
       // Counts only. The rows held addresses, and none of them is repeated.
       const parts = (

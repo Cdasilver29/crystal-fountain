@@ -36,6 +36,14 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  /*
+   * Who is asking, before what they asked. The role is settled by the gate
+   * below once the decision is known, but a caller with no session is turned
+   * away here, so a stranger is never walked through what this body expects.
+   */
+  const viewer = await getCurrentAdmin();
+  if (!viewer) return problem(401, "unauthenticated", "Sign in to continue.");
+
   const { id } = await params;
   const ids = target.safeParse({ changeId: id });
 
@@ -57,9 +65,10 @@ export async function POST(
 
   // Withdrawing a request is the requester's right as well, and they hold
   // settings.edit rather than the approval right.
-  const viewer = decision === "reject" ? await getCurrentAdmin() : null;
   const action =
-    viewer && !can(viewer, "settings.approvePaymentChange") && can(viewer, "settings.edit")
+    decision === "reject" &&
+    !can(viewer, "settings.approvePaymentChange") &&
+    can(viewer, "settings.edit")
       ? "settings.edit"
       : "settings.approvePaymentChange";
 

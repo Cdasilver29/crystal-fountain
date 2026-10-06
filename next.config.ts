@@ -112,6 +112,24 @@ const nextConfig: NextConfig = {
       },
 
       /*
+       * The admin portal, never cached anywhere.
+       *
+       * Its pages and responses carry phone numbers, email addresses and the
+       * CSV exports of both. A copy of any of them left in a browser cache on a
+       * shared office machine, or in a proxy, outlives the session that was
+       * allowed to see it. Covers the refusals too, including the ones the
+       * middleware answers before a route runs.
+       */
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+      {
+        source: "/api/admin/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+
+      /*
        * Static assets, cached hard.
        *
        * Everything under /_next/static is already content hashed by the build
