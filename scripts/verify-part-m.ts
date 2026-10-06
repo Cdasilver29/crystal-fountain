@@ -653,7 +653,7 @@ async function main() {
   check(
     // Every admin response is no-store since security Session 3 (3.3).
     "not cached anywhere, like every admin response",
-    /no-store/.test(apiRes.headers.get("cache-control") ?? ""),
+    /\bno-store\b/.test(apiRes.headers.get("cache-control") ?? ""),
     apiRes.headers.get("cache-control") ?? "none",
   );
   check("amounts cross as minor unit strings", typeof api.fulfilment.allocatedMinor === "string");
