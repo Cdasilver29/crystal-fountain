@@ -950,3 +950,38 @@ Practical order for the next two weeks:
 
 Build the schema right, verify the totals in SQL before a single component is written, and
 the rest of this plan is mostly typing.
+
+---
+
+## 18. Security decisions recorded, not yet built
+
+Recorded at the end of the third security hardening session, 7 October 2026. None of
+this is built. Each item says what would have to be true first.
+
+- **Enforce the Content Security Policy.** The policy went in as report-only on
+  7 October 2026 (`src/lib/csp.ts`). Switch the header to `Content-Security-Policy` once
+  a full week of reports, counted from the day it reaches production, shows no
+  legitimate violation. Reports go to Sentry's security endpoint, so Sentry must have
+  quota to receive them; on 7 October the organisation was over its error quota and was
+  dropping them.
+- **Off-site backup.** A weekly encrypted `pg_dump` kept in storage the church owns, as
+  RECOVERY.md section 7 describes. Built once the church has its own storage account,
+  not before.
+- **Member dashboard foundations,** for when member accounts are built:
+  - phones verified by SMS one-time code;
+  - member sessions kept apart from admin sessions: a different cookie, a different
+    table, and a shorter lifetime;
+  - a fresh code before changing an amount, a plan or a phone number;
+  - once a phone is verified, that member's additions and change requests can skip the
+    holds that protect unverified pledges today.
+- **M-Pesa callbacks,** when payments are integrated: accepted only from Safaricom's
+  published addresses, idempotent on the M-Pesa receipt number, with a nightly
+  transaction status check for anything left pending.
+- **A known gap until SMS verification exists:** anyone can still create a new pledge
+  under somebody else's phone number. Holding additions to existing pledges limits the
+  damage, since a stranger cannot change or add to the real pledger's record, but it does
+  not prevent a false new pledge.
+- **Audit log retention.** Align with the CD-Fund policy's seven year record retention.
+  Audit rows hold IP addresses, which are personal data, so the retention rule should
+  either clear `ip` and `user_agent` after a shorter period or state why seven years is
+  needed for them too.
