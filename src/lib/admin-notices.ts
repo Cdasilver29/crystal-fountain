@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { db } from "@/db";
 import { env } from "@/env";
 import { problem } from "@/lib/api";
+import { emailConfig } from "@/lib/email-config";
 import { builtInPaymentDetails } from "@/lib/payment-details";
 import { renderPaymentChangeNotice } from "@/server/email/payment-change";
 import { renderSettingsChangedNotice } from "@/server/email/settings-change";
@@ -20,10 +21,6 @@ import {
  * The only place that knows where the email configuration comes from, so the
  * service stays a plain function and the routes stay thin.
  */
-
-function emailConfig() {
-  return { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL };
-}
 
 /**
  * Refuses a change the administrators cannot be told about.

@@ -31,6 +31,7 @@ import { emailLimitKey, reserveEmail } from "@/server/services/email-limits";
 import * as pledges from "@/server/services/pledges";
 import { turnstileConfig } from "@/lib/bot-check";
 import { refuseCrossSite } from "@/lib/site-hosts";
+import { emailConfig } from "@/lib/email-config";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ function sendConfirmation(args: {
   if (!args.input.email) return;
 
   const task = async () => {
-    const config = { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL };
+    const config = emailConfig();
     // Not configured is not a send, and should not use up the allowance.
     if (!isEmailConfigured(config)) return;
 
@@ -144,7 +145,7 @@ function sendHeldNotice(result: pledges.HeldAdditionResult) {
 
   const task = async () => {
     const outcome = await sendRendered(
-      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      emailConfig(),
       {
         to: notice.to,
         message: renderAdditionHeldNotice({

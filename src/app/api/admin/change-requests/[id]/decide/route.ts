@@ -21,6 +21,7 @@ import * as adminAudit from "@/server/services/admin-audit";
 import * as changeRequests from "@/server/services/change-requests";
 import { sendChangeRequestDecision } from "@/server/services/email";
 import { refuseCrossSite } from "@/lib/site-hosts";
+import { emailConfig } from "@/lib/email-config";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ function tell(result: changeRequests.DecideChangeRequestResult) {
 
   const task = async () => {
     const outcome = await sendChangeRequestDecision(
-      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      emailConfig(),
       {
         to: result.pledger.email,
         decision: {

@@ -13,6 +13,7 @@ import { isEmailConfigured, sendAdminNotice } from "@/server/services/email";
 import * as paymentChanges from "@/server/services/payment-changes";
 import * as retention from "@/server/services/retention";
 import * as snapshots from "@/server/services/snapshots";
+import { emailConfig } from "@/lib/email-config";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ async function sendDigest(now: Date): Promise<
   const schedule = digest.digestSchedule(now);
   if (!schedule.send) return { status: "skipped", reason: schedule.reason };
 
-  const config = { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL };
+  const config = emailConfig();
   if (!isEmailConfigured(config)) return { status: "skipped", reason: "not_configured" };
 
   const data = await digest.gather(db, {

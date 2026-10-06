@@ -19,6 +19,7 @@ import { sendRendered } from "@/server/services/email";
 import { decideHeldAdditionInput } from "@/server/contracts/pledges";
 import * as heldAdditions from "@/server/services/held-additions";
 import { refuseCrossSite } from "@/lib/site-hosts";
+import { emailConfig } from "@/lib/email-config";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +80,7 @@ export async function POST(
       const to = result.pledger.email;
       const task = async () => {
         const outcome = await sendRendered(
-          { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+          emailConfig(),
           {
             to,
             message: renderAdditionConfirmed({

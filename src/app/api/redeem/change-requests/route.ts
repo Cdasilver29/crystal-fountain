@@ -17,6 +17,7 @@ import * as changeRequests from "@/server/services/change-requests";
 import { sendChangeRequestAcknowledgement } from "@/server/services/email";
 import { TURNSTILE_ACTIONS } from "@/server/services/turnstile";
 import { refuseCrossSite } from "@/lib/site-hosts";
+import { emailConfig } from "@/lib/email-config";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ function acknowledge(result: changeRequests.CreateChangeRequestResult) {
 
   const task = async () => {
     const outcome = await sendChangeRequestAcknowledgement(
-      { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
+      emailConfig(),
       {
         to: result.pledger.email,
         request: {

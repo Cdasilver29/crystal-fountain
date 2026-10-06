@@ -31,7 +31,46 @@ export type EmailConfig = {
   apiKey?: string;
   /** The From address, for example "Crystal Fountain <dev@example.org>". */
   from: string;
+  /**
+   * Set when sending must be refused outright, see resendBaseUrlRefused. Every
+   * send then fails loudly instead of reaching Resend.
+   */
+  refused?: "foreign_base_url";
 };
+
+/** Resend's own API, the only address production may send email through. */
+export const RESEND_API_ORIGIN = "https://api.resend.com";
+
+/**
+ * Whether RESEND_BASE_URL points production's email somewhere other than Resend.
+ *
+ * The Resend client reads RESEND_BASE_URL from the environment by itself. A
+ * verification run points it at a local stand in so nothing is delivered, and
+ * that is fine anywhere but production. Set on production by mistake it would
+ * swallow every confirmation, notice and digest with no error anywhere, so
+ * there it is refused unless it is unset or Resend's own address. The same
+ * rule as Cloudflare's test keys for Turnstile, keyed on VERCEL_ENV for the
+ * same reason: a verification run starts the app in production mode on
+ * purpose.
+ */
+export function resendBaseUrlRefused(
+  baseUrl: string | undefined,
+  vercelEnv: string | undefined,
+): boolean {
+  if (vercelEnv !== "production") return false;
+  const value = baseUrl?.trim();
+  if (!value) return false;
+  return value.replace(/\/+$/, "") !== RESEND_API_ORIGIN;
+}
+
+function refusedResult(): SendResult {
+  return {
+    status: "failed",
+    error: new Error(
+      "Email refused: RESEND_BASE_URL is set on production to something other than Resend's own address.",
+    ),
+  };
+}
 
 /**
  * What happened, as a value rather than an exception.
@@ -64,6 +103,8 @@ function client(apiKey: string): Resend {
 
 /** Whether email is switched on. An empty string counts as absent. */
 export function isEmailConfigured(config: EmailConfig): boolean {
+  // Refused email is not working email: a change that needs announcing waits.
+  if (config.refused) return false;
   return typeof config.apiKey === "string" && config.apiKey.trim() !== "";
 }
 
@@ -83,6 +124,7 @@ export async function sendPledgeConfirmation(
   const apiKey = config.apiKey?.trim();
 
   if (!to) return { status: "skipped", reason: "no_recipient" };
+  if (config.refused) return refusedResult();
   if (!apiKey) return { status: "skipped", reason: "not_configured" };
 
   const message = renderPledgeConfirmationEmail(args.pledge);
@@ -156,6 +198,7 @@ async function deliver(
   const apiKey = config.apiKey?.trim();
 
   if (!to) return { status: "skipped", reason: "no_recipient" };
+  if (config.refused) return refusedResult();
   if (!apiKey) return { status: "skipped", reason: "not_configured" };
 
   try {
