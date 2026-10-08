@@ -145,3 +145,20 @@ export function seriesView(series: EventSeries, now: Date): SeriesView {
     isPast: sessions.every((session) => session.status === "held"),
   };
 }
+
+/**
+ * The featured card's status chip: "Today, 5:30pm" on the day, otherwise
+ * "Next session, in 4 days", "Next session, tomorrow, 5:30pm" or "Next
+ * session, Monday 9 November".
+ */
+export function featuredChip(view: SeriesView): string | null {
+  if (!view.featured || !view.featuredWhen) return null;
+  if (view.featured.status === "today") return view.featuredWhen;
+  return `Next session, ${view.featuredWhen.replace(/^Tomorrow/, "tomorrow")}`;
+}
+
+/** A YYYY-MM-DD day as "8 October 2026", with no clock or zone involved. */
+export function formatDayKey(key: string): string {
+  const [year, month, day] = key.split("-").map(Number);
+  return `${day} ${MONTHS[month! - 1]} ${year}`;
+}

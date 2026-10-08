@@ -398,10 +398,6 @@ export const ACCOUNTABILITY = {
     "All contributions are acknowledged and accounted for. Regular updates on funding, design, and construction progress will be shared openly with the congregation through the church website, bulletin, and official communication channels.",
 } as const;
 
-/** Placeholder for /updates until there is real news to post. */
-export const UPDATES_PLACEHOLDER =
-  "Updates on the Crystal Fountain Development Project will be posted here as the project progresses. Check back regularly or follow the church's official channels for the latest news.";
-
 /**
  * The printed fund summary, offered as a download from /cd-fund. A static file
  * in public/, not an optimised asset, because the point is that a member can

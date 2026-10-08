@@ -1,5 +1,6 @@
 import { CAMPAIGN, CONTACT, OG } from "@/content/campaign";
 import { SOCIAL_LINKS } from "@/content/project";
+import type { EventSeries, EventSession } from "@/content/updates";
 import { SITE_URL } from "@/lib/metadata";
 
 /**
@@ -105,6 +106,42 @@ export function donateActionSchema() {
         "https://schema.org/DesktopWebPlatform",
         "https://schema.org/MobileWebPlatform",
       ],
+    },
+  };
+}
+
+/**
+ * One session of an event series, for each session not yet held.
+ *
+ * startDate keeps the +03:00 offset as the content writes it, so no crawler
+ * has to guess the zone. There is no endDate because the church has given no
+ * end time, and an invented one would be shown to people as fact.
+ */
+export function sessionEventSchema(series: EventSeries, session: EventSession) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: `${series.name}, Session ${session.number} of ${series.sessions.length}`,
+    description: `Organised by ${series.organiser}. Attendance is confirmed by email to ${series.attendanceEmail}.`,
+    startDate: session.startsAt,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    url: `${SITE_URL}/updates#${series.id}`,
+    location: {
+      "@type": "Place",
+      name: series.venue.name,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: series.venue.streetAddress,
+        addressLocality: series.venue.locality,
+        addressCountry: series.venue.country,
+      },
+    },
+    organizer: {
+      "@type": "Organization",
+      name: series.organiser.replace(/^the /, ""),
+      email: series.attendanceEmail,
+      parentOrganization: { "@id": ORGANISATION_ID },
     },
   };
 }

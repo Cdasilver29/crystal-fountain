@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { type EventSeries, eventSeries, findSeries, posts } from "@/content/updates";
+
+import { sessionEventSchema } from "@/lib/structured-data";
 
 import { sessionCalendar, sessionUid } from "./ics";
 import {
@@ -10,7 +12,17 @@ import {
   shareText,
   whatsappShareUrl,
 } from "./links";
-import { nairobiDayKey, relativeWhen, seriesView, sessionDate } from "./status";
+import {
+  featuredChip,
+  formatDayKey,
+  nairobiDayKey,
+  relativeWhen,
+  seriesView,
+  sessionDate,
+} from "./status";
+
+// structured-data reads SITE_URL, which would otherwise validate the whole env.
+vi.mock("@/lib/metadata", () => ({ SITE_URL: "https://pledge.example.org" }));
 
 const forum = findSeries("professionals-forum")!;
 const [s1, s2, s3, s4] = forum.sessions;
@@ -195,5 +207,37 @@ describe("sessionCalendar", () => {
     }
     expect(lines[0]).toBe("BEGIN:VCALENDAR");
     expect(lines.at(-2)).toBe("END:VCALENDAR");
+  });
+});
+
+describe("featuredChip", () => {
+  it("names the next session, or the one today", () => {
+    expect(featuredChip(seriesView(forum, at("2026-10-08T10:00:00")))).toBe("Next session, in 4 days");
+    expect(featuredChip(seriesView(forum, at("2026-10-11T10:00:00")))).toBe(
+      "Next session, tomorrow, 5:30pm",
+    );
+    expect(featuredChip(seriesView(forum, at("2026-10-12T10:00:00")))).toBe("Today, 5:30pm");
+    expect(featuredChip(seriesView(forum, at("2026-10-13T10:00:00")))).toBe(
+      "Next session, in 13 days",
+    );
+    expect(featuredChip(seriesView(forum, at("2026-11-10T10:00:00")))).toBeNull();
+  });
+});
+
+describe("formatDayKey", () => {
+  it("formats a posted date without a zone", () => {
+    expect(formatDayKey("2026-10-08")).toBe("8 October 2026");
+  });
+});
+
+describe("sessionEventSchema", () => {
+  it("describes an offline event at the venue with the Nairobi offset and no end", () => {
+    const schema = sessionEventSchema(forum, s2!);
+    expect(schema["@type"]).toBe("Event");
+    expect(schema.startDate).toBe("2026-10-12T17:30:00+03:00");
+    expect(schema.eventAttendanceMode).toBe("https://schema.org/OfflineEventAttendanceMode");
+    expect(schema.location.address.streetAddress).toBe("5th Ngong Avenue");
+    expect(schema.organizer.name).toBe("Newlife Development Team");
+    expect(schema).not.toHaveProperty("endDate");
   });
 });
