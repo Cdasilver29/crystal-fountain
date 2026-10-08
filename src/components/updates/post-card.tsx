@@ -35,7 +35,7 @@ export function PostCard({ post, series }: { post: Post; series?: EventSeries })
         {post.title}
       </h3>
 
-      <div className="mt-3 max-w-[680px] space-y-3 text-base leading-relaxed text-neutral-700">
+      <div className="mt-3 max-w-[680px] space-y-3 text-base leading-relaxed [overflow-wrap:anywhere] text-neutral-700">
         {post.body.map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}
