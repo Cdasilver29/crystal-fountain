@@ -70,10 +70,14 @@ export default function UpdatesPage() {
           priority
         />
 
-        <div className="container-prose relative z-10">
-          <h1 className="font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
-            Project updates
-          </h1>
+        {/* The 880px column the card and posts sit in, so the heading shares
+            their left edge; the heading keeps the prose measure inside it. */}
+        <div className="container-marketing relative z-10">
+          <div className="mx-auto max-w-[880px]">
+            <h1 className="max-w-[680px] font-display text-3xl font-semibold text-balance text-white sm:text-4xl">
+              Project updates
+            </h1>
+          </div>
         </div>
       </section>
 
