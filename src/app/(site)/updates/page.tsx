@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SectionBackground } from "@/components/media/section-background";
+import { RevealOnScroll } from "@/components/motion/reveal-on-scroll";
 import { JsonLd } from "@/components/seo/json-ld";
 import { PledgeCta } from "@/components/site/pledge-cta";
 import { PastSeries } from "@/components/updates/past-series";
@@ -134,6 +135,7 @@ export default function UpdatesPage() {
       )}
 
       <PledgeCta heading="Record your pledge" />
+      <RevealOnScroll />
     </>
   );
 }

@@ -38,6 +38,7 @@ export function SeriesFeature({ view, siteUrl }: { view: SeriesView; siteUrl: st
     <div className="mx-auto w-full max-w-[880px]">
       <article
         id={series.id}
+        data-reveal=""
         aria-labelledby={`${series.id}-heading`}
         className="scroll-mt-28 flex flex-col gap-5 rounded-2xl border-2 border-campfire bg-white p-5 shadow-sm sm:flex-row sm:gap-7 sm:p-7"
       >
@@ -125,11 +126,23 @@ const TILE_STYLE: Record<SessionView["status"], string> = {
   upcoming: "border border-neutral-200 bg-white text-navy",
 };
 
-/** Every session as a tile, each carrying its status in words. */
+/**
+ * Every session as a tile, each carrying its status in words.
+ *
+ * A session still to come is a link to its own calendar file, and lifts and
+ * presses like the level cards on the home page. A held session is a record,
+ * not an action: no link, no hover, muted, with its check.
+ *
+ * The list staggers in on scroll as one row. The tiles are its direct
+ * children, so the reveal moves the li while card-lift moves the link inside
+ * it, and the two transforms never sit on the same element.
+ */
 export function SeriesStrip({ view }: { view: SeriesView }) {
   return (
     <div className="mt-6">
       <ol
+        data-reveal=""
+        data-stagger=""
         aria-label={`${view.series.shortName} sessions`}
         className="grid grid-cols-2 gap-3 sm:grid-cols-4"
       >
@@ -137,20 +150,25 @@ export function SeriesStrip({ view }: { view: SeriesView }) {
           <li
             key={session.number}
             aria-current={session.status === "next" || session.status === "today" ? "date" : undefined}
-            className={`rounded-xl px-4 py-3 ${TILE_STYLE[session.status]}`}
           >
-            <p className="text-sm font-semibold">Session {session.number}</p>
-            <p className="mt-0.5 text-sm">
-              <time dateTime={session.startsAt}>{sessionDate(session.startsAt).short}</time>
-            </p>
-            <p
-              className={`mt-2 inline-flex items-center gap-1 text-sm font-medium ${
-                session.status === "held" ? "" : session.status === "upcoming" ? "text-neutral-600" : "font-semibold"
-              }`}
-            >
-              {session.status === "held" && <Check aria-hidden className="size-4" />}
-              {SESSION_STATUS_LABEL[session.status]}
-            </p>
+            {session.status === "held" ? (
+              <div className={`h-full rounded-xl px-4 py-3 ${TILE_STYLE.held}`}>
+                <TileBody session={session} />
+              </div>
+            ) : (
+              <a
+                href={calendarPath(view.series, session)}
+                download
+                aria-label={`Add to calendar: Session ${session.number}, ${sessionDate(session.startsAt).full} (${SESSION_STATUS_LABEL[session.status]})`}
+                className={`card-lift block h-full rounded-xl px-4 py-3 focus-visible:ring-2 focus-visible:ring-campfire focus-visible:ring-offset-2 focus-visible:outline-none ${TILE_STYLE[session.status]}`}
+              >
+                <TileBody session={session} />
+                <span className="mt-2 flex items-center gap-1.5 text-xs font-medium text-denim">
+                  <CalendarPlus aria-hidden className="size-3.5 shrink-0" />
+                  Add to calendar
+                </span>
+              </a>
+            )}
           </li>
         ))}
       </ol>
@@ -158,5 +176,29 @@ export function SeriesStrip({ view }: { view: SeriesView }) {
         <p className="mt-3 text-sm text-neutral-600">{view.series.scheduleNote}</p>
       )}
     </div>
+  );
+}
+
+function TileBody({ session }: { session: SessionView }) {
+  const current = session.status === "next" || session.status === "today";
+  return (
+    <>
+      <span className="block text-sm font-semibold">Session {session.number}</span>
+      <span className="mt-0.5 block text-sm">
+        <time dateTime={session.startsAt}>{sessionDate(session.startsAt).short}</time>
+      </span>
+      <span
+        className={`mt-2 flex items-center gap-1.5 text-sm ${
+          current ? "font-semibold" : session.status === "upcoming" ? "font-medium text-neutral-600" : "font-medium"
+        }`}
+      >
+        {session.status === "held" && <Check aria-hidden className="size-4" />}
+        {/* The road map's "We are here" pulse, on a dot. */}
+        {current && (
+          <span aria-hidden className="roadmap-node-current size-2 shrink-0 rounded-full bg-campfire" />
+        )}
+        {SESSION_STATUS_LABEL[session.status]}
+      </span>
+    </>
   );
 }

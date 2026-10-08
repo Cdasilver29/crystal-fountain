@@ -16,6 +16,7 @@ export function PostCard({ post, series }: { post: Post; series?: EventSeries })
   return (
     <article
       id={post.slug}
+      data-reveal=""
       aria-labelledby={`${post.slug}-title`}
       className="scroll-mt-28 rounded-2xl border border-neutral-200 bg-white p-5 sm:p-7"
     >
